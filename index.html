@@ -162,7 +162,7 @@ textarea { resize: vertical; min-height: 70px; }
 .actions-row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
 .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
 .filter-bar input[type="text"] { min-width: 220px; width: auto; }
-.filter-bar select { width: auto; }
+.filter-bar select { width: auto; min-width: 130px; }
 
 .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13.5px; margin-bottom: 16px; font-weight: 500; }
 .alert-error { background: var(--bad-soft); color: #7a2c23; border: 1px solid #e3b6af; }
@@ -219,15 +219,12 @@ textarea { resize: vertical; min-height: 70px; }
 .storage-legend-val { font-weight: 700; }
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.12); border-top-color: var(--steel-950); border-radius: 50%; animation: spin 0.65s linear infinite; vertical-align: -2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; color: var(--steel-300); background: radial-gradient(circle at 50% 30%, rgba(232,162,58,0.06), transparent 50%), var(--steel-950); }
-.loading-screen .spinner { width: 26px; height: 26px; border-color: rgba(255,255,255,0.15); border-top-color: var(--amber); }
 
 /* Pending request badge/list */
 .request-card { border: 1.5px dashed var(--amber); background: var(--amber-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
 .pending-count-dot { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font-size: 10.5px; font-weight: 800; margin-left: 6px; }
 
 @media (max-width: 760px) {
-  /* REQUIREMENT 7: Fixing Top Right Side cutoff on mobile app */
   .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 14px 8px; gap: 10px; justify-content: space-between; }
   .brand { font-size: 16px; flex-shrink: 0; }
   .who { 
@@ -263,13 +260,13 @@ textarea { resize: vertical; min-height: 70px; }
   .kpi-value { font-size: 26px; }
   .kpi-label { font-size: 10px; }
 
-  /* Inputs at 16px on mobile to prevent iOS Safari auto-zoom on focus */
   input, select, textarea { font-size: 16px; padding: 12px 13px; }
   .btn { width: 100%; justify-content: center; padding: 13px 18px; }
   .actions-row { flex-direction: column; }
   .actions-row .btn { width: 100%; }
   .filter-bar { flex-direction: column; align-items: stretch; }
   .filter-bar input[type="text"] { min-width: 0; width: 100%; }
+  .filter-bar select { width: 100%; }
   .filter-bar .btn { width: 100%; }
 
   .auth-main { padding: 16px; align-items: flex-start; padding-top: 48px; }
@@ -277,8 +274,6 @@ textarea { resize: vertical; min-height: 70px; }
   .auth-card .brand { font-size: 16px; }
   .login-sync-row { font-size: 11.5px; padding: 7px 10px; }
 
-  /* Tables → stacked cards. Each <td> becomes a labeled row using its
-     data-label attribute; the header row is hidden entirely. */
   table.reg, table.reg thead, table.reg tbody, table.reg th, table.reg td, table.reg tr {
     display: block;
   }
@@ -318,19 +313,6 @@ textarea { resize: vertical; min-height: 70px; }
 </head>
 <body>
 
-<div id="loadingScreen" class="loading-screen">
-  <div id="loadingSpinnerState">
-    <span class="spinner"></span>
-    <div class="mono" style="font-size:12px; letter-spacing:0.08em; margin-top:14px;">CONNECTING…</div>
-  </div>
-  <div id="loadingErrorState" class="hidden" style="text-align:center; max-width:340px; padding:0 20px;">
-    <div style="font-size:32px; margin-bottom:10px;">⚠</div>
-    <div class="display" style="color:#fff; font-size:20px; margin-bottom:8px;">Cloud Sync Failed</div>
-    <div id="loadingErrorDetail" style="color:var(--steel-300); font-size:13px; line-height:1.6; margin-bottom:20px;"></div>
-    <button id="retryConnectionBtn" class="btn btn-primary" style="justify-content:center; width:100%;">Retry Connection</button>
-  </div>
-</div>
-
 <div id="authScreen" class="auth-main hidden">
   <div class="auth-card">
     <div class="brand">
@@ -356,7 +338,7 @@ textarea { resize: vertical; min-height: 70px; }
         <label for="loginPassword">Password</label>
         <input type="password" id="loginPassword" required autocomplete="current-password" />
       </div>
-      <button type="submit" id="loginBtn" class="btn btn-primary">Log In</button>
+      <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
     </form>
 
     <form id="requestForm" class="hidden">
@@ -372,7 +354,7 @@ textarea { resize: vertical; min-height: 70px; }
         <label for="reqPassword">Desired Password</label>
         <input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" />
       </div>
-      <button type="submit" id="reqSubmitBtn" class="btn btn-primary">Submit Request</button>
+      <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
     </form>
 
     <div class="request-link-row">
@@ -381,9 +363,7 @@ textarea { resize: vertical; min-height: 70px; }
     </div>
 
     <div class="auth-hint" id="authHintText">
-      Staff accounts are created by an Admin from inside the app
-      (Admin → Users), or requested here — an Admin must approve your
-      request before you can log in.
+      Staff accounts are created by an Admin from inside the app, or requested here — an Admin must approve your request before you can log in.
     </div>
   </div>
 </div>
@@ -440,7 +420,7 @@ const firebaseConfig = {
 /* =========================================================================
    STATE
    ========================================================================= */
-let currentUser = null;      // { uid, email, fullName, role, toolStockAuth }
+let currentUser = null; 
 let toolsCache = [];
 let issuesCache = [];
 let unsubTools = null;
@@ -456,85 +436,69 @@ const escapeHtml = (s) => (s ?? '').toString().replace(/[&<>"']/g, (c) => ({
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 function showScreen(id) {
-  ['loadingScreen', 'authScreen', 'appScreen'].forEach((s) => {
+  ['authScreen', 'appScreen'].forEach((s) => {
     $('#' + s).classList.toggle('hidden', s !== id);
   });
 }
 
-function showLoadingError(detail) {
-  $('#loadingSpinnerState').classList.add('hidden');
-  $('#loadingErrorState').classList.remove('hidden');
-  $('#loadingErrorDetail').textContent = detail;
-  showScreen('loadingScreen');
-}
-
-function showLoadingSpinner() {
-  $('#loadingSpinnerState').classList.remove('hidden');
-  $('#loadingErrorState').classList.add('hidden');
-}
-
 const configIsPlaceholder = Object.values(firebaseConfig).some((v) => v.startsWith('YOUR_'));
-
 let app, db, storage;
 let cloudSyncOk = false;
 let lastSyncedAt = null;
-let connectionTimeoutTimer = null;
+let appBootstrapped = false;
+let clockStarted = false;
+let cloudConnected = false;
+let clockInterval = null;
 
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin';
 const SESSION_KEY = 'mechtools_session';
 
-function attemptFirebaseInit() {
-  showLoadingSpinner();
-  showScreen('loadingScreen');
-
-  if (configIsPlaceholder) {
-    showLoadingError(
-      'This app still has placeholder Firebase config values. Open the HTML file, find the firebaseConfig block near the top of the script, and replace it with your real project keys from the Firebase Console (Project Settings → General → Your apps).'
-    );
-    return;
+// =========================================================================
+// APP BOOTSTRAPPING (Bypasses old loading screen)
+// =========================================================================
+function startApp() {
+  const saved = loadSession();
+  if (saved) {
+    currentUser = saved;
+    initTopbar();
+    showScreen('appScreen');
+    navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'dashboard');
+  } else {
+    showScreen('authScreen');
   }
+  // Initialize Cloud Sync in the background
+  attemptFirebaseInit();
+}
 
+function attemptFirebaseInit() {
+  if (configIsPlaceholder) return;
   try {
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
-    try {
-      storage = getStorage(app);
-    } catch (storageErr) {
-      console.warn('Firebase Storage unavailable (photo upload will be disabled):', storageErr);
-      storage = null;
-    }
+    try { storage = getStorage(app); } catch (e) { storage = null; }
   } catch (err) {
     console.error('Firebase init error:', err);
-    showLoadingError('Cloud sync failed: ' + (err.message || 'could not initialize Firebase. Check your config values.'));
     return;
   }
 
-  connectionTimeoutTimer = setTimeout(() => {
-    if (!cloudSyncOk) {
-      showLoadingError(
-        'Cloud sync failed: could not reach Firebase. Check your internet connection, confirm your Firebase config values (especially databaseURL) are correct, and make sure this page is served over http(s) rather than opened as a local content:// or file:// link.'
-      );
-    }
-  }, 10000);
-
+  // Realtime Cloud Sync Check
   onValue(ref(db, '.info/connected'), (snap) => {
     const connected = snap.val() === true;
-    if (connected) {
-      cloudSyncOk = true;
-      lastSyncedAt = new Date();
-      if (connectionTimeoutTimer) { clearTimeout(connectionTimeoutTimer); connectionTimeoutTimer = null; }
-      if (!appBootstrapped) bootstrapAfterConnect();
-    }
     cloudConnected = connected;
+    if (connected) {
+      lastSyncedAt = new Date();
+      if (!appBootstrapped) {
+        appBootstrapped = true;
+        if (currentUser) listenToCollections();
+      }
+    }
     updateLoginSyncIndicator(connected);
     if (currentView === 'settings-admin') render();
   }, (err) => {
     console.error('Connectivity listener error:', err);
-    if (connectionTimeoutTimer) { clearTimeout(connectionTimeoutTimer); connectionTimeoutTimer = null; }
     cloudConnected = false;
     updateLoginSyncIndicator(false);
-    showLoadingError('Cloud sync failed: ' + (err.message || 'lost connection to the database.'));
   });
 }
 
@@ -559,22 +523,13 @@ function updateLoginSyncIndicator(connected) {
   }
 }
 
-let appBootstrapped = false;
-let clockStarted = false;
-let cloudConnected = false;
-let clockInterval = null;
-
 function startLiveClock() {
   const clockEl = $('#appClock');
   if (!clockEl) return;
-  if (clockInterval) clearInterval(clockInterval);
+  if (clockInterval) clearInterval(clockInterval); 
   const tick = () => {
     const el = $('#appClock');
-    if (!el) {
-      clearInterval(clockInterval);
-      clockStarted = false;
-      return;
-    }
+    if (!el) { clearInterval(clockInterval); clockStarted = false; return; }
     const now = new Date();
     el.textContent = now.toLocaleString(undefined, {
       weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
@@ -582,68 +537,28 @@ function startLiveClock() {
     });
   };
   tick();
-  clockInterval = setInterval(tick, 1000);
+  clockInterval = setInterval(tick, 1000); 
 }
 
-$('#retryConnectionBtn')?.addEventListener('click', attemptFirebaseInit);
+function saveSession(user) { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch (e) {} }
+function loadSession() { try { const raw = sessionStorage.getItem(SESSION_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+function clearSession() { try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {} }
 
-/* =========================================================================
-   SESSION / LOGIN
-   ========================================================================= */
-function bootstrapAfterConnect() {
-  appBootstrapped = true;
-  const saved = loadSession();
-  if (saved) {
-    currentUser = saved;
-    initTopbar();
-    listenToCollections();
-    showScreen('appScreen');
-    navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'dashboard');
-  } else {
-    showScreen('authScreen');
-  }
-}
+function clearAuthMessages() { $('#authError').classList.add('hidden'); $('#authInfo').classList.add('hidden'); }
+function showAuthError(msg) { $('#authInfo').classList.add('hidden'); $('#authError').textContent = msg; $('#authError').classList.remove('hidden'); }
+function showAuthInfo(msg) { $('#authError').classList.add('hidden'); $('#authInfo').textContent = msg; $('#authInfo').classList.remove('hidden'); }
 
-function saveSession(user) {
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch (e) { }
-}
-function loadSession() {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
-}
-function clearSession() {
-  try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
-}
-
-function clearAuthMessages() {
-  $('#authError').classList.add('hidden');
-  $('#authInfo').classList.add('hidden');
-}
-function showAuthError(msg) {
-  $('#authInfo').classList.add('hidden');
-  $('#authError').textContent = msg;
-  $('#authError').classList.remove('hidden');
-}
-function showAuthInfo(msg) {
-  $('#authError').classList.add('hidden');
-  $('#authInfo').textContent = msg;
-  $('#authInfo').classList.remove('hidden');
-}
-
+// =========================================================================
+// LOGIN FLOW
+// =========================================================================
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAuthMessages();
-  if (!cloudConnected) {
-    showAuthError('Cloud sync is not connected. Login is disabled until the connection is restored.');
-    return;
-  }
+  if (!cloudConnected) { showAuthError('Cloud sync is not connected. Login is disabled until the connection is restored.'); return; }
   const username = $('#loginUsername').value.trim();
   const password = $('#loginPassword').value;
   const btn = $('#loginBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Logging in…';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Logging in…';
 
   try {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
@@ -657,18 +572,14 @@ $('#loginForm').addEventListener('submit', async (e) => {
     }
 
     const snap = await get(ref(db, 'users/' + username));
-    if (!snap.exists() || snap.val().password !== password) {
-      showAuthError('Incorrect username or password.');
-      return;
-    }
+    if (!snap.exists() || snap.val().password !== password) { showAuthError('Incorrect username or password.'); return; }
     const record = snap.val();
     
-    // Add Master Tool Stock Auth Check
     currentUser = { 
       username, 
       fullName: record.fullName || username, 
       role: 'user',
-      toolStockAuth: !!record.toolStockAuth // Explicitly convert to boolean
+      toolStockAuth: !!record.toolStockAuth 
     };
     
     saveSession(currentUser);
@@ -680,8 +591,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     console.error(err);
     showAuthError('Unable to log in: failed to sync with cloud. (' + (err.message || 'unknown error') + ')');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Log In';
+    btn.disabled = false; btn.textContent = 'Log In';
   }
 });
 
@@ -694,79 +604,50 @@ $('#logoutBtn').addEventListener('click', () => {
   showScreen('authScreen');
 });
 
-/* =========================================================================
-   REQUEST ACCESS
-   ========================================================================= */
 $('#showRequestForm').addEventListener('click', () => {
   clearAuthMessages();
-  $('#loginForm').classList.add('hidden');
-  $('#requestForm').classList.remove('hidden');
-  $('#showRequestForm').classList.add('hidden');
-  $('#showLoginForm').classList.remove('hidden');
-  $('#authHintText').textContent = 'Your request will be sent to an Admin for approval. You\'ll be able to log in once it\'s approved.';
+  $('#loginForm').classList.add('hidden'); $('#requestForm').classList.remove('hidden');
+  $('#showRequestForm').classList.add('hidden'); $('#showLoginForm').classList.remove('hidden');
 });
 $('#showLoginForm').addEventListener('click', () => {
   clearAuthMessages();
-  $('#requestForm').classList.add('hidden');
-  $('#loginForm').classList.remove('hidden');
-  $('#showLoginForm').classList.add('hidden');
-  $('#showRequestForm').classList.remove('hidden');
-  $('#authHintText').textContent = 'Staff accounts are created by an Admin from inside the app (Admin → Users), or requested here — an Admin must approve your request before you can log in.';
+  $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden');
+  $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden');
 });
 
 $('#requestForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAuthMessages();
-  if (!cloudConnected) {
-    showAuthError('Cloud sync is not connected. Account requests are disabled until the connection is restored.');
-    return;
-  }
+  if (!cloudConnected) { showAuthError('Cloud sync is not connected.'); return; }
   const fullName = $('#reqFullName').value.trim();
   const username = $('#reqUsername').value.trim();
   const password = $('#reqPassword').value;
   const btn = $('#reqSubmitBtn');
 
-  if (username.toLowerCase() === ADMIN_USERNAME) {
-    showAuthError(`"${ADMIN_USERNAME}" is reserved and can't be requested as a username.`);
-    return;
-  }
-  if (/[.#$\[\]\/\s'"]/.test(username)) {
-    showAuthError('Username can\'t contain spaces, quotes, or the characters . # $ [ ] /');
-    return;
-  }
+  if (username.toLowerCase() === ADMIN_USERNAME) { showAuthError(`"${ADMIN_USERNAME}" is reserved and can't be requested as a username.`); return; }
+  if (/[.#$\[\]\/\s'"]/.test(username)) { showAuthError('Username can\'t contain spaces, quotes, or the characters . # $ [ ] /'); return; }
 
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Submitting…';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…';
   try {
     const existingUser = await get(ref(db, 'users/' + username));
-    if (existingUser.exists()) {
-      showAuthError('That username is already taken.');
-      return;
-    }
+    if (existingUser.exists()) { showAuthError('That username is already taken.'); return; }
     const existingReq = await get(ref(db, 'accessRequests/' + username));
-    if (existingReq.exists()) {
-      showAuthError('A request for that username is already pending approval.');
-      return;
-    }
-    await set(ref(db, 'accessRequests/' + username), {
-      fullName, password, requestedAt: serverTimestamp(),
-    });
-    $('#requestForm').classList.add('hidden');
-    $('#showLoginForm').classList.add('hidden');
+    if (existingReq.exists()) { showAuthError('A request for that username is already pending approval.'); return; }
+    await set(ref(db, 'accessRequests/' + username), { fullName, password, requestedAt: serverTimestamp() });
+    
+    $('#requestForm').classList.add('hidden'); $('#showLoginForm').classList.add('hidden');
     $('#showRequestForm').classList.remove('hidden');
-    $('#authHintText').textContent = 'Staff accounts are created by an Admin from inside the app (Admin → Users), or requested here — an Admin must approve your request before you can log in.';
     showAuthInfo('Request submitted. An Admin needs to approve it before you can log in — check back soon.');
     $('#requestForm').reset();
   } catch (err) {
-    console.error(err);
-    showAuthError('Unable to submit request: failed to sync with cloud. (' + (err.message || 'unknown error') + ')');
+    showAuthError('Unable to submit request: failed to sync with cloud.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Submit Request';
+    btn.disabled = false; btn.textContent = 'Submit Request';
   }
 });
 
-attemptFirebaseInit();
+// START APP IMMEDIATELY
+startApp();
 
 /* =========================================================================
    TOPBAR / NAV
@@ -779,13 +660,11 @@ function initTopbar() {
   if (!clockStarted) { startLiveClock(); clockStarted = true; }
 
   const nav = $('#navLinks');
-  
-  // REQUIREMENTS 4 & 6: Master Tool Stock Nav Authority Check
   const links = currentUser.role === 'admin'
     ? [
         ['admin-dashboard', 'Dashboard'],
         ['register', 'Register'],
-        ['tools-admin', 'Tools'], // Admins always get the editable tool view
+        ['tools-admin', 'Tools'],
         ['users-admin', 'Users'],
         ['settings-admin', 'Settings'],
       ]
@@ -793,13 +672,10 @@ function initTopbar() {
         ['dashboard', 'Dashboard'],
         ['register', 'Register'],
         ['issue-new', 'New Issue'],
-        // Conditionally inject Tools view only if user has been granted Authority
         ...(currentUser.toolStockAuth ? [['tools-admin', 'Tools']] : [])
       ];
 
-  nav.innerHTML = links.map(([id, label]) =>
-    `<button class="navlink" data-view="${id}">${label}</button>`
-  ).join('');
+  nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
   nav.querySelectorAll('.navlink').forEach((btn) => {
     btn.addEventListener('click', () => navigateTo(btn.dataset.view));
   });
@@ -819,9 +695,6 @@ function navigateTo(viewId) {
   render();
 }
 
-/* =========================================================================
-   REALTIME DATABASE LISTENERS
-   ========================================================================= */
 function snapshotToArray(snap) {
   const val = snap.val();
   if (!val) return [];
@@ -829,21 +702,21 @@ function snapshotToArray(snap) {
 }
 
 function listenToCollections() {
+  if (unsubTools) unsubTools();
+  if (unsubIssues) unsubIssues();
+  
   unsubTools = onValue(ref(db, 'tools'), (snap) => {
     toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     render();
-  }, (err) => console.error('tools listener error', err));
+  });
 
   unsubIssues = onValue(ref(db, 'issues'), (snap) => {
     issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     render();
-  }, (err) => console.error('issues listener error', err));
+  });
 }
 
-function statusOf(issue) {
-  if ((issue.qtyReturned || 0) >= issue.qtyIssued) return 'Returned';
-  return 'Issued';
-}
+function statusOf(issue) { return ((issue.qtyReturned || 0) >= issue.qtyIssued) ? 'Returned' : 'Issued'; }
 
 function enrichedIssues() {
   return issuesCache.map((i) => {
@@ -852,36 +725,21 @@ function enrichedIssues() {
       const legacyTool = toolsCache.find((t) => t.id === i.toolId);
       displayName = legacyTool ? legacyTool.toolName : '(unknown material)';
     }
-    return {
-      ...i,
-      materialName: displayName || '(unnamed)',
-      status: statusOf(i),
-    };
+    return { ...i, materialName: displayName || '(unnamed)', status: statusOf(i) };
   });
 }
 
-/* =========================================================================
-   RENDER DISPATCHER
-   ========================================================================= */
 function render() {
   if (!currentUser) return;
   const main = $('#appMain');
 
   const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
   
-  // Protect Tools view if a standard user does not have specific authority
-  if (currentUser.role !== 'admin' && currentView === 'tools-admin' && !currentUser.toolStockAuth) {
-    currentView = 'dashboard';
-  }
+  if (currentUser.role !== 'admin' && currentView === 'tools-admin' && !currentUser.toolStockAuth) currentView = 'dashboard';
+  if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
   
-  if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) {
-    currentView = 'dashboard';
-  }
-
-  const storekeeperOnlyViews = ['dashboard', 'issue-new', 'return-record'];
-  if (currentUser.role === 'admin' && storekeeperOnlyViews.includes(currentView)) {
-    currentView = 'admin-dashboard';
-  }
+  const storekeeperOnlyViews = ['dashboard']; 
+  if (currentUser.role === 'admin' && storekeeperOnlyViews.includes(currentView)) currentView = 'admin-dashboard';
 
   const views = {
     'dashboard': renderUserDashboard,
@@ -893,6 +751,7 @@ function render() {
     'settings-admin': renderSettingsAdmin,
     'return-record': renderReturnForm,
     'edit-return': renderEditReturnForm,
+    'edit-issue': renderEditIssueForm, 
   };
   
   const fn = views[currentView] || (currentUser.role === 'admin' ? renderAdminDashboard : renderUserDashboard);
@@ -937,7 +796,6 @@ function renderUserDashboard() {
 
 function renderAdminDashboard() {
   const s = statsSummary();
-
   return `
     <div class="page-head">
       <div>
@@ -958,7 +816,8 @@ function renderAdminDashboard() {
     </div>`;
 }
 
-let registerFilterState = { q: '', status: 'all' };
+// FILTER STATE - Added Month & Year
+let registerFilterState = { q: '', status: 'all', month: 'all', year: 'all' };
 
 function formatTimestamp(ms) {
   if (!ms || typeof ms !== 'number') return '—';
@@ -973,6 +832,7 @@ function renderRegister() {
   const isAdmin = currentUser.role === 'admin';
   let rows = enrichedIssues();
 
+  // Search Text Filter
   if (registerFilterState.q) {
     const needle = registerFilterState.q.toLowerCase();
     rows = rows.filter((r) =>
@@ -983,8 +843,23 @@ function renderRegister() {
       (r.empCode || '').toLowerCase().includes(needle)
     );
   }
+  
+  // Status Filter
   if (registerFilterState.status !== 'all') {
     rows = rows.filter((r) => r.status.replace(/\s/g, '').toLowerCase() === registerFilterState.status);
+  }
+
+  // Monthly / Yearly Date Filter Logic
+  if (registerFilterState.year !== 'all') {
+    rows = rows.filter(r => r.issueDate && r.issueDate.startsWith(registerFilterState.year));
+  }
+  
+  if (registerFilterState.month !== 'all') {
+    rows = rows.filter(r => {
+      if (!r.issueDate) return false;
+      const parts = r.issueDate.split('-'); // format is YYYY-MM-DD
+      return parts[1] === registerFilterState.month;
+    });
   }
 
   return `
@@ -994,7 +869,7 @@ function renderRegister() {
         <h1>${isAdmin ? 'Full Register' : 'Issue & Return Register'}</h1>
         <div class="page-sub">${isAdmin ? 'Every record. Admins can remove entries here.' : 'All material movements logged by the store.'}</div>
       </div>
-      ${!isAdmin ? `<button class="btn btn-primary" data-nav="issue-new">+ New Issue</button>` : ''}
+      <button class="btn btn-primary" data-nav="issue-new">+ New Issue</button>
     </div>
 
     <div class="filter-bar">
@@ -1004,7 +879,30 @@ function renderRegister() {
         <option value="issued" ${registerFilterState.status === 'issued' ? 'selected' : ''}>Issued</option>
         <option value="returned" ${registerFilterState.status === 'returned' ? 'selected' : ''}>Returned</option>
       </select>
-      </div>
+      <select id="regYear">
+        <option value="all" ${registerFilterState.year === 'all' ? 'selected' : ''}>All Years</option>
+        <option value="2024" ${registerFilterState.year === '2024' ? 'selected' : ''}>2024</option>
+        <option value="2025" ${registerFilterState.year === '2025' ? 'selected' : ''}>2025</option>
+        <option value="2026" ${registerFilterState.year === '2026' ? 'selected' : ''}>2026</option>
+        <option value="2027" ${registerFilterState.year === '2027' ? 'selected' : ''}>2027</option>
+        <option value="2028" ${registerFilterState.year === '2028' ? 'selected' : ''}>2028</option>
+      </select>
+      <select id="regMonth">
+        <option value="all" ${registerFilterState.month === 'all' ? 'selected' : ''}>All Months</option>
+        <option value="01" ${registerFilterState.month === '01' ? 'selected' : ''}>Jan</option>
+        <option value="02" ${registerFilterState.month === '02' ? 'selected' : ''}>Feb</option>
+        <option value="03" ${registerFilterState.month === '03' ? 'selected' : ''}>Mar</option>
+        <option value="04" ${registerFilterState.month === '04' ? 'selected' : ''}>Apr</option>
+        <option value="05" ${registerFilterState.month === '05' ? 'selected' : ''}>May</option>
+        <option value="06" ${registerFilterState.month === '06' ? 'selected' : ''}>Jun</option>
+        <option value="07" ${registerFilterState.month === '07' ? 'selected' : ''}>Jul</option>
+        <option value="08" ${registerFilterState.month === '08' ? 'selected' : ''}>Aug</option>
+        <option value="09" ${registerFilterState.month === '09' ? 'selected' : ''}>Sep</option>
+        <option value="10" ${registerFilterState.month === '10' ? 'selected' : ''}>Oct</option>
+        <option value="11" ${registerFilterState.month === '11' ? 'selected' : ''}>Nov</option>
+        <option value="12" ${registerFilterState.month === '12' ? 'selected' : ''}>Dec</option>
+      </select>
+    </div>
 
     <div class="panel">
       <div class="table-wrap">
@@ -1016,15 +914,15 @@ function renderRegister() {
             <tr>
               <th>Material</th><th>Qty Issued</th><th>Vendor</th><th>Area</th>
               <th>Issue Date</th><th>Issued At</th><th>Supervisor</th><th>Issued By</th>
-              <th>Return Date</th><th>Qty Returned</th><th>Qty Remaining</th><th>Condition</th><th>Return Photo</th><th>Issue Photo</th><th>Status</th>
-              ${isAdmin || rows.some(r => r.status !== 'Returned') ? '<th>Action</th>' : ''}
+              
+              <th>Return Date</th><th>Returned At</th><th>Qty Returned</th><th>Qty Remaining</th><th>Condition</th><th>Return Photo</th><th>Issue Photo</th><th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
             ${rows.map((r) => {
               const qtyReturned = r.qtyReturned || 0;
               const qtyRemaining = r.qtyIssued - qtyReturned;
-              const showAction = isAdmin || r.status !== 'Returned';
               return `
               <tr>
                 <td data-label="Material">${escapeHtml(r.materialName)}</td>
@@ -1035,7 +933,10 @@ function renderRegister() {
                 <td class="mono" data-label="Issued At">${formatTimestamp(r.createdAt)}</td>
                 <td data-label="Supervisor">${escapeHtml(r.supervisorName) || '—'}${r.supervisorContact ? `<br/><span class="muted" style="font-size:11px;">${escapeHtml(r.supervisorContact)}</span>` : ''}</td>
                 <td data-label="Issued By">${escapeHtml(r.issuedByName) || '—'}${r.empCode ? `<br/><span class="muted" style="font-size:11px;">${escapeHtml(r.empCode)}</span>` : ''}</td>
+                
                 <td class="mono" data-label="Return Date">${escapeHtml(r.returnDate) || '—'}</td>
+                <td class="mono" data-label="Returned At">${r.returnedAt ? formatTimestamp(r.returnedAt) : '—'}</td>
+                
                 <td class="qty" data-label="Qty Returned">${qtyReturned}</td>
                 <td class="qty ${qtyRemaining > 0 && r.status !== 'Returned' ? 'qty-pending' : ''}" data-label="Qty Remaining">${qtyRemaining > 0 ? qtyRemaining : '—'}</td>
                 <td data-label="Condition">${escapeHtml(r.conditionOnReturn) || '—'}</td>
@@ -1044,13 +945,12 @@ function renderRegister() {
                 <td data-label="Status">
                   ${r.status === 'Returned' ? '<span class="badge good">Returned</span>' : '<span class="badge warn">Issued</span>'}
                 </td>
-                ${showAction ? `<td data-label="Action">
-                  ${isAdmin
-                    ? (r.status === 'Returned'
-                        ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>`
-                        : `<button class="btn btn-danger btn-sm" data-delete-issue="${r.id}">Delete</button>`)
-                    : `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>`}
-                </td>` : ''}
+                <td data-label="Action" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+                  ${r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
+                  <button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>
+                  ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>` : ''}
+                  ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete-issue="${r.id}">Delete</button>` : ''}
+                </td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -1120,6 +1020,87 @@ function renderIssueForm() {
         </div>
         <div class="actions-row">
           <button type="submit" class="btn btn-primary" id="issueSubmitBtn">Save Issue Record</button>
+          <button type="button" class="btn btn-ghost" data-nav="register">Cancel</button>
+        </div>
+      </form>
+    </div>`;
+}
+
+let editIssueTargetId = null;
+let editIssueError = '';
+let editIssueSelectedPhotoFile = null;
+
+function renderEditIssueForm() {
+  const issue = issuesCache.find((i) => i.id === editIssueTargetId);
+  if (!issue) return `<div class="empty-state"><div class="display">Record not found</div></div>`;
+
+  return `
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Edit Movement</span>
+        <h1>Edit Issue Details</h1>
+        <div class="page-sub">Update the original material issue record.</div>
+      </div>
+    </div>
+    ${editIssueError ? `<div class="alert alert-error">${escapeHtml(editIssueError)}</div>` : ''}
+    <div class="panel panel-pad" style="max-width:760px;">
+      <form id="editIssueForm">
+        <div class="form-grid">
+          <div class="field full">
+            <label for="ei_material">Material Name</label>
+            <input type="text" id="ei_material" value="${escapeHtml(issue.materialName)}" required />
+          </div>
+          <div class="field">
+            <label for="ei_qty">Quantity Issued</label>
+            <input type="number" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required />
+          </div>
+          <div class="field">
+            <label for="ei_vendor">Vendor</label>
+            <input type="text" id="ei_vendor" value="${escapeHtml(issue.vendor || '')}" required />
+          </div>
+          <div class="field">
+            <label for="ei_area">Area</label>
+            <input type="text" id="ei_area" value="${escapeHtml(issue.area || '')}" required />
+          </div>
+          <div class="field">
+            <label for="ei_issueDate">Issue Date</label>
+            <input type="date" id="ei_issueDate" value="${escapeHtml(issue.issueDate)}" required />
+          </div>
+          <div class="field">
+            <label for="ei_supervisorName">Supervisor Name</label>
+            <input type="text" id="ei_supervisorName" value="${escapeHtml(issue.supervisorName || '')}" required />
+          </div>
+          <div class="field">
+            <label for="ei_supervisorContact">Supervisor Contact Number</label>
+            <input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" required />
+          </div>
+          <div class="field">
+            <label for="ei_empCode">Employee Code / Dept.</label>
+            <input type="text" id="ei_empCode" value="${escapeHtml(issue.empCode || '')}" />
+          </div>
+          <div class="field full">
+            ${issue.photoUrl
+              ? `<label>Current Issue Photo</label>
+                 <a href="${escapeHtml(issue.photoUrl)}" target="_blank" rel="noopener">
+                   <img src="${escapeHtml(issue.photoUrl)}" alt="Issue photo" style="max-width:180px; border-radius:var(--radius); border:1.5px solid #dde1e6;" />
+                 </a>`
+              : '<div class="muted" style="font-size:13px;">No issue photo on file.</div>'}
+          </div>
+          <div class="field">
+            <label for="ei_photo">Replace Issue Photo (optional)</label>
+            <input type="file" id="ei_photo" accept="image/*" />
+          </div>
+          <div class="field full" id="ei_photoPreviewWrap" style="display:none;">
+            <img id="ei_photoPreview" alt="New photo preview" style="max-width:220px; border-radius:var(--radius); border:1.5px solid #dde1e6;" />
+            <button type="button" class="btn btn-ghost btn-sm" id="ei_photoClear" style="margin-top:8px; width:fit-content;">Remove Photo</button>
+          </div>
+          <div class="field full">
+            <label for="ei_remarks">Remarks / Details</label>
+            <textarea id="ei_remarks">${escapeHtml(issue.remarks || '')}</textarea>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button type="submit" class="btn btn-primary" id="editIssueSubmitBtn">Save Changes</button>
           <button type="button" class="btn btn-ghost" data-nav="register">Cancel</button>
         </div>
       </form>
@@ -1325,7 +1306,7 @@ function renderUsersAdmin() {
       <div>
         <span class="eyebrow">Administrator</span>
         <h1>Users</h1>
-        <div class="page-sub">Create and manage staff (storekeeper) accounts.</div>
+        <div class="page-sub">Create and manage staff (storekeeper) accounts. Admin access uses a single fixed login and isn't managed here.</div>
       </div>
     </div>
     ${userFormError ? `<div class="alert alert-error">${escapeHtml(userFormError)}</div>` : ''}
@@ -1342,7 +1323,6 @@ function renderUsersAdmin() {
         <div class="empty-state"><span class="spinner"></span><p style="margin-top:10px;">Loading users…</p></div>
       </div>
     </div>
-    
     <div class="panel panel-pad">
       <h2 style="margin-top:0;">Add New Storekeeper Account</h2>
       <form id="newUserForm">
@@ -1357,7 +1337,7 @@ function renderUsersAdmin() {
           </div>
           <div class="field full">
             <label for="nu_password">Password</label>
-            <input type="password" id="nu_password" required minlength="4" /> 
+            <input type="password" id="nu_password" required minlength="4" />
           </div>
           <div class="field full">
              <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:normal; text-transform:none; cursor:pointer;">
@@ -1461,8 +1441,7 @@ function renderStorageUsage() {
         </div>
       </div>
       <div class="muted" style="font-size:12px; margin-top:14px;">
-        Estimated from data currently loaded in this session — a close approximation,
-        not the exact figure Firebase bills against.
+        Estimated from data currently loaded in this session.
       </div>`;
   });
 }
@@ -1476,16 +1455,13 @@ function wireViewEvents(viewId) {
 
   if (viewId === 'register') {
     $('#regSearch')?.addEventListener('input', (e) => { 
-      registerFilterState.q = e.target.value; 
-      render(); 
+      registerFilterState.q = e.target.value; render(); 
       const searchBox = $('#regSearch');
-      if (searchBox) {
-        searchBox.focus();
-        searchBox.setSelectionRange(searchBox.value.length, searchBox.value.length);
-      }
+      if (searchBox) { searchBox.focus(); searchBox.setSelectionRange(searchBox.value.length, searchBox.value.length); }
     });
     $('#regStatus')?.addEventListener('change', (e) => { registerFilterState.status = e.target.value; render(); });
-    // REQUIREMENT 1: Clear button listener completely removed
+    $('#regYear')?.addEventListener('change', (e) => { registerFilterState.year = e.target.value; render(); });
+    $('#regMonth')?.addEventListener('change', (e) => { registerFilterState.month = e.target.value; render(); });
     
     $$('[data-return]').forEach((btn) => btn.addEventListener('click', () => {
       returnFormTargetId = btn.dataset.return;
@@ -1499,6 +1475,11 @@ function wireViewEvents(viewId) {
       editReturnTargetId = btn.dataset.editReturn;
       editReturnError = '';
       navigateTo('edit-return');
+    }));
+    $$('[data-edit-issue]').forEach((btn) => btn.addEventListener('click', () => {
+      editIssueTargetId = btn.dataset.editIssue;
+      editIssueError = '';
+      navigateTo('edit-issue');
     }));
   }
 
@@ -1545,6 +1526,26 @@ function wireViewEvents(viewId) {
       const input = $('#er_photo');
       if (input) input.value = '';
       $('#er_photoPreviewWrap').style.display = 'none';
+    });
+  }
+  
+  if (viewId === 'edit-issue') {
+    $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit);
+    $('#ei_photo').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) { editIssueSelectedPhotoFile = null; $('#ei_photoPreviewWrap').style.display = 'none'; return; }
+      if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
+      if (file.size > 5 * 1024 * 1024) { alert('Please choose an image smaller than 5 MB.'); e.target.value = ''; return; }
+      editIssueSelectedPhotoFile = file;
+      const reader = new FileReader();
+      reader.onload = () => { $('#ei_photoPreview').src = reader.result; $('#ei_photoPreviewWrap').style.display = 'block'; };
+      reader.readAsDataURL(file);
+    });
+    $('#ei_photoClear').addEventListener('click', () => {
+      editIssueSelectedPhotoFile = null;
+      const input = $('#ei_photo');
+      if (input) input.value = '';
+      $('#ei_photoPreviewWrap').style.display = 'none';
     });
   }
 
@@ -1659,6 +1660,67 @@ async function handleIssueSubmit(e) {
   }
 }
 
+async function handleEditIssueSubmit(e) {
+  e.preventDefault();
+  editIssueError = '';
+  const issue = issuesCache.find((i) => i.id === editIssueTargetId);
+  if (!issue) return;
+
+  const materialName = $('#ei_material').value.trim();
+  const qtyIssued = parseInt($('#ei_qty').value, 10);
+  const vendor = $('#ei_vendor').value.trim();
+  const area = $('#ei_area').value.trim();
+  const issueDate = $('#ei_issueDate').value;
+  const supervisorName = $('#ei_supervisorName').value.trim();
+  const supervisorContact = $('#ei_supervisorContact').value.trim();
+  const empCode = $('#ei_empCode').value.trim();
+  const remarks = $('#ei_remarks').value.trim();
+
+  if (!materialName || !qtyIssued || qtyIssued < (issue.qtyReturned || 0) || !vendor || !area || !issueDate || !supervisorName || !supervisorContact) {
+    editIssueError = `Please fill all required fields. Quantity issued cannot be less than quantity already returned (${issue.qtyReturned || 0}).`;
+    return render();
+  }
+
+  const btn = $('#editIssueSubmitBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
+
+  try {
+    const updates = {
+      materialName, qtyIssued, vendor, area, issueDate, supervisorName, supervisorContact,
+      empCode: empCode || null,
+      remarks: remarks || null,
+      updatedAt: serverTimestamp(),
+    };
+
+    const newPhoto = editIssueSelectedPhotoFile;
+    if (newPhoto && storage) {
+      try {
+        if (btn) btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
+        if (issue.photoPath && storage) {
+          try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {}
+        }
+        const ext = (newPhoto.name.split('.').pop() || 'jpg').slice(0, 8);
+        const path = `issue-photos/${issue.id}.${ext}`;
+        const fileRef = storageRef(storage, path);
+        await uploadBytes(fileRef, newPhoto);
+        updates.photoUrl = await getDownloadURL(fileRef);
+        updates.photoPath = path;
+      } catch (photoErr) {
+        console.error('Photo upload failed:', photoErr);
+        alert('Changes saved, but photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
+      }
+    }
+
+    await update(ref(db, 'issues/' + issue.id), updates);
+    editIssueSelectedPhotoFile = null;
+    navigateTo('register');
+  } catch (err) {
+    console.error(err);
+    editIssueError = 'Could not save changes: ' + (err.message || 'unknown error');
+    render();
+  }
+}
+
 async function handleReturnSubmit(e) {
   e.preventDefault();
   returnFormError = '';
@@ -1686,6 +1748,7 @@ async function handleReturnSubmit(e) {
       receivedBy: currentUser.username, receivedByName: currentUser.fullName,
       remarks: remarks || issue.remarks || null,
       updatedAt: serverTimestamp(),
+      returnedAt: serverTimestamp(), // Record the exact real-world timestamp
     };
 
     if (returnSelectedPhotoFile && storage) {
@@ -1905,11 +1968,10 @@ async function handleApproveRequest(username) {
     }
     const { fullName, password } = reqSnap.val();
     
-    // Auto-approve with standard storekeeper authority
     await set(ref(db, 'users/' + username), { 
       fullName, 
       password, 
-      toolStockAuth: false, // Default to FALSE on request approval
+      toolStockAuth: false, 
       createdAt: serverTimestamp() 
     });
     
@@ -1974,7 +2036,6 @@ async function loadUsersTable() {
         </table>`}
       </div>`;
       
-    // Wire Checkboxes to Database
     holder.querySelectorAll('[data-toggle-auth]').forEach((chk) => {
       chk.addEventListener('change', async (e) => {
         try {
@@ -1983,7 +2044,7 @@ async function loadUsersTable() {
           });
         } catch (err) {
           alert('Could not update user authority: ' + (err.message || 'unknown error'));
-          e.target.checked = !e.target.checked; // Revert checkbox state on fail
+          e.target.checked = !e.target.checked; 
         }
       });
     });
@@ -2032,7 +2093,6 @@ async function handleNewUserSubmit(e) {
       return render();
     }
     
-    // Store user with selected tool authority
     await set(ref(db, 'users/' + username), {
       fullName, 
       password, 
