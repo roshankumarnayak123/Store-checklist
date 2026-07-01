@@ -3,155 +3,174 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CMM SMS Store</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<title>CMM SMS Store - Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
+/* =========================================================================
+   MODERN DESIGN SYSTEM & VARIABLES
+   ========================================================================= */
 :root {
-  --steel-950: #14181d; --steel-900: #1b2128; --steel-800: #242b33; --steel-700: #323b46;
-  --steel-600: #475160; --steel-300: #aab4c0; --steel-100: #e7eaee; --steel-50:  #f7f8fa;
-  --amber: #e8a23a; --amber-dark: #c9821f; --amber-soft: #fbe6c4;
-  --good: #3f8c5a; --good-soft: #dff0e3; --warn: #c9821f; --warn-soft: #fbe9cf;
-  --bad: #b14a3f; --bad-soft: #f7dfdb;
-  --radius: 10px; --radius-sm: 7px; --radius-lg: 16px;
-  --shadow-xs: 0 1px 2px rgba(20,24,29,0.05);
-  --shadow: 0 1px 3px rgba(20,24,29,0.06), 0 6px 16px rgba(20,24,29,0.06);
-  --shadow-lg: 0 4px 6px rgba(20,24,29,0.05), 0 16px 36px rgba(20,24,29,0.10);
-  --shadow-focus: 0 0 0 3px rgba(232,162,58,0.22);
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --bg-app: #f8fafc; --surface: #ffffff;
+  --brand-primary: #f59e0b; --brand-hover: #d97706; --brand-glow: rgba(245, 158, 11, 0.15);
+  --slate-900: #0f172a; --slate-800: #1e293b; --slate-700: #334155; --slate-600: #475569;
+  --slate-500: #64748b; --slate-300: #cbd5e1; --slate-200: #e2e8f0; --slate-100: #f1f5f9; --slate-50: #f8fafc;
+  --success: #10b981; --success-bg: #d1fae5; --success-text: #065f46;
+  --danger: #ef4444; --danger-bg: #fee2e2; --danger-text: #991b1b;
+  --warning: #f59e0b; --warning-bg: #fef3c7; --warning-text: #92400e;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.025);
+  --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-* { box-sizing: border-box; } html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
-body { font-family: 'Inter', sans-serif; color: var(--steel-900); background: linear-gradient(180deg, var(--steel-50) 0%, #eef0f3 100%); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
-h1, h2, h3, .display { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; text-transform: uppercase; color: var(--steel-950); }
-.mono, .qty { font-family: 'IBM Plex Mono', monospace; }
-a { color: var(--amber-dark); text-decoration: none; } a:hover { text-decoration: underline; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', system-ui, sans-serif; color: var(--slate-700); background-color: var(--bg-app); font-size: 14.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .display { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--slate-900); letter-spacing: -0.02em; }
+.mono, code, .tool-code, .qty { font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+a { color: var(--brand-primary); text-decoration: none; transition: var(--transition); } a:hover { color: var(--brand-hover); }
 .hidden { display: none !important; }
 
-/* Topbar */
-.topbar { background: rgba(20,24,29,0.97); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.06); box-shadow: 0 1px 0 var(--amber), 0 8px 24px rgba(0,0,0,0.18); position: sticky; top: 0; z-index: 50; }
-.topbar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; gap: 28px; padding: 0 24px; height: 60px; }
-.brand { display: flex; align-items: center; gap: 8px; color: var(--steel-50); font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: 0.04em; white-space: nowrap; }
-.brand-mark { color: var(--amber); font-size: 22px; transition: transform 0.4s var(--ease); }
-.brand:hover .brand-mark { transform: rotate(45deg); }
-.brand-text strong { color: var(--amber); font-weight: 800; }
-.nav { display: flex; gap: 3px; flex: 1; }
-.nav button.navlink { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; color: var(--steel-300); font-size: 13.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 14px; border-radius: 999px; transition: all 0.2s var(--ease); }
-.nav button.navlink:hover { color: #fff; background: rgba(255,255,255,0.08); }
-.nav button.navlink.active { color: var(--steel-950); background: var(--amber); box-shadow: 0 2px 8px rgba(232,162,58,0.35); }
-.who { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-.who-name { color: var(--steel-100); font-size: 13.5px; font-weight: 600; }
-.who-role { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; font-weight: 600; }
-.who-role.role-admin { background: var(--amber-soft); color: #6b4716; } .who-role.role-user { background: var(--steel-700); color: var(--steel-100); }
+/* Top Navigation */
+.topbar { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--slate-200); position: sticky; top: 0; z-index: 50; }
+.topbar-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; gap: 32px; padding: 0 24px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--slate-900); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.03em; white-space: nowrap; }
+.brand-mark { color: var(--surface); background: var(--brand-primary); width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: transform 0.4s ease; box-shadow: 0 2px 8px var(--brand-glow); }
+.brand:hover .brand-mark { transform: rotate(15deg) scale(1.05); }
+.nav { display: flex; gap: 6px; flex: 1; }
+.nav button.navlink { background: transparent; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--slate-500); font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 99px; transition: var(--transition); }
+.nav button.navlink:hover { color: var(--slate-900); background: var(--slate-100); }
+.nav button.navlink.active { color: var(--brand-primary); background: var(--brand-glow); }
+.who { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.who-name { color: var(--slate-800); font-size: 14px; font-weight: 600; }
+.who-role { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 99px; font-weight: 600; }
+.who-role.role-admin { background: var(--slate-900); color: var(--surface); } .who-role.role-user { background: var(--slate-100); color: var(--slate-600); }
+.status-bar { background: var(--slate-50); border-bottom: 1px solid var(--slate-200); }
+.status-bar-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 6px 24px; gap: 14px; }
+.status-sync { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--slate-500); font-weight: 500; }
+.status-sync .sync-dot { width: 8px; height: 8px; border-radius: 50%; }
+.status-clock { font-size: 12px; color: var(--slate-500); }
+.link-btn { background: none; border: none; color: var(--slate-500); font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition); } .link-btn:hover { color: var(--danger); }
 
-.status-bar { background: rgba(0,0,0,0.18); border-top: 1px solid rgba(255,255,255,0.06); }
-.status-bar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 5px 24px; gap: 14px; }
-.status-sync { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--steel-300); font-weight: 600; }
-.status-sync .sync-dot { width: 7px; height: 7px; border-radius: 50%; }
-.status-clock { font-size: 11.5px; color: var(--steel-300); }
-.link-btn { background: none; border: none; color: var(--steel-300); font-size: 13px; cursor: pointer; padding: 6px 4px; transition: color 0.2s; }
-.link-btn:hover { color: var(--amber); text-decoration: underline; }
+/* Layouts */
+.app-main { max-width: 1400px; margin: 0 auto; padding: 40px 24px 80px; animation: viewFadeIn 0.4s ease-out; }
+@keyframes viewFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.auth-main { min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: var(--slate-50); background-image: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%); padding: 24px; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
+.page-head h1 { font-size: 32px; margin: 0; font-weight: 800; color: var(--slate-900); }
+.page-sub { color: var(--slate-500); font-size: 15px; margin-top: 6px; }
+.eyebrow { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--brand-primary); display: block; margin-bottom: 8px; }
+.panel { background: var(--surface); border: 1px solid var(--slate-200); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); transition: var(--transition); overflow: hidden; margin-bottom: 24px;}
+.panel:hover { box-shadow: var(--shadow-md); }
+.panel-pad { padding: 32px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--slate-100); background: var(--surface); }
+.panel-head h2 { font-size: 18px; margin: 0; font-weight: 700; }
 
-/* Layout */
-.app-main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 64px; animation: viewFadeIn 0.35s var(--ease); }
-@keyframes viewFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.auth-main { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 20% 20%, rgba(232,162,58,0.12), transparent 45%), linear-gradient(160deg, var(--steel-950) 0%, var(--steel-900) 55%, var(--steel-800) 100%); padding: 24px; }
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px; }
+.kpi { background: var(--surface); border: 1px solid var(--slate-200); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-sm); transition: var(--transition); display: flex; flex-direction: column; justify-content: space-between;}
+.kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.kpi-label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--slate-500); font-weight: 700; margin-bottom: 12px; }
+.kpi-value { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 36px; color: var(--slate-900); line-height: 1; }
+.kpi.warn .kpi-value { color: var(--brand-primary); } .kpi.good .kpi-value { color: var(--success); }
 
-.page-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
-.page-head h1 { font-size: 26px; margin: 0; }
-.page-sub { color: var(--steel-600); font-size: 13.5px; margin-top: 4px; }
-.eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber-dark); display: block; margin-bottom: 2px; }
+/* Tables */
+.table-wrap { overflow-x: auto; width: 100%; }
+table.reg { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; }
+table.reg th { background: var(--slate-50); color: var(--slate-500); padding: 14px 20px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; border-bottom: 1px solid var(--slate-200); border-top: 1px solid var(--slate-200); }
+table.reg td { padding: 16px 20px; border-bottom: 1px solid var(--slate-100); vertical-align: middle; white-space: nowrap; color: var(--slate-700); font-size: 14px; }
+table.reg tbody tr { transition: background 0.2s ease; background: var(--surface); } table.reg tbody tr:hover { background: var(--slate-50); }
 
-.panel { background: #fff; border: 1px solid #e8eaed; border-radius: var(--radius-lg); box-shadow: var(--shadow); transition: box-shadow 0.25s var(--ease); }
-.panel:hover { box-shadow: var(--shadow-lg); }
-.panel-pad { padding: 22px 24px; }
-.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #ebedf0; flex-wrap: wrap; gap: 10px; }
-.panel-head h2 { font-size: 16px; margin: 0; }
+/* Badges */
+.badge { display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 99px; }
+.badge.good { background: var(--success-bg); color: var(--success-text); }
+.badge.warn { background: var(--warning-bg); color: var(--warning-text); }
+.badge.bad { background: var(--danger-bg); color: var(--danger-text); }
 
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 28px; }
-.kpi { background: #fff; border: 1px solid #e8eaed; border-left: 3px solid var(--steel-600); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); transition: transform 0.25s var(--ease); }
-.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.kpi.warn { border-left-color: var(--warn); } .kpi.good { border-left-color: var(--good); }
-.kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--steel-600); font-weight: 600; margin-bottom: 6px; }
-.kpi-value { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 32px; color: var(--steel-950); line-height: 1; }
-
-.table-wrap { overflow-x: auto; }
-table.reg { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-table.reg th { background: var(--steel-950); color: var(--steel-100); text-align: left; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; white-space: nowrap; }
-table.reg td { padding: 11px 12px; border-bottom: 1px solid #eef0f2; vertical-align: middle; white-space: nowrap; transition: background 0.15s; }
-table.reg td input, table.reg td select { min-width: 90px; }
-table.reg tbody tr { transition: background 0.15s; } table.reg tbody tr:hover { background: #fdf9f0; }
-
-.badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 4px 10px; border-radius: 999px; }
-.badge.good { background: var(--good-soft); color: #1f5c34; }
-.badge.warn { background: var(--warn-soft); color: #6b4716; }
-.badge.bad { background: var(--bad-soft); color: #7a2c23; }
-
-.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 20px; }
+/* Forms */
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 24px; }
 .form-grid .full { grid-column: 1 / -1; }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--steel-600); }
-input, select, textarea { font-family: 'Inter', sans-serif; font-size: 14.5px; padding: 11px 13px; border: 1.5px solid #dde1e6; border-radius: var(--radius); background: #fff; width: 100%; transition: border-color 0.2s; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--amber-dark); box-shadow: var(--shadow-focus); }
-textarea { resize: vertical; min-height: 70px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--slate-700); }
+input, select, textarea { font-family: 'Inter', sans-serif; font-size: 14px; padding: 12px 16px; border: 1px solid var(--slate-200); border-radius: var(--radius-sm); background: var(--slate-50); color: var(--slate-900); width: 100%; transition: var(--transition); }
+input:hover, select:hover, textarea:hover { border-color: var(--slate-300); }
+input:focus, select:focus, textarea:focus { outline: none; background: var(--surface); border-color: var(--brand-primary); box-shadow: 0 0 0 4px var(--brand-glow); }
+textarea { resize: vertical; min-height: 90px; }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.03em; padding: 11px 20px; border-radius: var(--radius); border: none; cursor: pointer; transition: transform 0.1s, filter 0.2s; }
-.btn:active { transform: scale(0.97); } .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-primary { background: var(--amber); color: var(--steel-950); box-shadow: 0 2px 8px rgba(232,162,58,0.3); } .btn-primary:hover { filter: brightness(1.06); }
-.btn-dark { background: var(--steel-950); color: #fff; } .btn-dark:hover { filter: brightness(1.3); }
-.btn-ghost { background: transparent; color: var(--steel-700); border: 1.5px solid #dde1e6; } .btn-ghost:hover { background: var(--steel-50); border-color: #c5cad1; }
-.btn-danger { background: var(--bad-soft); color: #7a2c23; } .btn-danger:hover { filter: brightness(0.97); }
-.btn-sm { padding: 6px 12px; font-size: 11.5px; }
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 14px; padding: 10px 20px; border-radius: var(--radius-sm); border: none; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+.btn:active { transform: scale(0.98); } .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--brand-primary); color: #fff; box-shadow: 0 2px 4px var(--brand-glow); } .btn-primary:hover:not(:disabled) { background: var(--brand-hover); box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); transform: translateY(-1px); }
+.btn-dark { background: var(--slate-900); color: #fff; } .btn-dark:hover { background: var(--slate-800); box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2); transform: translateY(-1px); }
+.btn-ghost { background: var(--surface); color: var(--slate-700); border: 1px solid var(--slate-200); } .btn-ghost:hover { background: var(--slate-50); border-color: var(--slate-300); color: var(--slate-900); }
+.btn-danger { background: #fff; color: var(--danger); border: 1px solid var(--danger-bg); } .btn-danger:hover { background: var(--danger-bg); border-color: var(--danger); }
+.btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 6px;}
 
-.actions-row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
-.filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-.filter-bar input[type="text"] { min-width: 220px; width: auto; } .filter-bar select { width: auto; }
+.actions-row { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+.filter-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; background: var(--surface); padding: 16px; border-radius: var(--radius-lg); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm);}
+.filter-bar input[type="text"] { min-width: 280px; width: auto; background: var(--surface);} .filter-bar select { width: auto; min-width: 140px; background: var(--surface);}
 
-.alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13.5px; margin-bottom: 16px; font-weight: 500; }
-.alert-error { background: var(--bad-soft); color: #7a2c23; border: 1px solid #e3b6af; }
-.alert-info { background: var(--amber-soft); color: #6b4716; border: 1px solid #e9cb95; }
+.alert { padding: 14px 18px; border-radius: var(--radius-sm); font-size: 14px; margin-bottom: 24px; font-weight: 500; display: flex; align-items: center; gap: 10px;}
+.alert-error { background: var(--danger-bg); color: var(--danger-text); border: 1px solid rgba(239, 68, 68, 0.2); }
+.alert-info { background: var(--warning-bg); color: var(--warning-text); border: 1px solid rgba(245, 158, 11, 0.2); }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--slate-500); } .empty-state .display { font-size: 18px; margin-bottom: 8px; color: var(--slate-900); font-weight: 700;}
 
-.empty-state { text-align: center; padding: 50px 20px; color: var(--steel-600); }
-.empty-state .display { font-size: 20px; margin-bottom: 8px; color: var(--steel-700); }
-
-/* Login Box */
-.auth-card { width: 100%; max-width: 408px; background: #fff; border-radius: var(--radius-lg); padding: 38px 36px 32px; box-shadow: 0 24px 70px rgba(0,0,0,0.4), 0 2px 0 var(--amber); }
-.auth-card .brand { justify-content: center; margin-bottom: 4px; font-size: 17px; color: var(--steel-950); }
-.auth-sub { text-align: center; color: var(--steel-600); font-size: 13px; margin-bottom: 18px; }
-.login-sync-row { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 600; margin-bottom: 22px; padding: 8px 12px; background: var(--steel-50); border-radius: 999px; }
+/* Login Screen */
+.auth-card { width: 100%; max-width: 440px; background: var(--surface); border-radius: var(--radius-lg); padding: 48px 40px; box-shadow: var(--shadow-float); animation: authCardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); border: 1px solid var(--slate-100); }
+@keyframes authCardIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.auth-card .brand { justify-content: center; margin-bottom: 8px; font-size: 22px; } .auth-sub { text-align: center; color: var(--slate-500); font-size: 14px; margin-bottom: 24px; }
+.login-sync-row { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--slate-600); font-weight: 600; margin-bottom: 32px; padding: 8px 16px; background: var(--slate-50); border-radius: 99px; border: 1px solid var(--slate-200); }
 .login-sync-row .sync-dot { width: 8px; height: 8px; border-radius: 50%; }
-.auth-card form { display: flex; flex-direction: column; gap: 14px; }
-.request-link-row { text-align: center; margin-top: 18px; }
-.request-link-row button { background: none; border: none; color: var(--steel-600); font-size: 12.5px; cursor: pointer; text-decoration: underline; }
-.auth-hint { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11.5px; color: var(--steel-600); text-align: center; }
+.auth-card form { display: flex; flex-direction: column; gap: 20px; } .auth-card .btn { justify-content: center; margin-top: 8px; padding: 12px; font-size: 15px;}
+.auth-hint { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--slate-100); font-size: 12.5px; color: var(--slate-500); line-height: 1.6; text-align: center;}
+.request-link-row { text-align: center; margin-top: 24px; } .request-link-row button { background: none; border: none; color: var(--slate-600); font-size: 13.5px; font-weight: 600; cursor: pointer; transition: var(--transition); text-decoration: underline; text-underline-offset: 4px; } .request-link-row button:hover { color: var(--brand-primary); }
 
-.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.12); border-top-color: var(--steel-950); border-radius: 50%; animation: spin 0.65s linear infinite; vertical-align: -2px; }
+.tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--slate-100); color: var(--slate-700); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--slate-200);}
+.muted { color: var(--slate-500); } .qty-pending { color: var(--warning); font-weight: 700; }
+
+/* Sync Dots */
+.sync-dot-good { background: var(--success); box-shadow: 0 0 0 3px var(--success-bg); animation: pulseDot 2.5s infinite; }
+.sync-dot-bad { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-bg); }
+@keyframes pulseDot { 0%, 100% { box-shadow: 0 0 0 3px var(--success-bg); } 50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.15); } }
+
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.1); border-top-color: currentColor; border-radius: 50%; animation: spin 0.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Mobile */
-@media (max-width: 760px) {
-  .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 14px 8px; gap: 10px; justify-content: space-between; }
+/* Mobile Reponsiveness Fixes */
+@media (max-width: 860px) {
+  .topbar-inner { flex-wrap: wrap; height: auto; padding: 12px 20px; gap: 12px; justify-content: space-between; }
   .brand { font-size: 16px; }
-  .nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; }
-  .nav button.navlink { padding: 9px 13px; font-size: 12.5px; flex-shrink: 0; }
-  .who { gap: 8px; overflow-x: auto; justify-content: flex-end; } .who-name { display: none; }
-  .app-main { padding: 18px 14px 48px; } .page-head h1 { font-size: 21px; }
-  .form-grid { grid-template-columns: 1fr; gap: 14px; }
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  input, select, textarea { font-size: 16px; } /* Prevent iOS zoom */
-  .btn { width: 100%; } .actions-row { flex-direction: column; }
-  .filter-bar { flex-direction: column; align-items: stretch; } .filter-bar input[type="text"], .filter-bar select { width: 100%; }
+  /* Smooth horizontal scrolling for nav to prevent cutoff */
+  .nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav button.navlink { padding: 8px 14px; font-size: 13px; flex-shrink: 0; }
+  .who-name { display: none; }
   
-  /* Stack Tables for Mobile */
+  .app-main { padding: 24px 16px 60px; }
+  .page-head h1 { font-size: 24px; } .page-head .btn { width: 100%; }
+  .form-grid { grid-template-columns: 1fr; gap: 16px; }
+  .panel-pad { padding: 20px; } .panel-head { padding: 16px 20px; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; } .kpi { padding: 16px; } .kpi-value { font-size: 28px; }
+  input, select, textarea { font-size: 16px; } /* Prevents iOS Zoom */
+  .btn { width: 100%; } .actions-row { flex-direction: column; gap: 12px;}
+  .filter-bar { flex-direction: column; align-items: stretch; gap: 12px;} .filter-bar input[type="text"], .filter-bar select { width: 100%; min-width: 0; }
+  .auth-main { padding: 16px; align-items: flex-start; padding-top: 48px; } .auth-card { padding: 32px 24px; border-radius: var(--radius-md); }
+  
+  /* Mobile stacked tables */
   table.reg, table.reg thead, table.reg tbody, table.reg th, table.reg td, table.reg tr { display: block; }
   table.reg thead { display: none; }
-  table.reg tr { background: #fff; border: 1px solid #e8eaed; border-radius: var(--radius); margin-bottom: 12px; padding: 4px 14px; box-shadow: var(--shadow-xs); }
-  table.reg td { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #f0f1f3; white-space: normal; text-align: right; }
+  table.reg tr { background: var(--surface); border: 1px solid var(--slate-200); border-radius: var(--radius-md); margin-bottom: 16px; padding: 8px 16px; box-shadow: var(--shadow-sm); }
+  table.reg td { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--slate-100); white-space: normal; text-align: right; }
   table.reg td:last-child { border-bottom: none; }
-  table.reg td::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--steel-600); text-align: left; flex-shrink: 0; }
+  table.reg td::before { content: attr(data-label); font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--slate-500); text-align: left; flex-shrink: 0; }
   table.reg td:empty::before { content: none; }
-  table.reg td:has(button) { justify-content: flex-end; flex-wrap: wrap; } table.reg td:has(button) .btn { width: auto; flex: 1;}
+  table.reg td:has(input), table.reg td:has(select) { flex-direction: column; align-items: stretch; gap: 8px; }
+  table.reg td:has(input)::before, table.reg td:has(select)::before { text-align: left; }
+  table.reg td:has(button) { justify-content: flex-end; flex-wrap: wrap;} table.reg td:has(button) .btn { width: auto; flex: 1;}
 }
-.sync-dot-good { background: var(--good); box-shadow: 0 0 0 4px var(--good-soft); }
-.sync-dot-bad { background: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
 </style>
 </head>
 <body>
@@ -159,25 +178,26 @@ textarea { resize: vertical; min-height: 70px; }
 <div id="authScreen" class="auth-main hidden">
   <div class="auth-card">
     <div class="brand"><span class="brand-mark">⚙</span><span class="brand-text">CMM SMS <strong>STORE</strong></span></div>
-    <div class="auth-sub">Issue &amp; Return Register</div>
-    <div id="loginSyncStatus" class="login-sync-row"><span class="sync-dot sync-dot-bad" id="loginSyncDot"></span><span id="loginSyncLabel">Checking cloud connection…</span></div>
+    <div class="auth-sub">Issue &amp; Return Register Workspace</div>
+    <div id="loginSyncStatus" class="login-sync-row"><span class="sync-dot sync-dot-bad" id="loginSyncDot"></span><span id="loginSyncLabel">Connecting to cloud...</span></div>
     <div id="authError" class="alert alert-error hidden"></div>
     <div id="authInfo" class="alert alert-info hidden"></div>
 
     <form id="loginForm">
-      <div class="field"><label>Username</label><input type="text" id="loginUsername" required autocapitalize="none" /></div>
-      <div class="field"><label>Password</label><input type="password" id="loginPassword" required /></div>
-      <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
+      <div class="field"><label for="loginUsername">Username</label><input type="text" id="loginUsername" required autocomplete="username" autocapitalize="none" placeholder="Enter your username" /></div>
+      <div class="field"><label for="loginPassword">Password</label><input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••" /></div>
+      <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In to Dashboard</button>
     </form>
 
     <form id="requestForm" class="hidden">
-      <div class="field"><label>Full Name</label><input type="text" id="reqFullName" required /></div>
-      <div class="field"><label>Desired Username</label><input type="text" id="reqUsername" required autocapitalize="none" /></div>
-      <div class="field"><label>Desired Password</label><input type="password" id="reqPassword" required minlength="4" /></div>
-      <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
+      <div class="field"><label for="reqFullName">Full Name</label><input type="text" id="reqFullName" required autocomplete="name" placeholder="John Doe" /></div>
+      <div class="field"><label for="reqUsername">Desired Username</label><input type="text" id="reqUsername" required autocomplete="username" autocapitalize="none" placeholder="johndoe" /></div>
+      <div class="field"><label for="reqPassword">Desired Password</label><input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" placeholder="••••••••" /></div>
+      <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Access Request</button>
     </form>
-    <div class="request-link-row"><button type="button" id="showRequestForm">Need access? Request an account</button><button type="button" id="showLoginForm" class="hidden">← Back to log in</button></div>
-    <div class="auth-hint">Staff accounts require Admin approval.</div>
+
+    <div class="request-link-row"><button type="button" id="showRequestForm">Need an account? Request access.</button><button type="button" id="showLoginForm" class="hidden">← Back to secure login</button></div>
+    <div class="auth-hint" id="authHintText">Staff accounts require Administrator approval before logging in.</div>
   </div>
 </div>
 
@@ -188,7 +208,12 @@ textarea { resize: vertical; min-height: 70px; }
       <nav class="nav" id="navLinks"></nav>
       <div class="who"><span class="who-name" id="whoName"></span><span class="who-role" id="whoRole"></span><button class="link-btn" id="logoutBtn">Log out</button></div>
     </div>
-    <div class="status-bar"><div class="status-bar-inner"><span class="status-sync"><span class="sync-dot sync-dot-bad" id="appSyncDot"></span><span id="appSyncLabel">Checking…</span></span><span class="status-clock mono" id="appClock"></span></div></div>
+    <div class="status-bar">
+      <div class="status-bar-inner">
+        <span class="status-sync"><span class="sync-dot sync-dot-bad" id="appSyncDot"></span><span id="appSyncLabel">Checking…</span></span>
+        <span class="status-clock mono" id="appClock"></span>
+      </div>
+    </div>
   </header>
   <main class="app-main" id="appMain"></main>
 </div>
@@ -198,10 +223,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 import { getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
-// =========================================================================
-// 1. FIREBASE CONFIG
-// FIX: Using .appspot.com for bucket to fix silent CORS / Upload hangs
-// =========================================================================
+/* =========================================================================
+   FIREBASE CONFIG
+   ========================================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyARRGKgQ_R_RFi40KXnhdmt6VZrVHVHgc0",
   authDomain: "store-issue-register.firebaseapp.com",
@@ -212,40 +236,45 @@ const firebaseConfig = {
   appId: "1:184487310656:web:58be210595a80dfdbdf6a5"
 };
 
-let currentUser = null, toolsCache = [], issuesCache = [], unsubTools = null, unsubIssues = null;
-let currentView = 'dashboard';
-const $ = (sel) => document.querySelector(sel); const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+let currentUser = null, toolsCache = [], issuesCache = [], unsubTools = null, unsubIssues = null, unsubRequests = null, currentView = 'dashboard';
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const escapeHtml = (s) => (s ?? '').toString().replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function showScreen(id) { ['authScreen', 'appScreen'].forEach((s) => { $('#' + s).classList.toggle('hidden', s !== id); }); }
 
-let app, db, storage, cloudSyncOk = false, appBootstrapped = false, cloudConnected = false, clockInterval = null;
-const ADMIN_USERNAME = 'admin', ADMIN_PASSWORD = 'admin', SESSION_KEY = 'cmm_session';
+let app, db, storage, cloudSyncOk = false, lastSyncedAt = null, appBootstrapped = false, clockStarted = false, cloudConnected = false, clockInterval = null;
+const ADMIN_USERNAME = 'admin', ADMIN_PASSWORD = 'admin', SESSION_KEY = 'mechtools_session';
 
 // =========================================================================
-// 2. CORE BOOTSTRAP & LOGIN
+// SYSTEM BOOTSTRAP
 // =========================================================================
 function startApp() {
   const saved = loadSession();
-  if (saved) { currentUser = saved; initTopbar(); showScreen('appScreen'); navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'dashboard'); } 
-  else { showScreen('authScreen'); }
+  if (saved) {
+    currentUser = saved; initTopbar(); showScreen('appScreen'); navigateTo(currentUser.role === 'admin' ? 'admin-dashboard' : 'dashboard');
+  } else { showScreen('authScreen'); }
   attemptFirebaseInit();
 }
 
 function attemptFirebaseInit() {
   try { app = initializeApp(firebaseConfig); db = getDatabase(app); try { storage = getStorage(app); } catch (e) { storage = null; } } 
-  catch (err) { console.error('Init error:', err); return; }
+  catch (err) { console.error('Firebase init error:', err); return; }
 
   onValue(ref(db, '.info/connected'), (snap) => {
     const connected = snap.val() === true; cloudConnected = connected;
-    if (connected && !appBootstrapped) { appBootstrapped = true; if (currentUser) listenToCollections(); }
+    if (connected) {
+      lastSyncedAt = new Date();
+      if (!appBootstrapped) { appBootstrapped = true; if (currentUser) listenToCollections(); }
+    }
     updateLoginSyncIndicator(connected);
+    if (currentView === 'settings-admin') render();
   });
 }
 
 function updateLoginSyncIndicator(connected) {
   const dot = $('#loginSyncDot'), label = $('#loginSyncLabel');
-  if (dot && label) { dot.className = 'sync-dot ' + (connected ? 'sync-dot-good' : 'sync-dot-bad'); label.textContent = connected ? 'Cloud connected — login enabled' : 'Cloud sync unavailable'; }
+  if (dot && label) { dot.className = 'sync-dot ' + (connected ? 'sync-dot-good' : 'sync-dot-bad'); label.textContent = connected ? 'Cloud connected — Login enabled' : 'Cloud sync unavailable'; }
   const loginBtn = $('#loginBtn'), reqBtn = $('#reqSubmitBtn');
   if (loginBtn) loginBtn.disabled = !connected; if (reqBtn) reqBtn.disabled = !connected;
   const appDot = $('#appSyncDot'), appLabel = $('#appSyncLabel');
@@ -253,8 +282,9 @@ function updateLoginSyncIndicator(connected) {
 }
 
 function startLiveClock() {
-  const clockEl = $('#appClock'); if (!clockEl) return; if (clockInterval) clearInterval(clockInterval); 
-  const tick = () => { const el = $('#appClock'); if (!el) { clearInterval(clockInterval); return; } el.textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
+  const clockEl = $('#appClock'); if (!clockEl) return;
+  if (clockInterval) clearInterval(clockInterval); 
+  const tick = () => { const el = $('#appClock'); if (!el) { clearInterval(clockInterval); clockStarted = false; return; } el.textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
   tick(); clockInterval = setInterval(tick, 1000); 
 }
 
@@ -262,12 +292,16 @@ function saveSession(user) { try { sessionStorage.setItem(SESSION_KEY, JSON.stri
 function loadSession() { try { const raw = sessionStorage.getItem(SESSION_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function clearSession() { try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {} }
 
+function clearAuthMessages() { $('#authError').classList.add('hidden'); $('#authInfo').classList.add('hidden'); }
 function showAuthError(msg) { $('#authInfo').classList.add('hidden'); $('#authError').textContent = msg; $('#authError').classList.remove('hidden'); }
 function showAuthInfo(msg) { $('#authError').classList.add('hidden'); $('#authInfo').textContent = msg; $('#authInfo').classList.remove('hidden'); }
 
+// =========================================================================
+// AUTHENTICATION LOGIC
+// =========================================================================
 $('#loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault(); $('#authError').classList.add('hidden'); $('#authInfo').classList.add('hidden');
-  if (!cloudConnected) return showAuthError('Cloud sync is not connected.');
+  e.preventDefault(); clearAuthMessages();
+  if (!cloudConnected) return showAuthError('Cloud sync is not connected. Login is disabled until the connection is restored.');
   const username = $('#loginUsername').value.trim(), password = $('#loginPassword').value, btn = $('#loginBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Logging in…';
 
@@ -277,26 +311,31 @@ $('#loginForm').addEventListener('submit', async (e) => {
       saveSession(currentUser); initTopbar(); listenToCollections(); showScreen('appScreen'); navigateTo('admin-dashboard'); return;
     }
     const snap = await get(ref(db, 'users/' + username));
-    if (!snap.exists() || snap.val().password !== password) return showAuthError('Incorrect username or password.');
-    currentUser = { username, fullName: snap.val().fullName || username, role: 'user', toolStockAuth: !!snap.val().toolStockAuth };
+    if (!snap.exists() || snap.val().password !== password) { showAuthError('Incorrect username or password.'); return; }
+    const record = snap.val();
+    currentUser = { username, fullName: record.fullName || username, role: 'user', toolStockAuth: !!record.toolStockAuth };
     saveSession(currentUser); initTopbar(); listenToCollections(); showScreen('appScreen'); navigateTo('dashboard');
-  } catch (err) { showAuthError('Login failed: ' + err.message); } finally { btn.disabled = false; btn.textContent = 'Log In'; }
+  } catch (err) { showAuthError('Login failed: ' + err.message); } finally { btn.disabled = false; btn.textContent = 'Log In to Dashboard'; }
 });
 
 $('#logoutBtn').addEventListener('click', () => {
   if (unsubTools) { unsubTools(); unsubTools = null; }
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  if (unsubRequests) { unsubRequests(); unsubRequests = null; }
   currentUser = null; clearSession(); showScreen('authScreen');
 });
 
-$('#showRequestForm').addEventListener('click', () => { $('#authError').classList.add('hidden'); $('#loginForm').classList.add('hidden'); $('#requestForm').classList.remove('hidden'); $('#showRequestForm').classList.add('hidden'); $('#showLoginForm').classList.remove('hidden'); });
-$('#showLoginForm').addEventListener('click', () => { $('#authError').classList.add('hidden'); $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden'); $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden'); });
+$('#showRequestForm').addEventListener('click', () => { clearAuthMessages(); $('#loginForm').classList.add('hidden'); $('#requestForm').classList.remove('hidden'); $('#showRequestForm').classList.add('hidden'); $('#showLoginForm').classList.remove('hidden'); });
+$('#showLoginForm').addEventListener('click', () => { clearAuthMessages(); $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden'); $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden'); });
 
 $('#requestForm').addEventListener('submit', async (e) => {
-  e.preventDefault(); $('#authError').classList.add('hidden');
+  e.preventDefault(); clearAuthMessages();
+  if (!cloudConnected) return showAuthError('Cloud sync is not connected.');
   const fullName = $('#reqFullName').value.trim(), username = $('#reqUsername').value.trim(), password = $('#reqPassword').value, btn = $('#reqSubmitBtn');
+
   if (username.toLowerCase() === ADMIN_USERNAME) return showAuthError(`Username unavailable.`);
   if (/[.#$\[\]\/\s'"]/.test(username)) return showAuthError('Username contains invalid characters.');
+
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…';
   try {
     if ((await get(ref(db, 'users/' + username))).exists()) return showAuthError('Username is already taken.');
@@ -304,64 +343,101 @@ $('#requestForm').addEventListener('submit', async (e) => {
     await set(ref(db, 'accessRequests/' + username), { fullName, password, requestedAt: serverTimestamp() });
     $('#requestForm').classList.add('hidden'); $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden');
     showAuthInfo('Request submitted for admin approval.'); $('#requestForm').reset();
-  } catch (err) { showAuthError('Submit failed: ' + err.message); } finally { btn.disabled = false; btn.textContent = 'Submit Request'; }
+  } catch (err) { showAuthError('Submit failed: ' + err.message); } finally { btn.disabled = false; btn.textContent = 'Submit Access Request'; }
 });
 
 startApp();
 
-/* =========================================================================
-   3. ROUTING & DATA LISTENING
-   ========================================================================= */
+// =========================================================================
+// ROUTING & BACKGROUND LISTENERS
+// =========================================================================
 function initTopbar() {
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
   $('#whoRole').textContent = currentUser.role; $('#whoRole').className = 'who-role role-' + currentUser.role;
-  updateLoginSyncIndicator(cloudConnected); startLiveClock(); 
+  updateLoginSyncIndicator(cloudConnected); if (!clockStarted) { startLiveClock(); clockStarted = true; }
+
   const nav = $('#navLinks');
-  const links = currentUser.role === 'admin' ? [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['tools-admin', 'Tools'], ['users-admin', 'Users']] : [['dashboard', 'Dashboard'], ['register', 'Register'], ['issue-new', 'New Issue'], ...(currentUser.toolStockAuth ? [['tools-admin', 'Tools']] : [])];
+  const links = currentUser.role === 'admin'
+    ? [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['tools-admin', 'Tools'], ['users-admin', 'Users'], ['settings-admin', 'Settings']]
+    : [['dashboard', 'Dashboard'], ['register', 'Register'], ['issue-new', 'New Issue'], ...(currentUser.toolStockAuth ? [['tools-admin', 'Tools']] : [])];
+
   nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
   nav.querySelectorAll('.navlink').forEach((btn) => btn.addEventListener('click', () => navigateTo(btn.dataset.view)));
+
+  if (currentUser.role === 'admin') {
+    if (unsubRequests) { unsubRequests(); unsubRequests = null; }
+    unsubRequests = onValue(ref(db, 'accessRequests'), (snap) => {
+      const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+      const navBtn = document.querySelector('.navlink[data-view="users-admin"]'); if (!navBtn) return;
+      const existing = navBtn.querySelector('.pending-count-dot'); if (existing) existing.remove();
+      if (count > 0) { const dot = document.createElement('span'); dot.className = 'badge bad'; dot.style.marginLeft = '6px'; dot.style.fontSize = '10px'; dot.textContent = count; navBtn.appendChild(dot); }
+    });
+  }
 }
 
 function navigateTo(viewId) { currentView = viewId; $$('.navlink').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId)); render(); }
 function snapshotToArray(snap) { const val = snap.val(); return !val ? [] : Object.keys(val).map((key) => ({ id: key, ...val[key] })); }
 
-// FIX: Do not auto-refresh active forms when background data updates to prevent losing typed work
 function listenToCollections() {
-  if (unsubTools) unsubTools(); if (unsubIssues) unsubIssues();
+  if (unsubTools) unsubTools();
+  if (unsubIssues) unsubIssues();
+  
+  // FIX: Prevents form from completely refreshing and wiping text while you are typing
   const formViews = ['issue-new', 'edit-issue', 'return-record', 'edit-return'];
-  unsubTools = onValue(ref(db, 'tools'), (snap) => { toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || '')); if (!formViews.includes(currentView)) render(); });
-  unsubIssues = onValue(ref(db, 'issues'), (snap) => { issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || '')); if (!formViews.includes(currentView)) render(); });
+  
+  unsubTools = onValue(ref(db, 'tools'), (snap) => { 
+    toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || '')); 
+    if (!formViews.includes(currentView)) render(); 
+  });
+  unsubIssues = onValue(ref(db, 'issues'), (snap) => { 
+    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || '')); 
+    if (!formViews.includes(currentView)) render(); 
+  });
 }
 
 function statusOf(issue) { return ((issue.qtyReturned || 0) >= issue.qtyIssued) ? 'Returned' : 'Issued'; }
-function enrichedIssues() { return issuesCache.map((i) => { let dn = i.materialName; if (!dn && i.toolId) { const t = toolsCache.find((t) => t.id === i.toolId); dn = t ? t.toolName : '(unknown)'; } return { ...i, materialName: dn || '(unnamed)', status: statusOf(i) }; }); }
+function enrichedIssues() {
+  return issuesCache.map((i) => {
+    let displayName = i.materialName;
+    if (!displayName && i.toolId) { const legacyTool = toolsCache.find((t) => t.id === i.toolId); displayName = legacyTool ? legacyTool.toolName : '(unknown)'; }
+    return { ...i, materialName: displayName || '(unnamed)', status: statusOf(i) };
+  });
+}
 
 function render() {
   if (!currentUser) return;
-  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'edit-return'];
+  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
   if (currentUser.role !== 'admin' && currentView === 'tools-admin' && !currentUser.toolStockAuth) currentView = 'dashboard';
   if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
   if (currentUser.role === 'admin' && ['dashboard'].includes(currentView)) currentView = 'admin-dashboard';
-  const views = { 'dashboard': renderUserDashboard, 'admin-dashboard': renderAdminDashboard, 'register': renderRegister, 'issue-new': renderIssueForm, 'tools-admin': renderToolsAdmin, 'users-admin': renderUsersAdmin, 'return-record': renderReturnForm, 'edit-return': renderEditReturnForm, 'edit-issue': renderEditIssueForm };
+
+  const views = {
+    'dashboard': renderUserDashboard, 'admin-dashboard': renderAdminDashboard, 'register': renderRegister,
+    'issue-new': renderIssueForm, 'tools-admin': renderToolsAdmin, 'users-admin': renderUsersAdmin,
+    'settings-admin': renderSettingsAdmin, 'return-record': renderReturnForm, 'edit-return': renderEditReturnForm,
+    'edit-issue': renderEditIssueForm, 
+  };
   $('#appMain').innerHTML = (views[currentView] || renderUserDashboard)();
   wireViewEvents(currentView);
 }
 
-/* =========================================================================
-   4. UI RENDERERS
-   ========================================================================= */
+// =========================================================================
+// HTML VIEW TEMPLATES
+// =========================================================================
 function renderUserDashboard() {
   const is = enrichedIssues(); const pending = is.filter(i => i.status === 'Issued').length;
-  return `<div class="page-head"><div><span class="eyebrow">Store Overview</span><h1>Dashboard</h1></div><button class="btn btn-primary" data-nav="issue-new">+ New Issue</button></div>
-    <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${is.length}</div></div><div class="kpi warn"><div class="kpi-label">Issued</div><div class="kpi-value">${pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${is.length - pending}</div></div></div>
-    <div class="panel panel-pad"><h2 style="margin-top:0;">Quick actions</h2><div class="actions-row"><button class="btn btn-dark" data-nav="issue-new">Log a New Issue</button><button class="btn btn-ghost" data-nav="register">View Full Register</button>${currentUser.toolStockAuth ? `<button class="btn btn-ghost" data-nav="tools-admin">Manage Tool Stock</button>` : ''}</div></div>`;
+  return `
+    <div class="page-head"><div><span class="eyebrow">Workspace</span><h1>Dashboard</h1><div class="page-sub">Live status of the material register.</div></div><button class="btn btn-primary" data-nav="issue-new">+ New Issue</button></div>
+    <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${is.length}</div></div><div class="kpi warn"><div class="kpi-label">Issued Material</div><div class="kpi-value">${pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${is.length - pending}</div></div></div>
+    <div class="panel panel-pad"><h2 style="margin-bottom:16px;">Quick Actions</h2><div class="actions-row" style="margin-top:0;"><button class="btn btn-dark" data-nav="issue-new">Log New Issue</button><button class="btn btn-ghost" data-nav="register">View Full Register</button>${currentUser.toolStockAuth ? `<button class="btn btn-ghost" data-nav="tools-admin">Manage Tool Stock</button>` : ''}</div></div>`;
 }
 
 function renderAdminDashboard() {
   const is = enrichedIssues(); const pending = is.filter(i => i.status === 'Issued').length;
-  return `<div class="page-head"><div><span class="eyebrow">Administrator</span><h1>Admin Dashboard</h1></div></div>
+  return `
+    <div class="page-head"><div><span class="eyebrow">Administration</span><h1>Admin Dashboard</h1><div class="page-sub">Store-wide overview and management.</div></div></div>
     <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${is.length}</div></div><div class="kpi warn"><div class="kpi-label">Pending Return</div><div class="kpi-value">${pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${is.length - pending}</div></div></div>
-    <div class="actions-row"><button class="btn btn-dark" data-nav="register">Manage Full Register</button><button class="btn btn-ghost" data-nav="users-admin">Manage Users</button></div>`;
+    <div class="actions-row"><button class="btn btn-dark" data-nav="register">Manage Full Register</button><button class="btn btn-ghost" data-nav="users-admin">Manage Users</button><button class="btn btn-ghost" data-nav="settings-admin">System Settings</button></div>`;
 }
 
 let registerFilterState = { q: '', status: 'all', month: 'all', year: 'all' };
@@ -374,156 +450,262 @@ function renderRegister() {
   if (registerFilterState.year !== 'all') rows = rows.filter(r => r.issueDate && r.issueDate.startsWith(registerFilterState.year));
   if (registerFilterState.month !== 'all') rows = rows.filter(r => { if (!r.issueDate) return false; return r.issueDate.split('-')[1] === registerFilterState.month; });
 
-  return `<div class="page-head"><div><span class="eyebrow">Records</span><h1>${isAdmin ? 'Full Register' : 'Issue & Return Register'}</h1></div><button class="btn btn-primary" data-nav="issue-new">+ New Issue</button></div>
+  return `
+    <div class="page-head"><div><span class="eyebrow">Records</span><h1>${isAdmin ? 'Full Register' : 'Issue & Return Register'}</h1></div><button class="btn btn-primary" data-nav="issue-new">+ New Issue</button></div>
     <div class="filter-bar">
-      <input type="text" id="regSearch" placeholder="Search material, vendor, area, supervisor…" value="${escapeHtml(registerFilterState.q)}" />
-      <select id="regStatus"><option value="all" ${registerFilterState.status === 'all' ? 'selected' : ''}>All statuses</option><option value="issued" ${registerFilterState.status === 'issued' ? 'selected' : ''}>Issued</option><option value="returned" ${registerFilterState.status === 'returned' ? 'selected' : ''}>Returned</option></select>
-      <select id="regYear"><option value="all" ${registerFilterState.year === 'all' ? 'selected' : ''}>All Years</option><option value="2024" ${registerFilterState.year === '2024' ? 'selected' : ''}>2024</option><option value="2025" ${registerFilterState.year === '2025' ? 'selected' : ''}>2025</option><option value="2026" ${registerFilterState.year === '2026' ? 'selected' : ''}>2026</option></select>
+      <input type="text" id="regSearch" placeholder="Search material, vendor, area..." value="${escapeHtml(registerFilterState.q)}" />
+      <select id="regStatus"><option value="all" ${registerFilterState.status === 'all' ? 'selected' : ''}>All Statuses</option><option value="issued" ${registerFilterState.status === 'issued' ? 'selected' : ''}>Issued</option><option value="returned" ${registerFilterState.status === 'returned' ? 'selected' : ''}>Returned</option></select>
+      <select id="regYear"><option value="all" ${registerFilterState.year === 'all' ? 'selected' : ''}>All Years</option>${['2024','2025','2026','2027','2028'].map(y => `<option value="${y}" ${registerFilterState.year === y ? 'selected' : ''}>${y}</option>`).join('')}</select>
       <select id="regMonth"><option value="all" ${registerFilterState.month === 'all' ? 'selected' : ''}>All Months</option>${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m, i) => `<option value="${m}" ${registerFilterState.month === m ? 'selected' : ''}>${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}</option>`).join('')}</select>
     </div>
     <div class="panel"><div class="table-wrap">
-        ${rows.length === 0 ? `<div class="empty-state"><div class="display">No records found</div></div>` : `
-        <table class="reg"><thead><tr><th>Material</th><th>Qty</th><th>Vendor</th><th>Area</th><th>Issue Date</th><th>Supervisor</th><th>Return Date</th><th>R-Qty</th><th>Rem</th><th>Cond</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>${rows.map((r) => {
-              const qtyR = r.qtyReturned || 0, qtyRem = r.qtyIssued - qtyR;
-              // FIX: Conditionally render links ONLY if URL exists
-              const issuePhotoHtml = r.photoUrl ? `<br><a href="${escapeHtml(r.photoUrl)}" target="_blank" style="font-size:11px; color: var(--amber-dark);">[View Photo]</a>` : '';
-              const returnPhotoHtml = r.returnPhotoUrl ? `<br><a href="${escapeHtml(r.returnPhotoUrl)}" target="_blank" style="font-size:11px; color: var(--amber-dark);">[View R-Photo]</a>` : '';
+        ${rows.length === 0 ? `<div class="empty-state"><div class="display">No matching records</div><p>Try clearing your filters.</p></div>` : `
+        <table class="reg">
+          <thead><tr><th>Material</th><th>Qty</th><th>Vendor</th><th>Area</th><th>Issue Date</th><th>Supervisor</th><th>Return Date</th><th>R-Qty</th><th>Rem</th><th>Cond</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            ${rows.map((r) => {
+              const qtyR = r.qtyReturned || 0; const qtyRem = r.qtyIssued - qtyR;
+              const issuePhotoHtml = r.photoUrl ? `<br><a href="${escapeHtml(r.photoUrl)}" target="_blank" style="font-size:11px; color: var(--brand-primary);">[View Photo]</a>` : '';
+              const returnPhotoHtml = r.returnPhotoUrl ? `<br><a href="${escapeHtml(r.returnPhotoUrl)}" target="_blank" style="font-size:11px; color: var(--brand-primary);">[View R-Photo]</a>` : '';
               return `<tr>
-                <td data-label="Material"><strong>${escapeHtml(r.materialName)}</strong>${issuePhotoHtml}</td>
-                <td class="qty" data-label="Qty Issued">${r.qtyIssued}</td><td data-label="Vendor">${escapeHtml(r.vendor)}</td><td data-label="Area">${escapeHtml(r.area)}</td><td class="mono" data-label="Issue Date">${escapeHtml(r.issueDate)}</td><td data-label="Supervisor">${escapeHtml(r.supervisorName)}</td>
+                <td data-label="Material" style="font-weight:600;">${escapeHtml(r.materialName)}${issuePhotoHtml}</td>
+                <td class="qty" data-label="Qty Issued">${r.qtyIssued}</td><td data-label="Vendor">${escapeHtml(r.vendor)}</td><td data-label="Area">${escapeHtml(r.area)}</td>
+                <td class="mono" data-label="Issue Date">${escapeHtml(r.issueDate)}</td><td data-label="Supervisor">${escapeHtml(r.supervisorName)}</td>
                 <td class="mono" data-label="Return Date">${escapeHtml(r.returnDate) || '—'}<br><span style="font-size:10px; color:#888;">${r.returnedAt ? formatTimestamp(r.returnedAt) : ''}</span>${returnPhotoHtml}</td>
-                <td class="qty" data-label="Qty Returned">${qtyR}</td><td class="qty ${qtyRem > 0 && r.status !== 'Returned' ? 'qty-pending' : ''}" data-label="Remaining">${qtyRem > 0 ? qtyRem : '—'}</td><td data-label="Condition">${escapeHtml(r.conditionOnReturn) || '—'}</td>
+                <td class="qty" data-label="Qty Returned">${qtyR}</td><td class="qty ${qtyRem > 0 && r.status !== 'Returned' ? 'qty-pending' : ''}" data-label="Remaining">${qtyRem > 0 ? qtyRem : '—'}</td>
+                <td data-label="Condition">${escapeHtml(r.conditionOnReturn) || '—'}</td>
                 <td data-label="Status">${r.status === 'Returned' ? '<span class="badge good">Returned</span>' : '<span class="badge warn">Issued</span>'}</td>
-                <td data-label="Action" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+                <td data-label="Action" style="display:flex; gap:8px; justify-content:flex-end;">
                   ${r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Return</button> <button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit</button>` : ''}
                   ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Rtn</button>` : ''}
                   ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete-issue="${r.id}">Del</button>` : ''}
-                </td></tr>`;
+                </td>
+              </tr>`;
             }).join('')}
-          </tbody></table>`}
+          </tbody>
+        </table>`}
     </div></div>`;
 }
 
 let issueFormError = '';
 function renderIssueForm() {
-  return `<div class="page-head"><div><span class="eyebrow">Log</span><h1>Issue Material</h1></div></div>${issueFormError ? `<div class="alert alert-error">${escapeHtml(issueFormError)}</div>` : ''}
-    <div class="panel panel-pad" style="max-width:760px;"><form id="issueForm"><div class="form-grid">
-      <div class="field full"><label>Material Name</label><input type="text" id="f_material" required /></div>
-      <div class="field"><label>Quantity Issued</label><input type="number" min="1" id="f_qty" required /></div>
-      <div class="field"><label>Vendor</label><input type="text" id="f_vendor" required /></div>
-      <div class="field"><label>Area</label><input type="text" id="f_area" required /></div>
-      <div class="field"><label>Issue Date</label><input type="date" id="f_issueDate" value="${todayStr()}" required /></div>
-      <div class="field"><label>Supervisor Name</label><input type="text" id="f_supervisorName" required /></div>
-      <div class="field"><label>Supervisor Contact Number</label><input type="tel" id="f_supervisorContact" required /></div>
-      <div class="field"><label>Employee Code / Dept.</label><input type="text" id="f_empCode" /></div>
-      <div class="field"><label>Photo of Material (optional)</label><input type="file" id="f_photo" accept="image/*" /></div>
-      <div class="field full" id="f_photoPreviewWrap" style="display:none;"><img id="f_photoPreview" style="max-width:220px; border-radius:10px; border:1px solid #ddd;" /><button type="button" class="btn btn-ghost btn-sm" id="f_photoClear" style="margin-top:8px;">Remove Photo</button></div>
-      <div class="field full"><label>Remarks</label><textarea id="f_remarks"></textarea></div>
-    </div><div class="actions-row"><button type="submit" class="btn btn-primary" id="issueSubmitBtn">Save Issue</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div></form></div>`;
+  return `
+    <div class="page-head"><div><span class="eyebrow">Movement</span><h1>Issue Material</h1></div></div>
+    ${issueFormError ? `<div class="alert alert-error">${escapeHtml(issueFormError)}</div>` : ''}
+    <div class="panel panel-pad" style="max-width:800px;">
+      <form id="issueForm">
+        <div class="form-grid">
+          <div class="field full"><label>Material Name</label><input type="text" id="f_material" required /></div>
+          <div class="field"><label>Quantity</label><input type="number" min="1" id="f_qty" required /></div>
+          <div class="field"><label>Vendor</label><input type="text" id="f_vendor" required /></div>
+          <div class="field"><label>Area</label><input type="text" id="f_area" required /></div>
+          <div class="field"><label>Issue Date</label><input type="date" id="f_issueDate" value="${todayStr()}" required /></div>
+          <div class="field"><label>Supervisor Name</label><input type="text" id="f_supervisorName" required /></div>
+          <div class="field"><label>Supervisor Contact</label><input type="tel" id="f_supervisorContact" required /></div>
+          <div class="field"><label>Employee Code</label><input type="text" id="f_empCode" /></div>
+          <div class="field"><label>Photo (optional)</label><input type="file" id="f_photo" accept="image/*" /></div>
+          <div class="field full" id="f_photoPreviewWrap" style="display:none;"><img id="f_photoPreview" style="max-width:200px; border-radius:8px;" /><button type="button" class="btn btn-ghost btn-sm" id="f_photoClear" style="margin-top:8px;">Remove Photo</button></div>
+          <div class="field full"><label>Remarks</label><textarea id="f_remarks"></textarea></div>
+        </div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary" id="issueSubmitBtn">Save Issue Record</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div>
+      </form>
+    </div>`;
 }
 
-let editIssueTargetId = null, editIssueError = '';
+let editIssueTargetId = null; let editIssueError = '';
 function renderEditIssueForm() {
   const issue = issuesCache.find((i) => i.id === editIssueTargetId); if (!issue) return `<div class="empty-state">Not found</div>`;
-  return `<div class="page-head"><div><span class="eyebrow">Edit</span><h1>Edit Issue Details</h1></div></div>${editIssueError ? `<div class="alert alert-error">${escapeHtml(editIssueError)}</div>` : ''}
-    <div class="panel panel-pad" style="max-width:760px;"><form id="editIssueForm"><div class="form-grid">
-      <div class="field full"><label>Material Name</label><input type="text" id="ei_material" value="${escapeHtml(issue.materialName)}" required /></div>
-      <div class="field"><label>Quantity Issued</label><input type="number" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required /></div>
-      <div class="field"><label>Vendor</label><input type="text" id="ei_vendor" value="${escapeHtml(issue.vendor || '')}" required /></div>
-      <div class="field"><label>Area</label><input type="text" id="ei_area" value="${escapeHtml(issue.area || '')}" required /></div>
-      <div class="field"><label>Issue Date</label><input type="date" id="ei_issueDate" value="${escapeHtml(issue.issueDate)}" required /></div>
-      <div class="field"><label>Supervisor Name</label><input type="text" id="ei_supervisorName" value="${escapeHtml(issue.supervisorName || '')}" required /></div>
-      <div class="field"><label>Supervisor Contact</label><input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" required /></div>
-      <div class="field"><label>Employee Code / Dept.</label><input type="text" id="ei_empCode" value="${escapeHtml(issue.empCode || '')}" /></div>
-      
-      <div class="field full">
-        ${issue.photoUrl ? `<label>Current Issue Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.photoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="ei_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted" style="font-size:12px;">No issue photo on file.</div>'}
-      </div>
-      <div class="field"><label>Replace Photo (optional)</label><input type="file" id="ei_photo" accept="image/*" /></div>
-      <div class="field full" id="ei_photoPreviewWrap" style="display:none;"><img id="ei_photoPreview" style="max-width:220px; border-radius:10px; border:1px solid #ddd;" /><button type="button" class="btn btn-ghost btn-sm" id="ei_photoClear" style="margin-top:8px;">Remove Selection</button></div>
-      <div class="field full"><label>Remarks</label><textarea id="ei_remarks">${escapeHtml(issue.remarks || '')}</textarea></div>
-    </div><div class="actions-row"><button type="submit" class="btn btn-primary" id="editIssueSubmitBtn">Save Changes</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div></form></div>`;
+  return `
+    <div class="page-head"><div><span class="eyebrow">Edit</span><h1>Edit Issue</h1></div></div>
+    ${editIssueError ? `<div class="alert alert-error">${escapeHtml(editIssueError)}</div>` : ''}
+    <div class="panel panel-pad" style="max-width:800px;">
+      <form id="editIssueForm">
+        <div class="form-grid">
+          <div class="field full"><label>Material Name</label><input type="text" id="ei_material" value="${escapeHtml(issue.materialName)}" required /></div>
+          <div class="field"><label>Quantity Issued</label><input type="number" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required /></div>
+          <div class="field"><label>Vendor</label><input type="text" id="ei_vendor" value="${escapeHtml(issue.vendor)}" required /></div>
+          <div class="field"><label>Area</label><input type="text" id="ei_area" value="${escapeHtml(issue.area)}" required /></div>
+          <div class="field"><label>Issue Date</label><input type="date" id="ei_issueDate" value="${escapeHtml(issue.issueDate)}" required /></div>
+          <div class="field"><label>Supervisor Name</label><input type="text" id="ei_supervisorName" value="${escapeHtml(issue.supervisorName)}" required /></div>
+          <div class="field"><label>Supervisor Contact</label><input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact)}" required /></div>
+          <div class="field"><label>Employee Code</label><input type="text" id="ei_empCode" value="${escapeHtml(issue.empCode || '')}" /></div>
+          <div class="field full">
+            ${issue.photoUrl ? `<label>Current Issue Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.photoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="ei_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted" style="font-size:12px;">No issue photo on file.</div>'}
+          </div>
+          <div class="field"><label>Replace Photo (optional)</label><input type="file" id="ei_photo" accept="image/*" /></div>
+          <div class="field full" id="ei_photoPreviewWrap" style="display:none;"><img id="ei_photoPreview" style="max-width:200px; border-radius:8px;" /><button type="button" class="btn btn-ghost btn-sm" id="ei_photoClear" style="margin-top:8px;">Remove Selection</button></div>
+          <div class="field full"><label>Remarks</label><textarea id="ei_remarks">${escapeHtml(issue.remarks || '')}</textarea></div>
+        </div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary" id="editIssueSubmitBtn">Save Changes</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div>
+      </form>
+    </div>`;
 }
 
-let returnFormTargetId = null, returnFormError = '';
+let returnFormTargetId = null; let returnFormError = '';
 function renderReturnForm() {
   const issue = issuesCache.find((i) => i.id === returnFormTargetId); if (!issue) return `<div class="empty-state">Not found</div>`;
   const remaining = issue.qtyIssued - (issue.qtyReturned || 0);
-  return `<div class="page-head"><div><span class="eyebrow">Log</span><h1>Record a Return</h1><div class="page-sub">${escapeHtml(issue.materialName)}</div></div></div>${returnFormError ? `<div class="alert alert-error">${escapeHtml(returnFormError)}</div>` : ''}
-    <div class="panel panel-pad" style="max-width:760px;"><form id="returnForm"><div class="form-grid">
-      <div class="field"><label>Qty Returning Now (max ${remaining})</label><input type="number" min="1" max="${remaining}" id="r_qty" value="${remaining}" required /></div>
-      <div class="field"><label>Return Date</label><input type="date" id="r_date" value="${todayStr()}" required /></div>
-      <div class="field"><label>Condition on Return</label><select id="r_condition"><option>Good</option><option>Worn</option><option>Needs Repair</option><option>Damaged</option><option>Lost</option></select></div>
-      <div class="field"><label>Photo on Return (optional)</label><input type="file" id="r_photo" accept="image/*" /></div>
-      <div class="field full" id="r_photoPreviewWrap" style="display:none;"><img id="r_photoPreview" style="max-width:220px; border-radius:10px; border:1px solid #ddd;" /><button type="button" class="btn btn-ghost btn-sm" id="r_photoClear" style="margin-top:8px;">Remove Photo</button></div>
-      <div class="field full"><label>Remarks</label><textarea id="r_remarks">${escapeHtml(issue.remarks || '')}</textarea></div>
-    </div><div class="actions-row"><button type="submit" class="btn btn-primary">Save Return</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div></form></div>`;
+  return `
+    <div class="page-head"><div><span class="eyebrow">Log</span><h1>Record Return</h1><div class="page-sub">${escapeHtml(issue.materialName)}</div></div></div>
+    ${returnFormError ? `<div class="alert alert-error">${escapeHtml(returnFormError)}</div>` : ''}
+    <div class="panel panel-pad" style="max-width:800px;">
+      <form id="returnForm">
+        <div class="form-grid">
+          <div class="field"><label>Qty Returning (Max ${remaining})</label><input type="number" min="1" max="${remaining}" id="r_qty" value="${remaining}" required /></div>
+          <div class="field"><label>Return Date</label><input type="date" id="r_date" value="${todayStr()}" required /></div>
+          <div class="field"><label>Condition</label><select id="r_condition"><option>Good</option><option>Worn</option><option>Needs Repair</option><option>Damaged</option><option>Lost</option></select></div>
+          <div class="field"><label>Photo on Return (optional)</label><input type="file" id="r_photo" accept="image/*" /></div>
+          <div class="field full" id="r_photoPreviewWrap" style="display:none;"><img id="r_photoPreview" style="max-width:200px; border-radius:8px;" /><button type="button" class="btn btn-ghost btn-sm" id="r_photoClear" style="margin-top:8px;">Remove Photo</button></div>
+          <div class="field full"><label>Remarks</label><textarea id="r_remarks">${escapeHtml(issue.remarks || '')}</textarea></div>
+        </div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary">Save Return</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div>
+      </form>
+    </div>`;
 }
 
-let editReturnTargetId = null, editReturnError = '';
+let editReturnTargetId = null; let editReturnError = '';
 function renderEditReturnForm() {
   const issue = issuesCache.find((i) => i.id === editReturnTargetId); if (!issue) return ``;
-  return `<div class="page-head"><div><span class="eyebrow">Admin</span><h1>Edit Return Details</h1></div></div>${editReturnError ? `<div class="alert alert-error">${escapeHtml(editReturnError)}</div>` : ''}
-    <div class="panel panel-pad" style="max-width:760px;"><form id="editReturnForm"><div class="form-grid">
-      <div class="field"><label>Qty Returned</label><input type="number" min="0" max="${issue.qtyIssued}" id="er_qty" value="${issue.qtyReturned || 0}" required /></div>
-      <div class="field"><label>Return Date</label><input type="date" id="er_date" value="${escapeHtml(issue.returnDate || todayStr())}" required /></div>
-      <div class="field"><label>Condition on Return</label><select id="er_condition">${['Good','Worn','Needs Repair','Damaged','Lost'].map((c) => `<option ${issue.conditionOnReturn === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
-      <div class="field full">
-        ${issue.returnPhotoUrl ? `<label>Current Return Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.returnPhotoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="er_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted" style="font-size:12px;">No return photo on file.</div>'}
-      </div>
-      <div class="field"><label>Replace Photo (optional)</label><input type="file" id="er_photo" accept="image/*" /></div>
-      <div class="field full" id="er_photoPreviewWrap" style="display:none;"><img id="er_photoPreview" style="max-width:220px; border-radius:10px; border:1px solid #ddd;" /><button type="button" class="btn btn-ghost btn-sm" id="er_photoClear" style="margin-top:8px;">Remove Selection</button></div>
-      <div class="field full"><label>Remarks</label><textarea id="er_remarks">${escapeHtml(issue.remarks || '')}</textarea></div>
-    </div><div class="actions-row"><button type="submit" class="btn btn-primary" id="editReturnSubmitBtn">Save Changes</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div></form></div>`;
+  return `
+    <div class="page-head"><div><span class="eyebrow">Admin</span><h1>Edit Return Details</h1></div></div>
+    ${editReturnError ? `<div class="alert alert-error">${escapeHtml(editReturnError)}</div>` : ''}
+    <div class="panel panel-pad" style="max-width:800px;">
+      <form id="editReturnForm">
+        <div class="form-grid">
+          <div class="field"><label>Qty Returned</label><input type="number" min="0" max="${issue.qtyIssued}" id="er_qty" value="${issue.qtyReturned || 0}" required /></div>
+          <div class="field"><label>Return Date</label><input type="date" id="er_date" value="${escapeHtml(issue.returnDate || todayStr())}" required /></div>
+          <div class="field"><label>Condition</label><select id="er_condition">${['Good','Worn','Needs Repair','Damaged','Lost'].map(c => `<option ${issue.conditionOnReturn === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+          <div class="field full">
+            ${issue.returnPhotoUrl ? `<label>Current Return Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.returnPhotoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="er_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted" style="font-size:12px;">No return photo on file.</div>'}
+          </div>
+          <div class="field"><label>Replace Photo (optional)</label><input type="file" id="er_photo" accept="image/*" /></div>
+          <div class="field full" id="er_photoPreviewWrap" style="display:none;"><img id="er_photoPreview" style="max-width:200px; border-radius:8px;" /><button type="button" class="btn btn-ghost btn-sm" id="er_photoClear" style="margin-top:8px;">Remove Selection</button></div>
+          <div class="field full"><label>Remarks</label><textarea id="er_remarks">${escapeHtml(issue.remarks || '')}</textarea></div>
+        </div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary" id="editReturnSubmitBtn">Save</button><button type="button" class="btn btn-ghost" data-nav="register">Cancel</button></div>
+      </form>
+    </div>`;
 }
 
 let toolFormError = '';
 function renderToolsAdmin() {
   const tools = [...toolsCache].sort((a, b) => a.toolName.localeCompare(b.toolName));
-  return `<div class="page-head"><div><span class="eyebrow">Inventory</span><h1>Tool Master List</h1></div></div>
+  return `
+    <div class="page-head"><div><span class="eyebrow">Inventory</span><h1>Tool Master List</h1></div></div>
     ${toolFormError ? `<div class="alert alert-error">${escapeHtml(toolFormError)}</div>` : ''}
-    <div class="panel"><div class="table-wrap"><table class="reg"><thead><tr><th>Code</th><th>Name</th><th>Spec</th><th>Category</th><th>Unit</th><th>Stock</th><th>Loc</th><th>Act</th></tr></thead>
-          <tbody>${tools.map((t) => `<tr data-tool-row="${t.id}"><td class="mono tag">${escapeHtml(t.toolCode)}</td><td><input type="text" data-field="toolName" value="${escapeHtml(t.toolName)}"></td><td><input type="text" data-field="specification" value="${escapeHtml(t.specification)}"></td><td><input type="text" data-field="category" value="${escapeHtml(t.category)}"></td><td><select data-field="unit">${['Nos','Set','Pair','Box','Kit'].map((u) => `<option ${t.unit === u ? 'selected' : ''}>${u}</option>`).join('')}</select></td><td><input type="number" min="0" data-field="totalStock" value="${t.totalStock}"></td><td><input type="text" data-field="storageLocation" value="${escapeHtml(t.storageLocation)}"></td><td style="display:flex;gap:4px;"><button class="btn btn-dark btn-sm" data-save-tool="${t.id}">Sav</button><button class="btn btn-danger btn-sm" data-delete-tool="${t.id}">Del</button></td></tr>`).join('')}</tbody></table></div></div>
-    <div class="panel panel-pad" style="margin-top:24px;"><h2>Add New Tool</h2><form id="newToolForm"><div class="form-grid"><div class="field"><label>Tool Code</label><input type="text" id="nt_code" required /></div><div class="field"><label>Name</label><input type="text" id="nt_name" required /></div><div class="field"><label>Stock</label><input type="number" min="0" id="nt_stock" required /></div><div class="field"><label>Unit</label><select id="nt_unit"><option>Nos</option><option>Set</option><option>Pair</option></select></div></div><div class="actions-row"><button type="submit" class="btn btn-primary">Add Tool</button></div></form></div>`;
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="reg">
+          <thead><tr><th>Code</th><th>Name</th><th>Spec</th><th>Category</th><th>Unit</th><th>Stock</th><th>Location</th><th>Action</th></tr></thead>
+          <tbody>
+            ${tools.map((t) => `<tr data-tool-row="${t.id}">
+                <td class="mono tag">${escapeHtml(t.toolCode)}</td>
+                <td><input type="text" data-field="toolName" value="${escapeHtml(t.toolName)}"></td>
+                <td><input type="text" data-field="specification" value="${escapeHtml(t.specification)}"></td>
+                <td><input type="text" data-field="category" value="${escapeHtml(t.category)}"></td>
+                <td><select data-field="unit">${['Nos','Set','Pair','Box','Kit'].map((u) => `<option ${t.unit === u ? 'selected' : ''}>${u}</option>`).join('')}</select></td>
+                <td><input type="number" min="0" data-field="totalStock" value="${t.totalStock}"></td>
+                <td><input type="text" data-field="storageLocation" value="${escapeHtml(t.storageLocation)}"></td>
+                <td style="display:flex;gap:6px;"><button class="btn btn-dark btn-sm" data-save-tool="${t.id}">Save</button><button class="btn btn-danger btn-sm" data-delete-tool="${t.id}">Del</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel panel-pad" style="margin-top:24px;">
+      <h2>Add New Tool</h2>
+      <form id="newToolForm" style="margin-top:20px;">
+        <div class="form-grid">
+          <div class="field"><label>Tool Code</label><input type="text" id="nt_code" required /></div>
+          <div class="field"><label>Tool Name</label><input type="text" id="nt_name" required /></div>
+          <div class="field"><label>Stock Qty</label><input type="number" min="0" id="nt_stock" required /></div>
+          <div class="field"><label>Unit</label><select id="nt_unit"><option>Nos</option><option>Set</option><option>Pair</option></select></div>
+        </div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary">Add Tool</button></div>
+      </form>
+    </div>`;
 }
 
+let userFormError = '';
 function renderUsersAdmin() {
-  return `<div class="page-head"><div><span class="eyebrow">Admin</span><h1>Users</h1></div></div>
+  return `
+    <div class="page-head"><div><span class="eyebrow">Admin</span><h1>Users</h1></div></div>
+    ${userFormError ? `<div class="alert alert-error">${escapeHtml(userFormError)}</div>` : ''}
     <div id="requestsHolder" class="panel" style="margin-bottom:24px;"><div class="panel-head"><h2>Pending Requests</h2></div><div class="panel-pad"><span class="spinner"></span></div></div>
     <div id="usersTableHolder" class="panel" style="margin-bottom:24px;"><div class="panel-pad"><span class="spinner"></span></div></div>
-    <div class="panel panel-pad"><h2>Add Account</h2><form id="newUserForm"><div class="form-grid"><div class="field"><label>Username</label><input type="text" id="nu_username" required /></div><div class="field"><label>Name</label><input type="text" id="nu_fullname" required /></div><div class="field full"><label>Password</label><input type="password" id="nu_password" required /></div></div><div class="actions-row"><button type="submit" class="btn btn-primary">Create Account</button></div></form></div>`;
+    <div class="panel panel-pad">
+      <h2 style="margin-bottom:20px;">Create Account</h2>
+      <form id="newUserForm">
+        <div class="form-grid">
+          <div class="field"><label>Username</label><input type="text" id="nu_username" autocapitalize="none" required /></div>
+          <div class="field"><label>Full Name</label><input type="text" id="nu_fullname" required /></div>
+          <div class="field full"><label>Password</label><input type="password" id="nu_password" required minlength="4" /></div>
+          <div class="field full"><label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" id="nu_toolAuth" style="width:auto;"/> Grant Tool Master Edit Authority</label></div>
+        </div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary">Create Account</button></div>
+      </form>
+    </div>`;
+}
+
+function renderSettingsAdmin() {
+  return `
+    <div class="page-head"><div><span class="eyebrow">Admin</span><h1>System Settings</h1></div></div>
+    <div class="panel" style="margin-bottom:24px;">
+      <div class="panel-head"><h2>Cloud Sync</h2></div>
+      <div class="panel-pad">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;"><span class="sync-dot ${cloudConnected ? 'sync-dot-good' : 'sync-dot-bad'}"></span><span style="font-weight:700;">${cloudConnected ? 'Connected' : 'Disconnected'}</span></div>
+        <button class="btn btn-ghost" id="refreshSyncStatusBtn">Refresh</button>
+      </div>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Storage Usage</h2></div><div class="panel-pad" id="storageUsageHolder"><span class="spinner"></span> Calculating...</div></div>`;
+}
+
+function renderStorageUsage() {
+  const holder = $('#storageUsageHolder'); if (!holder) return;
+  const LIMIT_KB = 1024 * 1024; 
+  let usersKB = 0;
+  get(ref(db, 'users')).then((snap) => { const v=snap.val(); usersKB = v?new Blob([JSON.stringify(v)]).size/1024:0; }).catch(()=>{})
+  .finally(() => {
+    const k1 = new Blob([JSON.stringify(toolsCache)]).size/1024;
+    const k2 = new Blob([JSON.stringify(issuesCache)]).size/1024;
+    const usedKB = k1 + k2 + usersKB; const pct = Math.min(100, (usedKB/LIMIT_KB)*100);
+    holder.innerHTML = `<div class="storage-bar-wrap"><div class="storage-bar-track"><div class="storage-bar-fill" style="width:${pct}%;background:var(--brand-primary);"></div></div><div style="display:flex;justify-content:space-between;font-size:12px;margin-top:8px;color:var(--slate-500);"><span>${usedKB.toFixed(2)} KB used</span><span>${pct.toFixed(2)}% of 1GB free</span></div></div>`;
+  });
 }
 
 /* =========================================================================
-   5. PHOTO UPLOAD UTILITY & EVENT OPERATIONS
+   EVENT WIRING & DATA OPERATIONS
    ========================================================================= */
-let fileRegistry = { f: null, ei: null, r: null, er: null };
 
-// FIX: Robust Upload with a hard 15-second timeout
-async function robustUpload(file, path) {
-  if (!storage) throw new Error("Storage unavailable");
-  const fileRef = storageRef(storage, path);
-  const uploadTask = uploadBytes(fileRef, file);
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out.")), 15000));
-  await Promise.race([uploadTask, timeout]);
-  return await getDownloadURL(fileRef);
-}
+// Photo State Management
+let selectedPhotos = { f: null, ei: null, r: null, er: null };
 
 function handlePhotoSelect(e, prefix) {
   const file = e.target.files && e.target.files[0];
   if (!file) { handlePhotoClear(prefix); return; }
   if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
   if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB.'); e.target.value = ''; return; }
-  fileRegistry[prefix] = file;
+  
+  selectedPhotos[prefix] = file;
   const reader = new FileReader();
   reader.onload = () => { $(`#${prefix}_photoPreview`).src = reader.result; $(`#${prefix}_photoPreviewWrap`).style.display = 'block'; };
   reader.readAsDataURL(file);
 }
 
 function handlePhotoClear(prefix) {
-  fileRegistry[prefix] = null; const input = $(`#${prefix}_photo`);
-  if (input) input.value = ''; $(`#${prefix}_photoPreviewWrap`).style.display = 'none';
+  selectedPhotos[prefix] = null;
+  const input = $(`#${prefix}_photo`);
+  if (input) input.value = '';
+  $(`#${prefix}_photoPreviewWrap`).style.display = 'none';
+}
+
+async function uploadPhoto(file, path) {
+  if (!storage) throw new Error("Storage not initialized");
+  const fileRef = storageRef(storage, path);
+  const uploadTask = uploadBytes(fileRef, file);
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out.")), 15000));
+  await Promise.race([uploadTask, timeout]);
+  return await getDownloadURL(fileRef);
 }
 
 function wireViewEvents(viewId) {
@@ -535,53 +717,88 @@ function wireViewEvents(viewId) {
     $('#regStatus')?.addEventListener('change', (e) => { registerFilterState.status = e.target.value; render(); });
     $('#regYear')?.addEventListener('change', (e) => { registerFilterState.year = e.target.value; render(); });
     $('#regMonth')?.addEventListener('change', (e) => { registerFilterState.month = e.target.value; render(); });
-    $('#regClear')?.addEventListener('click', () => { registerFilterState = { q: '', status: 'all', month: 'all', year: 'all' }; render(); });
+    
     $$('[data-return]').forEach((btn) => btn.addEventListener('click', () => { returnFormTargetId = btn.dataset.return; returnFormError = ''; navigateTo('return-record'); }));
-    $$('[data-delete-issue]').forEach((btn) => btn.addEventListener('click', () => { if (confirm('Delete?')) deleteIssue(btn.dataset.deleteIssue); }));
+    $$('[data-delete-issue]').forEach((btn) => btn.addEventListener('click', () => { if (confirm('Delete this register entry permanently?')) deleteIssue(btn.dataset.deleteIssue); }));
     $$('[data-edit-return]').forEach((btn) => btn.addEventListener('click', () => { editReturnTargetId = btn.dataset.editReturn; editReturnError = ''; navigateTo('edit-return'); }));
     $$('[data-edit-issue]').forEach((btn) => btn.addEventListener('click', () => { editIssueTargetId = btn.dataset.editIssue; editIssueError = ''; navigateTo('edit-issue'); }));
   }
 
-  if (viewId === 'issue-new') { $('#issueForm').addEventListener('submit', handleIssueSubmit); $('#f_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'f')); $('#f_photoClear').addEventListener('click', () => handlePhotoClear('f')); }
-  if (viewId === 'edit-issue') { $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit); $('#ei_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'ei')); $('#ei_photoClear').addEventListener('click', () => handlePhotoClear('ei')); }
-  if (viewId === 'return-record') { $('#returnForm').addEventListener('submit', handleReturnSubmit); $('#r_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'r')); $('#r_photoClear').addEventListener('click', () => handlePhotoClear('r')); }
-  if (viewId === 'edit-return') { $('#editReturnForm').addEventListener('submit', handleEditReturnSubmit); $('#er_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'er')); $('#er_photoClear').addEventListener('click', () => handlePhotoClear('er')); }
-  if (viewId === 'tools-admin') { $('#newToolForm').addEventListener('submit', handleNewToolSubmit); $$('[data-save-tool]').forEach((btn) => btn.addEventListener('click', () => handleSaveTool(btn.dataset.saveTool))); $$('[data-delete-tool]').forEach((btn) => btn.addEventListener('click', () => handleDeleteTool(btn.dataset.deleteTool))); }
-  if (viewId === 'users-admin') { $('#newUserForm').addEventListener('submit', handleNewUserSubmit); loadRequestsTable(); loadUsersTable(); }
+  if (viewId === 'issue-new') {
+    $('#issueForm').addEventListener('submit', handleIssueSubmit);
+    $('#f_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'f'));
+    $('#f_photoClear').addEventListener('click', () => handlePhotoClear('f'));
+  }
+  if (viewId === 'edit-issue') {
+    $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit);
+    $('#ei_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'ei'));
+    $('#ei_photoClear').addEventListener('click', () => handlePhotoClear('ei'));
+  }
+  if (viewId === 'return-record') {
+    $('#returnForm').addEventListener('submit', handleReturnSubmit);
+    $('#r_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'r'));
+    $('#r_photoClear').addEventListener('click', () => handlePhotoClear('r'));
+  }
+  if (viewId === 'edit-return') {
+    $('#editReturnForm').addEventListener('submit', handleEditReturnSubmit);
+    $('#er_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'er'));
+    $('#er_photoClear').addEventListener('click', () => handlePhotoClear('er'));
+  }
+
+  if (viewId === 'tools-admin') {
+    $('#newToolForm').addEventListener('submit', handleNewToolSubmit);
+    $$('[data-save-tool]').forEach((btn) => btn.addEventListener('click', () => handleSaveTool(btn.dataset.saveTool)));
+    $$('[data-delete-tool]').forEach((btn) => btn.addEventListener('click', () => handleDeleteTool(btn.dataset.deleteTool)));
+  }
+  if (viewId === 'users-admin') {
+    $('#newUserForm').addEventListener('submit', handleNewUserSubmit);
+    loadRequestsTable(); loadUsersTable();
+  }
+  if (viewId === 'settings-admin') { renderStorageUsage(); $('#refreshSyncStatusBtn')?.addEventListener('click', render); }
 }
 
+// Issue Submit
 async function handleIssueSubmit(e) {
   e.preventDefault(); issueFormError = '';
-  const btn = $('#issueSubmitBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  const payload = {
+    materialName: $('#f_material').value.trim(), qtyIssued: parseInt($('#f_qty').value, 10),
+    vendor: $('#f_vendor').value.trim(), area: $('#f_area').value.trim(), issueDate: $('#f_issueDate').value,
+    supervisorName: $('#f_supervisorName').value.trim(), supervisorContact: $('#f_supervisorContact').value.trim(),
+    empCode: $('#f_empCode').value.trim(), remarks: $('#f_remarks').value.trim(),
+    returnDate: null, qtyReturned: 0, conditionOnReturn: null,
+    issuedBy: currentUser.username, issuedByName: currentUser.fullName,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  };
+  
+  const btn = $('#issueSubmitBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  
   try {
     const newRef = push(ref(db, 'issues'));
-    let pUrl = null, pPath = null;
-    if (fileRegistry['f'] && storage) {
+    
+    if (selectedPhotos['f'] && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
-      const ext = fileRegistry['f'].name.split('.').pop() || 'jpg';
-      pPath = `issue-photos/${newRef.key}.${ext}`;
-      pUrl = await robustUpload(fileRegistry['f'], pPath);
+      const ext = selectedPhotos['f'].name.split('.').pop() || 'jpg';
+      const path = `issue-photos/${newRef.key}.${ext}`;
+      payload.photoUrl = await uploadPhoto(selectedPhotos['f'], path);
+      payload.photoPath = path;
     }
-    await set(newRef, {
-      materialName: $('#f_material').value.trim(), qtyIssued: parseInt($('#f_qty').value, 10),
-      vendor: $('#f_vendor').value.trim(), area: $('#f_area').value.trim(), issueDate: $('#f_issueDate').value,
-      supervisorName: $('#f_supervisorName').value.trim(), supervisorContact: $('#f_supervisorContact').value.trim(),
-      empCode: $('#f_empCode').value.trim(), remarks: $('#f_remarks').value.trim(),
-      returnDate: null, qtyReturned: 0, conditionOnReturn: null,
-      issuedBy: currentUser.username, issuedByName: currentUser.fullName,
-      photoUrl: pUrl, photoPath: pPath,
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-    });
-    handlePhotoClear('f'); navigateTo('register');
+
+    await set(newRef, payload);
+    selectedPhotos['f'] = null;
+    navigateTo('register');
   } catch (err) { issueFormError = err.message; render(); }
 }
 
+// Edit Issue Submit
 async function handleEditIssueSubmit(e) {
   e.preventDefault(); editIssueError = '';
   const issue = issuesCache.find((i) => i.id === editIssueTargetId); if (!issue) return;
   const qty = parseInt($('#ei_qty').value, 10);
   if (qty < (issue.qtyReturned || 0)) { editIssueError = 'Quantity issued cannot be less than returned.'; return render(); }
-  const btn = $('#editIssueSubmitBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  
+  const btn = $('#editIssueSubmitBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   
   try {
     const updates = {
@@ -589,76 +806,99 @@ async function handleEditIssueSubmit(e) {
       area: $('#ei_area').value.trim(), issueDate: $('#ei_issueDate').value, supervisorName: $('#ei_supervisorName').value.trim(),
       supervisorContact: $('#ei_supervisorContact').value.trim(), empCode: $('#ei_empCode').value.trim(), remarks: $('#ei_remarks').value.trim(), updatedAt: serverTimestamp()
     };
-    const newPhoto = fileRegistry['ei']; const deleteOld = $('#ei_deleteCurrentPhoto')?.checked || false;
 
-    if ((newPhoto || deleteOld) && issue.photoPath && storage) {
+    const newPhoto = selectedPhotos['ei'];
+    const wantsDeleted = $('#ei_deleteCurrentPhoto')?.checked || false;
+
+    if ((newPhoto || wantsDeleted) && issue.photoPath && storage) {
       try { await deleteObject(storageRef(storage, issue.photoPath)); } catch(_) {}
-      if (deleteOld && !newPhoto) { updates.photoUrl = null; updates.photoPath = null; }
+      if (wantsDeleted && !newPhoto) { updates.photoUrl = null; updates.photoPath = null; }
     }
+
     if (newPhoto && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
       const ext = newPhoto.name.split('.').pop() || 'jpg';
-      const pPath = `issue-photos/${issue.id}.${ext}`;
-      updates.photoUrl = await robustUpload(newPhoto, pPath); updates.photoPath = pPath;
+      const path = `issue-photos/${issue.id}.${ext}`;
+      updates.photoUrl = await uploadPhoto(newPhoto, path);
+      updates.photoPath = path;
     }
+
     await update(ref(db, 'issues/' + issue.id), updates);
-    handlePhotoClear('ei'); navigateTo('register');
+    selectedPhotos['ei'] = null;
+    navigateTo('register');
   } catch (err) { editIssueError = err.message; render(); }
 }
 
+// Return Submit
 async function handleReturnSubmit(e) {
   e.preventDefault(); returnFormError = '';
   const issue = issuesCache.find((i) => i.id === returnFormTargetId); if (!issue) return;
+  const qty = parseInt($('#r_qty').value, 10);
+  
   const btn = document.querySelector('#returnForm button[type="submit"]');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
   
   try {
     const updates = {
-      returnDate: $('#r_date').value, qtyReturned: (issue.qtyReturned || 0) + parseInt($('#r_qty').value, 10),
+      returnDate: $('#r_date').value, qtyReturned: (issue.qtyReturned || 0) + qty,
       conditionOnReturn: $('#r_condition').value, remarks: $('#r_remarks').value.trim(),
       updatedAt: serverTimestamp(), returnedAt: serverTimestamp()
     };
-    if (fileRegistry['r'] && storage) {
-      btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
-      const ext = fileRegistry['r'].name.split('.').pop() || 'jpg';
-      const pPath = `return-photos/${issue.id}.${ext}`;
-      updates.returnPhotoUrl = await robustUpload(fileRegistry['r'], pPath); updates.returnPhotoPath = pPath;
+
+    if (selectedPhotos['r'] && storage) {
+      if (btn) btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
+      const ext = selectedPhotos['r'].name.split('.').pop() || 'jpg';
+      const path = `return-photos/${issue.id}.${ext}`;
+      updates.returnPhotoUrl = await uploadPhoto(selectedPhotos['r'], path);
+      updates.returnPhotoPath = path;
     }
+
     await update(ref(db, 'issues/' + issue.id), updates);
-    handlePhotoClear('r'); navigateTo('register');
+    selectedPhotos['r'] = null;
+    navigateTo('register');
   } catch (err) { returnFormError = err.message; render(); }
 }
 
+// Edit Return Submit
 async function handleEditReturnSubmit(e) {
   e.preventDefault(); editReturnError = '';
   const issue = issuesCache.find((i) => i.id === editReturnTargetId); if (!issue) return;
-  const btn = $('#editReturnSubmitBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+  
+  const btn = $('#editReturnSubmitBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
   
   try {
     const updates = {
       returnDate: $('#er_date').value, qtyReturned: parseInt($('#er_qty').value, 10),
       conditionOnReturn: $('#er_condition').value, remarks: $('#er_remarks').value.trim(), updatedAt: serverTimestamp()
     };
-    const newPhoto = fileRegistry['er']; const deleteOld = $('#er_deleteCurrentPhoto')?.checked || false;
 
-    if ((newPhoto || deleteOld) && issue.returnPhotoPath && storage) {
+    const newPhoto = selectedPhotos['er'];
+    const wantsDeleted = $('#er_deleteCurrentPhoto')?.checked || false;
+
+    if ((newPhoto || wantsDeleted) && issue.returnPhotoPath && storage) {
       try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch(_) {}
-      if (deleteOld && !newPhoto) { updates.returnPhotoUrl = null; updates.returnPhotoPath = null; }
+      if (wantsDeleted && !newPhoto) { updates.returnPhotoUrl = null; updates.returnPhotoPath = null; }
     }
+
     if (newPhoto && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
       const ext = newPhoto.name.split('.').pop() || 'jpg';
-      const pPath = `return-photos/${issue.id}.${ext}`;
-      updates.returnPhotoUrl = await robustUpload(newPhoto, pPath); updates.returnPhotoPath = pPath;
+      const path = `return-photos/${issue.id}.${ext}`;
+      updates.returnPhotoUrl = await uploadPhoto(newPhoto, path);
+      updates.returnPhotoPath = path;
     }
+
     await update(ref(db, 'issues/' + issue.id), updates);
-    handlePhotoClear('er'); navigateTo('register');
+    selectedPhotos['er'] = null;
+    navigateTo('register');
   } catch (err) { editReturnError = err.message; render(); }
 }
 
 async function deleteIssue(id) {
   try {
-    const issue = issuesCache.find((i) => i.id === id); await remove(ref(db, 'issues/' + id));
+    const issue = issuesCache.find((i) => i.id === id);
+    await remove(ref(db, 'issues/' + id));
     if (storage && issue) {
       if (issue.photoPath) { try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {} }
       if (issue.returnPhotoPath) { try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {} }
@@ -666,16 +906,63 @@ async function deleteIssue(id) {
   } catch (err) { alert(err.message); }
 }
 
-async function handleNewToolSubmit(e) { e.preventDefault(); try { await push(ref(db, 'tools'), { toolCode: $('#nt_code').value.trim(), toolName: $('#nt_name').value.trim(), unit: $('#nt_unit').value, totalStock: parseInt($('#nt_stock').value, 10), createdAt: serverTimestamp() }); navigateTo('tools-admin'); } catch (err) { toolFormError = err.message; render(); } }
-async function handleSaveTool(id) { const row = document.querySelector(`[data-tool-row="${id}"]`); if (!row) return; const v = (f) => row.querySelector(`[data-field="${f}"]`)?.value || ''; try { await update(ref(db, 'tools/' + id), { toolName: v('toolName'), specification: v('specification'), category: v('category'), unit: v('unit'), totalStock: parseInt(v('totalStock'), 10), storageLocation: v('storageLocation') }); } catch (err) { alert(err.message); } }
-async function handleDeleteTool(id) { if (confirm('Delete?')) { try { await remove(ref(db, 'tools/' + id)); } catch (e) { alert(e.message); } } }
+// Tool Handlers
+async function handleNewToolSubmit(e) {
+  e.preventDefault();
+  try {
+    await push(ref(db, 'tools'), { toolCode: $('#nt_code').value.trim(), toolName: $('#nt_name').value.trim(), unit: $('#nt_unit').value, totalStock: parseInt($('#nt_stock').value, 10), createdAt: serverTimestamp() });
+    navigateTo('tools-admin');
+  } catch (err) { toolFormError = err.message; render(); }
+}
 
-async function loadRequestsTable() { const h = $('#requestsHolder .panel-pad'); if(!h)return; try { const s = await get(ref(db, 'accessRequests')); const reqs = snapshotToArray(s); updatePendingRequestsNavBadge(reqs.length); h.innerHTML = reqs.length===0 ? '<div class="empty-state">No pending requests</div>' : reqs.map(r => `<div style="display:flex;justify-content:space-between;padding:12px;background:#f8f9fa;border:1px solid #ddd;border-radius:8px;margin-bottom:8px;"><div><strong>${escapeHtml(r.fullName)}</strong><br><span class="muted">${escapeHtml(r.id)}</span></div><div><button class="btn btn-primary btn-sm" onclick="approveReq('${r.id}')">Approve</button> <button class="btn btn-danger btn-sm" onclick="rejectReq('${r.id}')">Reject</button></div></div>`).join(''); } catch(e) { h.innerHTML = 'Error'; } }
-window.approveReq = async (id) => { const r = await get(ref(db, 'accessRequests/'+id)); if(!r.exists()) return; await set(ref(db, 'users/'+id), { ...r.val(), toolStockAuth: false, createdAt: serverTimestamp() }); await remove(ref(db, 'accessRequests/'+id)); loadRequestsTable(); loadUsersTable(); };
+async function handleSaveTool(id) {
+  const row = document.querySelector(`[data-tool-row="${id}"]`); if (!row) return;
+  const v = (f) => row.querySelector(`[data-field="${f}"]`)?.value || '';
+  try { await update(ref(db, 'tools/' + id), { toolName: v('toolName'), specification: v('specification'), category: v('category'), unit: v('unit'), totalStock: parseInt(v('totalStock'), 10), storageLocation: v('storageLocation') }); } catch (err) { alert(err.message); }
+}
+
+async function handleDeleteTool(id) {
+  if (confirm('Delete?')) { try { await remove(ref(db, 'tools/' + id)); } catch (e) { alert(e.message); } }
+}
+
+// Admin User Handlers
+async function loadRequestsTable() {
+  const p = $('#requestsHolder .panel-pad'); if(!p)return;
+  try {
+    const s = await get(ref(db, 'accessRequests')); const reqs = snapshotToArray(s);
+    updatePendingRequestsNavBadge(reqs.length);
+    p.innerHTML = reqs.length===0 ? '<div class="empty-state">No pending requests</div>' : reqs.map(r => `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:8px;margin-bottom:8px;"><div><strong>${escapeHtml(r.fullName)}</strong><br><span class="muted">${escapeHtml(r.id)}</span></div><div><button class="btn btn-primary btn-sm" onclick="approveReq('${r.id}')">Approve</button> <button class="btn btn-danger btn-sm" onclick="rejectReq('${r.id}')">Reject</button></div></div>`).join('');
+  } catch(e) { p.innerHTML = 'Error loading requests.'; }
+}
+
+window.approveReq = async (id) => {
+  const r = await get(ref(db, 'accessRequests/'+id)); if(!r.exists()) return;
+  await set(ref(db, 'users/'+id), { ...r.val(), toolStockAuth: false, createdAt: serverTimestamp() });
+  await remove(ref(db, 'accessRequests/'+id)); loadRequestsTable(); loadUsersTable();
+};
 window.rejectReq = async (id) => { if(confirm('Reject?')){ await remove(ref(db, 'accessRequests/'+id)); loadRequestsTable(); }};
-async function loadUsersTable() { const h = $('#usersTableHolder .panel-pad'); if(!h)return; try { const s = await get(ref(db, 'users')); const us = snapshotToArray(s); h.innerHTML = `<table class="reg"><thead><tr><th>User</th><th>Name</th><th>Action</th></tr></thead><tbody>${us.map(u => `<tr><td class="mono">${escapeHtml(u.id)}</td><td>${escapeHtml(u.fullName)}</td><td><button class="btn btn-danger btn-sm" onclick="delUser('${u.id}')">Del</button></td></tr>`).join('')}</tbody></table>`; } catch(e) { h.innerHTML = 'Error'; } }
+
+async function loadUsersTable() {
+  const h = $('#usersTableHolder .panel-pad'); if(!h)return;
+  try {
+    const s = await get(ref(db, 'users')); const us = snapshotToArray(s);
+    h.innerHTML = `<table class="reg"><thead><tr><th>User</th><th>Name</th><th>Tool Auth</th><th>Action</th></tr></thead><tbody>${us.map(u => `<tr><td class="mono">${escapeHtml(u.id)}</td><td>${escapeHtml(u.fullName)}</td><td><input type="checkbox" onchange="updAuth('${u.id}', this.checked)" ${u.toolStockAuth?'checked':''}></td><td><button class="btn btn-danger btn-sm" onclick="delUser('${u.id}')">Del</button></td></tr>`).join('')}</tbody></table>`;
+  } catch(e) { h.innerHTML = 'Error loading users.'; }
+}
+
+window.updAuth = async (id, val) => { await update(ref(db, 'users/'+id), {toolStockAuth: val}); };
 window.delUser = async (id) => { if(confirm('Delete user?')){ await remove(ref(db, 'users/'+id)); loadUsersTable(); }};
-async function handleNewUserSubmit(e) { e.preventDefault(); const id = $('#nu_username').value.trim(); if (id.toLowerCase() === ADMIN_USERNAME) return alert('Reserved username'); try { const ex = await get(ref(db, 'users/'+id)); if(ex.exists()) return alert('Username exists'); await set(ref(db, 'users/'+id), { fullName: $('#nu_fullname').value.trim(), password: $('#nu_password').value, createdAt: serverTimestamp() }); $('#newUserForm').reset(); loadUsersTable(); } catch(err) { alert(err.message); } }
+
+async function handleNewUserSubmit(e) {
+  e.preventDefault();
+  const id = $('#nu_username').value.trim();
+  if (id.toLowerCase() === ADMIN_USERNAME) return alert('Reserved username');
+  try {
+    const ex = await get(ref(db, 'users/'+id)); if(ex.exists()) return alert('Username exists');
+    await set(ref(db, 'users/'+id), { fullName: $('#nu_fullname').value.trim(), password: $('#nu_password').value, toolStockAuth: $('#nu_toolAuth').checked, createdAt: serverTimestamp() });
+    $('#newUserForm').reset(); loadUsersTable();
+  } catch(err) { alert(err.message); }
+}
 </script>
 </body>
 </html>
