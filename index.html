@@ -7,94 +7,53 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
 <style>
 :root {
-  --steel-950: #14181d;
-  --steel-900: #1b2128;
-  --steel-800: #242b33;
-  --steel-700: #323b46;
-  --steel-600: #475160;
-  --steel-300: #aab4c0;
-  --steel-100: #e7eaee;
-  --steel-50:  #f7f8fa;
-  --amber: #e8a23a;
-  --amber-dark: #c9821f;
-  --amber-soft: #fbe6c4;
-  --good: #3f8c5a;
-  --good-soft: #dff0e3;
-  --warn: #c9821f;
-  --warn-soft: #fbe9cf;
-  --bad: #b14a3f;
-  --bad-soft: #f7dfdb;
-  --radius: 10px;
-  --radius-sm: 7px;
-  --radius-lg: 16px;
+  --steel-950: #14181d; --steel-900: #1b2128; --steel-800: #242b33; --steel-700: #323b46;
+  --steel-600: #475160; --steel-300: #aab4c0; --steel-100: #e7eaee; --steel-50:  #f7f8fa;
+  --amber: #e8a23a; --amber-dark: #c9821f; --amber-soft: #fbe6c4;
+  --good: #3f8c5a; --good-soft: #dff0e3; --warn: #c9821f; --warn-soft: #fbe9cf;
+  --bad: #b14a3f; --bad-soft: #f7dfdb;
+  --radius: 10px; --radius-sm: 7px; --radius-lg: 16px;
   --shadow-xs: 0 1px 2px rgba(20,24,29,0.05);
   --shadow: 0 1px 3px rgba(20,24,29,0.06), 0 6px 16px rgba(20,24,29,0.06);
   --shadow-lg: 0 4px 6px rgba(20,24,29,0.05), 0 16px 36px rgba(20,24,29,0.10);
   --shadow-focus: 0 0 0 3px rgba(232,162,58,0.22);
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--steel-900);
-  background: linear-gradient(180deg, var(--steel-50) 0%, #eef0f3 100%);
-  font-size: 15px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-h1, h2, h3, .display {
-  font-family: 'Barlow Condensed', 'Inter', sans-serif;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  color: var(--steel-950);
-}
-.mono, code, .tool-code, .qty { font-family: 'IBM Plex Mono', monospace; }
-a { color: var(--amber-dark); text-decoration: none; }
-a:hover { text-decoration: underline; }
+* { box-sizing: border-box; } html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; color: var(--steel-900); background: linear-gradient(180deg, var(--steel-50) 0%, #eef0f3 100%); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .display { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; text-transform: uppercase; color: var(--steel-950); }
+.mono, .qty { font-family: 'IBM Plex Mono', monospace; }
+a { color: var(--amber-dark); text-decoration: none; } a:hover { text-decoration: underline; }
 .hidden { display: none !important; }
 
 /* Topbar */
 .topbar { background: rgba(20,24,29,0.97); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.06); box-shadow: 0 1px 0 var(--amber), 0 8px 24px rgba(0,0,0,0.18); position: sticky; top: 0; z-index: 50; }
 .topbar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; gap: 28px; padding: 0 24px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 8px; color: var(--steel-50); font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: 0.04em; white-space: nowrap; }
-.brand-mark { color: var(--amber); font-size: 22px; display: inline-block; transform: translateY(-1px); transition: transform 0.4s var(--ease-out); }
-.brand:hover .brand-mark { transform: translateY(-1px) rotate(45deg); }
+.brand-mark { color: var(--amber); font-size: 22px; transition: transform 0.4s var(--ease); }
+.brand:hover .brand-mark { transform: rotate(45deg); }
 .brand-text strong { color: var(--amber); font-weight: 800; }
 .nav { display: flex; gap: 3px; flex: 1; }
-.nav button.navlink {
-  background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif;
-  color: var(--steel-300); font-size: 13.5px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.04em; padding: 9px 14px; border-radius: 999px; transition: background 0.2s var(--ease), color 0.2s var(--ease), transform 0.15s var(--ease);
-}
+.nav button.navlink { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; color: var(--steel-300); font-size: 13.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 14px; border-radius: 999px; transition: all 0.2s var(--ease); }
 .nav button.navlink:hover { color: #fff; background: rgba(255,255,255,0.08); }
-.nav button.navlink:active { transform: scale(0.97); }
 .nav button.navlink.active { color: var(--steel-950); background: var(--amber); box-shadow: 0 2px 8px rgba(232,162,58,0.35); }
 .who { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 .who-name { color: var(--steel-100); font-size: 13.5px; font-weight: 600; }
-.who-role { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 9px; border-radius: 999px; font-weight: 600; }
-.who-role.role-admin { background: var(--amber-soft); color: #6b4716; }
-.who-role.role-user { background: var(--steel-700); color: var(--steel-100); }
+.who-role { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; font-weight: 600; }
+.who-role.role-admin { background: var(--amber-soft); color: #6b4716; } .who-role.role-user { background: var(--steel-700); color: var(--steel-100); }
 
 .status-bar { background: rgba(0,0,0,0.18); border-top: 1px solid rgba(255,255,255,0.06); }
 .status-bar-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 5px 24px; gap: 14px; }
 .status-sync { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--steel-300); font-weight: 600; }
 .status-sync .sync-dot { width: 7px; height: 7px; border-radius: 50%; }
-.status-clock { font-size: 11.5px; color: var(--steel-300); letter-spacing: 0.02em; }
-.link-btn { background: none; border: none; color: var(--steel-300); font-size: 13px; cursor: pointer; font-family: inherit; padding: 6px 4px; transition: color 0.2s var(--ease); }
+.status-clock { font-size: 11.5px; color: var(--steel-300); }
+.link-btn { background: none; border: none; color: var(--steel-300); font-size: 13px; cursor: pointer; padding: 6px 4px; transition: color 0.2s; }
 .link-btn:hover { color: var(--amber); text-decoration: underline; }
 
 /* Layout */
-.app-main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 64px; animation: viewFadeIn 0.35s var(--ease-out); }
+.app-main { max-width: 1280px; margin: 0 auto; padding: 32px 24px 64px; animation: viewFadeIn 0.35s var(--ease); }
 @keyframes viewFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.auth-main { min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 20% 20%, rgba(232,162,58,0.12), transparent 45%),
-  radial-gradient(circle at 85% 80%, rgba(63,140,90,0.08), transparent 40%),
-  linear-gradient(160deg, var(--steel-950) 0%, var(--steel-900) 55%, var(--steel-800) 100%); padding: 24px; }
+.auth-main { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 20% 20%, rgba(232,162,58,0.12), transparent 45%), linear-gradient(160deg, var(--steel-950) 0%, var(--steel-900) 55%, var(--steel-800) 100%); padding: 24px; }
 
 .page-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
 .page-head h1 { font-size: 26px; margin: 0; }
@@ -108,24 +67,18 @@ a:hover { text-decoration: underline; }
 .panel-head h2 { font-size: 16px; margin: 0; }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 28px; }
-.kpi { background: #fff; border: 1px solid #e8eaed; border-left: 3px solid var(--steel-600); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease); }
+.kpi { background: #fff; border: 1px solid #e8eaed; border-left: 3px solid var(--steel-600); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); transition: transform 0.25s var(--ease); }
 .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.kpi.amber { border-left-color: var(--amber); } .kpi.good { border-left-color: var(--good); }
-.kpi.warn { border-left-color: var(--warn); } .kpi.bad { border-left-color: var(--bad); }
+.kpi.warn { border-left-color: var(--warn); } .kpi.good { border-left-color: var(--good); }
 .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--steel-600); font-weight: 600; margin-bottom: 6px; }
 .kpi-value { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 32px; color: var(--steel-950); line-height: 1; }
 
 .table-wrap { overflow-x: auto; }
 table.reg { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 table.reg th { background: var(--steel-950); color: var(--steel-100); text-align: left; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; white-space: nowrap; }
-table.reg th:first-child { border-radius: var(--radius-lg) 0 0 0; }
-table.reg th:last-child { border-radius: 0 var(--radius-lg) 0 0; }
-table.reg td { padding: 11px 12px; border-bottom: 1px solid #eef0f2; vertical-align: middle; white-space: nowrap; transition: background 0.15s var(--ease); }
+table.reg td { padding: 11px 12px; border-bottom: 1px solid #eef0f2; vertical-align: middle; white-space: nowrap; transition: background 0.15s; }
 table.reg td input, table.reg td select { min-width: 90px; }
-table.reg tbody tr { transition: background 0.15s var(--ease); }
-table.reg tbody tr:hover { background: #fdf9f0; }
-table.reg tbody tr:nth-child(even) { background: #fafbfc; }
-table.reg tbody tr:nth-child(even):hover { background: #fdf9f0; }
+table.reg tbody tr { transition: background 0.15s; } table.reg tbody tr:hover { background: #fdf9f0; }
 
 .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 4px 10px; border-radius: 999px; }
 .badge.good { background: var(--good-soft); color: #1f5c34; }
@@ -136,106 +89,58 @@ table.reg tbody tr:nth-child(even):hover { background: #fdf9f0; }
 .form-grid .full { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--steel-600); }
-input, select, textarea {
-  font-family: 'Inter', sans-serif; font-size: 14.5px; padding: 11px 13px; border: 1.5px solid #dde1e6;
-  border-radius: var(--radius); background: #fff; color: var(--steel-900); width: 100%;
-  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
-}
-input:hover, select:hover, textarea:hover { border-color: #c5cad1; }
+input, select, textarea { font-family: 'Inter', sans-serif; font-size: 14.5px; padding: 11px 13px; border: 1.5px solid #dde1e6; border-radius: var(--radius); background: #fff; width: 100%; transition: border-color 0.2s; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--amber-dark); box-shadow: var(--shadow-focus); }
 textarea { resize: vertical; min-height: 70px; }
 
-.btn { display: inline-flex; align-items: center; gap: 6px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.03em; padding: 11px 20px; border-radius: var(--radius); border: none; cursor: pointer; transition: transform 0.15s var(--ease-out), filter 0.2s var(--ease), box-shadow 0.2s var(--ease); }
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-primary { background: var(--amber); color: var(--steel-950); box-shadow: 0 2px 8px rgba(232,162,58,0.3); }
-.btn-primary:hover { filter: brightness(1.06); box-shadow: 0 4px 14px rgba(232,162,58,0.4); transform: translateY(-1px); }
-.btn-dark { background: var(--steel-950); color: #fff; }
-.btn-dark:hover { filter: brightness(1.3); transform: translateY(-1px); }
-.btn-ghost { background: transparent; color: var(--steel-700); border: 1.5px solid #dde1e6; }
-.btn-ghost:hover { background: var(--steel-50); border-color: #c5cad1; }
-.btn-danger { background: var(--bad-soft); color: #7a2c23; }
-.btn-danger:hover { filter: brightness(0.97); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.03em; padding: 11px 20px; border-radius: var(--radius); border: none; cursor: pointer; transition: transform 0.1s, filter 0.2s; }
+.btn:active { transform: scale(0.97); } .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary { background: var(--amber); color: var(--steel-950); box-shadow: 0 2px 8px rgba(232,162,58,0.3); } .btn-primary:hover { filter: brightness(1.06); }
+.btn-dark { background: var(--steel-950); color: #fff; } .btn-dark:hover { filter: brightness(1.3); }
+.btn-ghost { background: transparent; color: var(--steel-700); border: 1.5px solid #dde1e6; } .btn-ghost:hover { background: var(--steel-50); border-color: #c5cad1; }
+.btn-danger { background: var(--bad-soft); color: #7a2c23; } .btn-danger:hover { filter: brightness(0.97); }
 .btn-sm { padding: 6px 12px; font-size: 11.5px; }
 
 .actions-row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
 .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-.filter-bar input[type="text"] { min-width: 220px; width: auto; }
-.filter-bar select { width: auto; }
+.filter-bar input[type="text"] { min-width: 220px; width: auto; } .filter-bar select { width: auto; }
 
 .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13.5px; margin-bottom: 16px; font-weight: 500; }
 .alert-error { background: var(--bad-soft); color: #7a2c23; border: 1px solid #e3b6af; }
 .alert-info { background: var(--amber-soft); color: #6b4716; border: 1px solid #e9cb95; }
-.alert-good { background: var(--good-soft); color: #1f5c34; border: 1px solid #b9dcc3; }
 
 .empty-state { text-align: center; padding: 50px 20px; color: var(--steel-600); }
 .empty-state .display { font-size: 20px; margin-bottom: 8px; color: var(--steel-700); }
 
-.auth-card { width: 100%; max-width: 408px; background: #fff; border-radius: var(--radius-lg); padding: 38px 36px 32px; box-shadow: 0 24px 70px rgba(0,0,0,0.4), 0 2px 0 var(--amber); animation: authCardIn 0.5s var(--ease-out); }
-@keyframes authCardIn { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.auth-card .brand { color: var(--steel-950); justify-content: center; margin-bottom: 4px; font-size: 17px; }
+/* Login Box */
+.auth-card { width: 100%; max-width: 408px; background: #fff; border-radius: var(--radius-lg); padding: 38px 36px 32px; box-shadow: 0 24px 70px rgba(0,0,0,0.4), 0 2px 0 var(--amber); }
+.auth-card .brand { justify-content: center; margin-bottom: 4px; font-size: 17px; color: var(--steel-950); }
 .auth-sub { text-align: center; color: var(--steel-600); font-size: 13px; margin-bottom: 18px; }
-.login-sync-row { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--steel-600); font-weight: 600; margin-bottom: 22px; padding: 8px 12px; background: var(--steel-50); border-radius: 999px; }
+.login-sync-row { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 600; margin-bottom: 22px; padding: 8px 12px; background: var(--steel-50); border-radius: 999px; }
 .login-sync-row .sync-dot { width: 8px; height: 8px; border-radius: 50%; }
 .auth-card form { display: flex; flex-direction: column; gap: 14px; }
-.auth-card .btn { justify-content: center; margin-top: 6px; }
-.auth-toggle { text-align: center; font-size: 13px; color: var(--steel-600); margin-top: 16px; }
-.auth-toggle button { background: none; border: none; color: var(--amber-dark); font-weight: 600; cursor: pointer; font-size: 13px; text-decoration: underline; padding: 0; transition: color 0.2s var(--ease); }
-.auth-toggle button:hover { color: var(--amber); }
-.auth-hint { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11.5px; color: var(--steel-600); line-height: 1.6; }
 .request-link-row { text-align: center; margin-top: 18px; }
-.request-link-row button { background: none; border: none; color: var(--steel-600); font-size: 12.5px; cursor: pointer; font-family: inherit; padding: 4px; transition: color 0.2s var(--ease); }
-.request-link-row button:hover { color: var(--amber-dark); }
-
-.tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; background: var(--steel-100); color: var(--steel-700); padding: 2px 7px; border-radius: 4px; }
-.muted { color: var(--steel-600); }
-.qty-pending { color: var(--warn); font-weight: 700; }
-
-.sync-status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-.sync-dot-good { background: var(--good); box-shadow: 0 0 0 4px var(--good-soft); animation: pulseDot 2.4s ease-in-out infinite; }
-.sync-dot-bad { background: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
-@keyframes pulseDot { 0%, 100% { box-shadow: 0 0 0 4px var(--good-soft); } 50% { box-shadow: 0 0 0 7px rgba(63,140,90,0.12); } }
-.sync-status-label { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 17px; text-transform: uppercase; letter-spacing: 0.02em; }
-.kv-grid { display: flex; flex-direction: column; border-top: 1px solid #ebedf0; margin-top: 6px; }
-.kv-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #ebedf0; font-size: 13.5px; }
-.kv-key { color: var(--steel-600); font-weight: 600; flex-shrink: 0; }
-
-.storage-bar-wrap { margin-bottom: 20px; }
-.storage-bar-track { width: 100%; height: 14px; border-radius: 999px; background: var(--steel-100); overflow: hidden; }
-.storage-bar-fill { height: 100%; border-radius: 999px; transition: width 0.6s var(--ease-out); }
-.storage-legend { display: flex; flex-direction: column; gap: 9px; }
-.storage-legend-row { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
-.storage-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.request-link-row button { background: none; border: none; color: var(--steel-600); font-size: 12.5px; cursor: pointer; text-decoration: underline; }
+.auth-hint { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11.5px; color: var(--steel-600); text-align: center; }
 
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.12); border-top-color: var(--steel-950); border-radius: 50%; animation: spin 0.65s linear infinite; vertical-align: -2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Mobile */
 @media (max-width: 760px) {
   .topbar-inner { flex-wrap: wrap; height: auto; padding: 10px 14px 8px; gap: 10px; justify-content: space-between; }
-  .nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .nav::-webkit-scrollbar { display: none; }
+  .brand { font-size: 16px; }
+  .nav { order: 3; width: 100%; overflow-x: auto; padding-bottom: 2px; }
   .nav button.navlink { padding: 9px 13px; font-size: 12.5px; flex-shrink: 0; }
-  .who { gap: 8px; overflow-x: auto; flex-shrink: 1; justify-content: flex-end; }
-  .who-name { display: none; }
-  .status-bar-inner { padding: 5px 14px; flex-wrap: wrap; gap: 4px 12px; }
-  
-  .app-main { padding: 18px 14px 48px; }
-  .page-head h1 { font-size: 21px; }
-  .page-head .btn { width: 100%; justify-content: center; }
-
+  .who { gap: 8px; overflow-x: auto; justify-content: flex-end; } .who-name { display: none; }
+  .app-main { padding: 18px 14px 48px; } .page-head h1 { font-size: 21px; }
   .form-grid { grid-template-columns: 1fr; gap: 14px; }
-  .panel-pad { padding: 16px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  input, select, textarea { font-size: 16px; } /* Prevent iOS zoom */
+  .btn { width: 100%; } .actions-row { flex-direction: column; }
+  .filter-bar { flex-direction: column; align-items: stretch; } .filter-bar input[type="text"], .filter-bar select { width: 100%; }
   
-  input, select, textarea { font-size: 16px; padding: 12px 13px; }
-  .btn { width: 100%; justify-content: center; padding: 13px 18px; }
-  .actions-row { flex-direction: column; }
-  .filter-bar { flex-direction: column; align-items: stretch; }
-  .filter-bar input[type="text"] { width: 100%; }
-
-  .auth-main { padding: 16px; align-items: flex-start; padding-top: 48px; }
-  .auth-card { padding: 28px 22px 24px; max-width: 100%; }
-
+  /* Stack Tables for Mobile */
   table.reg, table.reg thead, table.reg tbody, table.reg th, table.reg td, table.reg tr { display: block; }
   table.reg thead { display: none; }
   table.reg tr { background: #fff; border: 1px solid #e8eaed; border-radius: var(--radius); margin-bottom: 12px; padding: 4px 14px; box-shadow: var(--shadow-xs); }
@@ -243,10 +148,10 @@ textarea { resize: vertical; min-height: 70px; }
   table.reg td:last-child { border-bottom: none; }
   table.reg td::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--steel-600); text-align: left; flex-shrink: 0; }
   table.reg td:empty::before { content: none; }
-  table.reg td:has(input), table.reg td:has(select) { flex-direction: column; align-items: stretch; gap: 6px; }
-  table.reg td:has(button) { justify-content: flex-end; }
-  table.reg td:has(button) .btn { width: auto; }
+  table.reg td:has(button) { justify-content: flex-end; flex-wrap: wrap; } table.reg td:has(button) .btn { width: auto; flex: 1;}
 }
+.sync-dot-good { background: var(--good); box-shadow: 0 0 0 4px var(--good-soft); }
+.sync-dot-bad { background: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
 </style>
 </head>
 <body>
@@ -255,12 +160,7 @@ textarea { resize: vertical; min-height: 70px; }
   <div class="auth-card">
     <div class="brand"><span class="brand-mark">⚙</span><span class="brand-text">CMM SMS <strong>STORE</strong></span></div>
     <div class="auth-sub">Issue &amp; Return Register</div>
-
-    <div id="loginSyncStatus" class="login-sync-row">
-      <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
-      <span id="loginSyncLabel">Checking cloud connection…</span>
-    </div>
-
+    <div id="loginSyncStatus" class="login-sync-row"><span class="sync-dot sync-dot-bad" id="loginSyncDot"></span><span id="loginSyncLabel">Checking cloud connection…</span></div>
     <div id="authError" class="alert alert-error hidden"></div>
     <div id="authInfo" class="alert alert-info hidden"></div>
 
@@ -276,12 +176,8 @@ textarea { resize: vertical; min-height: 70px; }
       <div class="field"><label>Desired Password</label><input type="password" id="reqPassword" required minlength="4" /></div>
       <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
     </form>
-
-    <div class="request-link-row">
-      <button type="button" id="showRequestForm">Need access? Request an account →</button>
-      <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
-    </div>
-    <div class="auth-hint" id="authHintText">Staff accounts require Admin approval before logging in.</div>
+    <div class="request-link-row"><button type="button" id="showRequestForm">Need access? Request an account</button><button type="button" id="showLoginForm" class="hidden">← Back to log in</button></div>
+    <div class="auth-hint">Staff accounts require Admin approval.</div>
   </div>
 </div>
 
@@ -292,12 +188,7 @@ textarea { resize: vertical; min-height: 70px; }
       <nav class="nav" id="navLinks"></nav>
       <div class="who"><span class="who-name" id="whoName"></span><span class="who-role" id="whoRole"></span><button class="link-btn" id="logoutBtn">Log out</button></div>
     </div>
-    <div class="status-bar">
-      <div class="status-bar-inner">
-        <span class="status-sync"><span class="sync-dot sync-dot-bad" id="appSyncDot"></span><span id="appSyncLabel">Checking…</span></span>
-        <span class="status-clock mono" id="appClock"></span>
-      </div>
-    </div>
+    <div class="status-bar"><div class="status-bar-inner"><span class="status-sync"><span class="sync-dot sync-dot-bad" id="appSyncDot"></span><span id="appSyncLabel">Checking…</span></span><span class="status-clock mono" id="appClock"></span></div></div>
   </header>
   <main class="app-main" id="appMain"></main>
 </div>
@@ -308,8 +199,8 @@ import { getDatabase, ref, get, set, push, update, remove, onValue, serverTimest
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 // =========================================================================
-// 1. FIREBASE CONFIGURATION
-// FIX: Changed storageBucket to .appspot.com to prevent silent CORS timeouts
+// 1. FIREBASE CONFIG
+// FIX: Using .appspot.com for bucket to fix silent CORS / Upload hangs
 // =========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyARRGKgQ_R_RFi40KXnhdmt6VZrVHVHgc0",
@@ -321,15 +212,15 @@ const firebaseConfig = {
   appId: "1:184487310656:web:58be210595a80dfdbdf6a5"
 };
 
-let currentUser = null, toolsCache = [], issuesCache = [], unsubTools = null, unsubIssues = null, unsubRequests = null, currentView = 'dashboard';
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+let currentUser = null, toolsCache = [], issuesCache = [], unsubTools = null, unsubIssues = null;
+let currentView = 'dashboard';
+const $ = (sel) => document.querySelector(sel); const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 const escapeHtml = (s) => (s ?? '').toString().replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function showScreen(id) { ['authScreen', 'appScreen'].forEach((s) => { $('#' + s).classList.toggle('hidden', s !== id); }); }
 
-let app, db, storage, cloudSyncOk = false, lastSyncedAt = null, appBootstrapped = false, clockStarted = false, cloudConnected = false, clockInterval = null;
-const ADMIN_USERNAME = 'admin', ADMIN_PASSWORD = 'admin', SESSION_KEY = 'mechtools_session';
+let app, db, storage, cloudSyncOk = false, appBootstrapped = false, cloudConnected = false, clockInterval = null;
+const ADMIN_USERNAME = 'admin', ADMIN_PASSWORD = 'admin', SESSION_KEY = 'cmm_session';
 
 // =========================================================================
 // 2. CORE BOOTSTRAP & LOGIN
@@ -342,21 +233,13 @@ function startApp() {
 }
 
 function attemptFirebaseInit() {
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-    try { storage = getStorage(app); } catch (e) { storage = null; }
-  } catch (err) { console.error('Firebase init error:', err); return; }
+  try { app = initializeApp(firebaseConfig); db = getDatabase(app); try { storage = getStorage(app); } catch (e) { storage = null; } } 
+  catch (err) { console.error('Init error:', err); return; }
 
   onValue(ref(db, '.info/connected'), (snap) => {
-    const connected = snap.val() === true;
-    cloudConnected = connected;
-    if (connected) {
-      lastSyncedAt = new Date();
-      if (!appBootstrapped) { appBootstrapped = true; if (currentUser) listenToCollections(); }
-    }
+    const connected = snap.val() === true; cloudConnected = connected;
+    if (connected && !appBootstrapped) { appBootstrapped = true; if (currentUser) listenToCollections(); }
     updateLoginSyncIndicator(connected);
-    if (currentView === 'settings-admin') render();
   });
 }
 
@@ -364,19 +247,14 @@ function updateLoginSyncIndicator(connected) {
   const dot = $('#loginSyncDot'), label = $('#loginSyncLabel');
   if (dot && label) { dot.className = 'sync-dot ' + (connected ? 'sync-dot-good' : 'sync-dot-bad'); label.textContent = connected ? 'Cloud connected — login enabled' : 'Cloud sync unavailable'; }
   const loginBtn = $('#loginBtn'), reqBtn = $('#reqSubmitBtn');
-  if (loginBtn) loginBtn.disabled = !connected;
-  if (reqBtn) reqBtn.disabled = !connected;
+  if (loginBtn) loginBtn.disabled = !connected; if (reqBtn) reqBtn.disabled = !connected;
   const appDot = $('#appSyncDot'), appLabel = $('#appSyncLabel');
   if (appDot && appLabel) { appDot.className = 'sync-dot ' + (connected ? 'sync-dot-good' : 'sync-dot-bad'); appLabel.textContent = connected ? 'Cloud Connected' : 'Disconnected'; }
 }
 
 function startLiveClock() {
-  const clockEl = $('#appClock'); if (!clockEl) return;
-  if (clockInterval) clearInterval(clockInterval); 
-  const tick = () => {
-    const el = $('#appClock'); if (!el) { clearInterval(clockInterval); clockStarted = false; return; }
-    el.textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
+  const clockEl = $('#appClock'); if (!clockEl) return; if (clockInterval) clearInterval(clockInterval); 
+  const tick = () => { const el = $('#appClock'); if (!el) { clearInterval(clockInterval); return; } el.textContent = new Date().toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
   tick(); clockInterval = setInterval(tick, 1000); 
 }
 
@@ -384,12 +262,11 @@ function saveSession(user) { try { sessionStorage.setItem(SESSION_KEY, JSON.stri
 function loadSession() { try { const raw = sessionStorage.getItem(SESSION_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function clearSession() { try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {} }
 
-function clearAuthMessages() { $('#authError').classList.add('hidden'); $('#authInfo').classList.add('hidden'); }
 function showAuthError(msg) { $('#authInfo').classList.add('hidden'); $('#authError').textContent = msg; $('#authError').classList.remove('hidden'); }
 function showAuthInfo(msg) { $('#authError').classList.add('hidden'); $('#authInfo').textContent = msg; $('#authInfo').classList.remove('hidden'); }
 
 $('#loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault(); clearAuthMessages();
+  e.preventDefault(); $('#authError').classList.add('hidden'); $('#authInfo').classList.add('hidden');
   if (!cloudConnected) return showAuthError('Cloud sync is not connected.');
   const username = $('#loginUsername').value.trim(), password = $('#loginPassword').value, btn = $('#loginBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Logging in…';
@@ -409,20 +286,17 @@ $('#loginForm').addEventListener('submit', async (e) => {
 $('#logoutBtn').addEventListener('click', () => {
   if (unsubTools) { unsubTools(); unsubTools = null; }
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
-  if (unsubRequests) { unsubRequests(); unsubRequests = null; }
   currentUser = null; clearSession(); showScreen('authScreen');
 });
 
-$('#showRequestForm').addEventListener('click', () => { clearAuthMessages(); $('#loginForm').classList.add('hidden'); $('#requestForm').classList.remove('hidden'); $('#showRequestForm').classList.add('hidden'); $('#showLoginForm').classList.remove('hidden'); });
-$('#showLoginForm').addEventListener('click', () => { clearAuthMessages(); $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden'); $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden'); });
+$('#showRequestForm').addEventListener('click', () => { $('#authError').classList.add('hidden'); $('#loginForm').classList.add('hidden'); $('#requestForm').classList.remove('hidden'); $('#showRequestForm').classList.add('hidden'); $('#showLoginForm').classList.remove('hidden'); });
+$('#showLoginForm').addEventListener('click', () => { $('#authError').classList.add('hidden'); $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden'); $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden'); });
 
 $('#requestForm').addEventListener('submit', async (e) => {
-  e.preventDefault(); clearAuthMessages();
-  if (!cloudConnected) return showAuthError('Cloud sync is not connected.');
+  e.preventDefault(); $('#authError').classList.add('hidden');
   const fullName = $('#reqFullName').value.trim(), username = $('#reqUsername').value.trim(), password = $('#reqPassword').value, btn = $('#reqSubmitBtn');
   if (username.toLowerCase() === ADMIN_USERNAME) return showAuthError(`Username unavailable.`);
   if (/[.#$\[\]\/\s'"]/.test(username)) return showAuthError('Username contains invalid characters.');
-
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…';
   try {
     if ((await get(ref(db, 'users/' + username))).exists()) return showAuthError('Username is already taken.');
@@ -441,44 +315,22 @@ startApp();
 function initTopbar() {
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
   $('#whoRole').textContent = currentUser.role; $('#whoRole').className = 'who-role role-' + currentUser.role;
-  updateLoginSyncIndicator(cloudConnected); if (!clockStarted) { startLiveClock(); clockStarted = true; }
-
+  updateLoginSyncIndicator(cloudConnected); startLiveClock(); 
   const nav = $('#navLinks');
-  const links = currentUser.role === 'admin'
-    ? [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['tools-admin', 'Tools'], ['users-admin', 'Users'], ['settings-admin', 'Settings']]
-    : [['dashboard', 'Dashboard'], ['register', 'Register'], ['issue-new', 'New Issue'], ...(currentUser.toolStockAuth ? [['tools-admin', 'Tools']] : [])];
-
+  const links = currentUser.role === 'admin' ? [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['tools-admin', 'Tools'], ['users-admin', 'Users']] : [['dashboard', 'Dashboard'], ['register', 'Register'], ['issue-new', 'New Issue'], ...(currentUser.toolStockAuth ? [['tools-admin', 'Tools']] : [])];
   nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
   nav.querySelectorAll('.navlink').forEach((btn) => btn.addEventListener('click', () => navigateTo(btn.dataset.view)));
-
-  if (currentUser.role === 'admin') {
-    if (unsubRequests) { unsubRequests(); unsubRequests = null; }
-    unsubRequests = onValue(ref(db, 'accessRequests'), (snap) => {
-      const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-      const navBtn = document.querySelector('.navlink[data-view="users-admin"]');
-      if (!navBtn) return;
-      const existing = navBtn.querySelector('.pending-count-dot'); if (existing) existing.remove();
-      if (count > 0) { const dot = document.createElement('span'); dot.className = 'pending-count-dot'; dot.textContent = count; navBtn.appendChild(dot); }
-    });
-  }
 }
 
 function navigateTo(viewId) { currentView = viewId; $$('.navlink').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId)); render(); }
 function snapshotToArray(snap) { const val = snap.val(); return !val ? [] : Object.keys(val).map((key) => ({ id: key, ...val[key] })); }
 
-// FIX: Do not re-render active forms when background data updates to prevent losing typed work
+// FIX: Do not auto-refresh active forms when background data updates to prevent losing typed work
 function listenToCollections() {
   if (unsubTools) unsubTools(); if (unsubIssues) unsubIssues();
   const formViews = ['issue-new', 'edit-issue', 'return-record', 'edit-return'];
-  
-  unsubTools = onValue(ref(db, 'tools'), (snap) => { 
-    toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || '')); 
-    if (!formViews.includes(currentView)) render(); 
-  });
-  unsubIssues = onValue(ref(db, 'issues'), (snap) => { 
-    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || '')); 
-    if (!formViews.includes(currentView)) render(); 
-  });
+  unsubTools = onValue(ref(db, 'tools'), (snap) => { toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || '')); if (!formViews.includes(currentView)) render(); });
+  unsubIssues = onValue(ref(db, 'issues'), (snap) => { issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || '')); if (!formViews.includes(currentView)) render(); });
 }
 
 function statusOf(issue) { return ((issue.qtyReturned || 0) >= issue.qtyIssued) ? 'Returned' : 'Issued'; }
@@ -486,34 +338,30 @@ function enrichedIssues() { return issuesCache.map((i) => { let dn = i.materialN
 
 function render() {
   if (!currentUser) return;
-  const main = $('#appMain');
-  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
+  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'edit-return'];
   if (currentUser.role !== 'admin' && currentView === 'tools-admin' && !currentUser.toolStockAuth) currentView = 'dashboard';
   if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
   if (currentUser.role === 'admin' && ['dashboard'].includes(currentView)) currentView = 'admin-dashboard';
-
-  const views = { 'dashboard': renderUserDashboard, 'admin-dashboard': renderAdminDashboard, 'register': renderRegister, 'issue-new': renderIssueForm, 'tools-admin': renderToolsAdmin, 'users-admin': renderUsersAdmin, 'settings-admin': renderSettingsAdmin, 'return-record': renderReturnForm, 'edit-return': renderEditReturnForm, 'edit-issue': renderEditIssueForm };
-  main.innerHTML = (views[currentView] || renderUserDashboard)();
+  const views = { 'dashboard': renderUserDashboard, 'admin-dashboard': renderAdminDashboard, 'register': renderRegister, 'issue-new': renderIssueForm, 'tools-admin': renderToolsAdmin, 'users-admin': renderUsersAdmin, 'return-record': renderReturnForm, 'edit-return': renderEditReturnForm, 'edit-issue': renderEditIssueForm };
+  $('#appMain').innerHTML = (views[currentView] || renderUserDashboard)();
   wireViewEvents(currentView);
 }
-
-function statsSummary() { const issues = enrichedIssues(); return { total: issues.length, pending: issues.filter((i) => i.status === 'Issued').length, returned: issues.filter((i) => i.status === 'Returned').length }; }
 
 /* =========================================================================
    4. UI RENDERERS
    ========================================================================= */
 function renderUserDashboard() {
-  const s = statsSummary();
+  const is = enrichedIssues(); const pending = is.filter(i => i.status === 'Issued').length;
   return `<div class="page-head"><div><span class="eyebrow">Store Overview</span><h1>Dashboard</h1></div><button class="btn btn-primary" data-nav="issue-new">+ New Issue</button></div>
-    <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${s.total}</div></div><div class="kpi warn"><div class="kpi-label">Issued</div><div class="kpi-value">${s.pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${s.returned}</div></div></div>
+    <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${is.length}</div></div><div class="kpi warn"><div class="kpi-label">Issued</div><div class="kpi-value">${pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${is.length - pending}</div></div></div>
     <div class="panel panel-pad"><h2 style="margin-top:0;">Quick actions</h2><div class="actions-row"><button class="btn btn-dark" data-nav="issue-new">Log a New Issue</button><button class="btn btn-ghost" data-nav="register">View Full Register</button>${currentUser.toolStockAuth ? `<button class="btn btn-ghost" data-nav="tools-admin">Manage Tool Stock</button>` : ''}</div></div>`;
 }
 
 function renderAdminDashboard() {
-  const s = statsSummary();
+  const is = enrichedIssues(); const pending = is.filter(i => i.status === 'Issued').length;
   return `<div class="page-head"><div><span class="eyebrow">Administrator</span><h1>Admin Dashboard</h1></div></div>
-    <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${s.total}</div></div><div class="kpi warn"><div class="kpi-label">Pending Return</div><div class="kpi-value">${s.pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${s.returned}</div></div></div>
-    <div class="actions-row"><button class="btn btn-dark" data-nav="register">Manage Full Register</button><button class="btn btn-ghost" data-nav="users-admin">Manage Users</button><button class="btn btn-ghost" data-nav="settings-admin">Settings</button></div>`;
+    <div class="kpi-grid"><div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-value">${is.length}</div></div><div class="kpi warn"><div class="kpi-label">Pending Return</div><div class="kpi-value">${pending}</div></div><div class="kpi good"><div class="kpi-label">Returned</div><div class="kpi-value">${is.length - pending}</div></div></div>
+    <div class="actions-row"><button class="btn btn-dark" data-nav="register">Manage Full Register</button><button class="btn btn-ghost" data-nav="users-admin">Manage Users</button></div>`;
 }
 
 let registerFilterState = { q: '', status: 'all', month: 'all', year: 'all' };
@@ -521,7 +369,7 @@ function formatTimestamp(ms) { if (!ms || typeof ms !== 'number') return '—'; 
 
 function renderRegister() {
   const isAdmin = currentUser.role === 'admin'; let rows = enrichedIssues();
-  if (registerFilterState.q) { const needle = registerFilterState.q.toLowerCase(); rows = rows.filter((r) => (r.materialName||'').toLowerCase().includes(needle) || (r.vendor||'').toLowerCase().includes(needle) || (r.area||'').toLowerCase().includes(needle) || (r.supervisorName||'').toLowerCase().includes(needle) || (r.empCode||'').toLowerCase().includes(needle)); }
+  if (registerFilterState.q) { const n = registerFilterState.q.toLowerCase(); rows = rows.filter((r) => (r.materialName||'').toLowerCase().includes(n) || (r.vendor||'').toLowerCase().includes(n) || (r.area||'').toLowerCase().includes(n) || (r.supervisorName||'').toLowerCase().includes(n) || (r.empCode||'').toLowerCase().includes(n)); }
   if (registerFilterState.status !== 'all') rows = rows.filter((r) => r.status.replace(/\s/g, '').toLowerCase() === registerFilterState.status);
   if (registerFilterState.year !== 'all') rows = rows.filter(r => r.issueDate && r.issueDate.startsWith(registerFilterState.year));
   if (registerFilterState.month !== 'all') rows = rows.filter(r => { if (!r.issueDate) return false; return r.issueDate.split('-')[1] === registerFilterState.month; });
@@ -538,10 +386,13 @@ function renderRegister() {
         <table class="reg"><thead><tr><th>Material</th><th>Qty</th><th>Vendor</th><th>Area</th><th>Issue Date</th><th>Supervisor</th><th>Return Date</th><th>R-Qty</th><th>Rem</th><th>Cond</th><th>Status</th><th>Action</th></tr></thead>
           <tbody>${rows.map((r) => {
               const qtyR = r.qtyReturned || 0, qtyRem = r.qtyIssued - qtyR;
+              // FIX: Conditionally render links ONLY if URL exists
+              const issuePhotoHtml = r.photoUrl ? `<br><a href="${escapeHtml(r.photoUrl)}" target="_blank" style="font-size:11px; color: var(--amber-dark);">[View Photo]</a>` : '';
+              const returnPhotoHtml = r.returnPhotoUrl ? `<br><a href="${escapeHtml(r.returnPhotoUrl)}" target="_blank" style="font-size:11px; color: var(--amber-dark);">[View R-Photo]</a>` : '';
               return `<tr>
-                <td data-label="Material"><strong>${escapeHtml(r.materialName)}</strong><br><a href="${r.photoUrl||'#'}" target="_blank" style="font-size:11px;">[Photo]</a></td>
+                <td data-label="Material"><strong>${escapeHtml(r.materialName)}</strong>${issuePhotoHtml}</td>
                 <td class="qty" data-label="Qty Issued">${r.qtyIssued}</td><td data-label="Vendor">${escapeHtml(r.vendor)}</td><td data-label="Area">${escapeHtml(r.area)}</td><td class="mono" data-label="Issue Date">${escapeHtml(r.issueDate)}</td><td data-label="Supervisor">${escapeHtml(r.supervisorName)}</td>
-                <td class="mono" data-label="Return Date">${escapeHtml(r.returnDate) || '—'}<br><a href="${r.returnPhotoUrl||'#'}" target="_blank" style="font-size:11px;">[R-Photo]</a></td>
+                <td class="mono" data-label="Return Date">${escapeHtml(r.returnDate) || '—'}<br><span style="font-size:10px; color:#888;">${r.returnedAt ? formatTimestamp(r.returnedAt) : ''}</span>${returnPhotoHtml}</td>
                 <td class="qty" data-label="Qty Returned">${qtyR}</td><td class="qty ${qtyRem > 0 && r.status !== 'Returned' ? 'qty-pending' : ''}" data-label="Remaining">${qtyRem > 0 ? qtyRem : '—'}</td><td data-label="Condition">${escapeHtml(r.conditionOnReturn) || '—'}</td>
                 <td data-label="Status">${r.status === 'Returned' ? '<span class="badge good">Returned</span>' : '<span class="badge warn">Issued</span>'}</td>
                 <td data-label="Action" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
@@ -583,11 +434,11 @@ function renderEditIssueForm() {
       <div class="field"><label>Area</label><input type="text" id="ei_area" value="${escapeHtml(issue.area || '')}" required /></div>
       <div class="field"><label>Issue Date</label><input type="date" id="ei_issueDate" value="${escapeHtml(issue.issueDate)}" required /></div>
       <div class="field"><label>Supervisor Name</label><input type="text" id="ei_supervisorName" value="${escapeHtml(issue.supervisorName || '')}" required /></div>
-      <div class="field"><label>Supervisor Contact Number</label><input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" required /></div>
+      <div class="field"><label>Supervisor Contact</label><input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" required /></div>
       <div class="field"><label>Employee Code / Dept.</label><input type="text" id="ei_empCode" value="${escapeHtml(issue.empCode || '')}" /></div>
       
       <div class="field full">
-        ${issue.photoUrl ? `<label>Current Issue Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.photoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="ei_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted">No issue photo on file.</div>'}
+        ${issue.photoUrl ? `<label>Current Issue Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.photoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="ei_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted" style="font-size:12px;">No issue photo on file.</div>'}
       </div>
       <div class="field"><label>Replace Photo (optional)</label><input type="file" id="ei_photo" accept="image/*" /></div>
       <div class="field full" id="ei_photoPreviewWrap" style="display:none;"><img id="ei_photoPreview" style="max-width:220px; border-radius:10px; border:1px solid #ddd;" /><button type="button" class="btn btn-ghost btn-sm" id="ei_photoClear" style="margin-top:8px;">Remove Selection</button></div>
@@ -619,7 +470,7 @@ function renderEditReturnForm() {
       <div class="field"><label>Return Date</label><input type="date" id="er_date" value="${escapeHtml(issue.returnDate || todayStr())}" required /></div>
       <div class="field"><label>Condition on Return</label><select id="er_condition">${['Good','Worn','Needs Repair','Damaged','Lost'].map((c) => `<option ${issue.conditionOnReturn === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
       <div class="field full">
-        ${issue.returnPhotoUrl ? `<label>Current Return Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.returnPhotoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="er_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted">No return photo on file.</div>'}
+        ${issue.returnPhotoUrl ? `<label>Current Return Photo</label><div style="display:flex;gap:12px;align-items:center;"><img src="${escapeHtml(issue.returnPhotoUrl)}" style="max-width:120px;border-radius:6px;border:1px solid #ddd;" /><label style="color:#b14a3f;font-weight:normal;cursor:pointer;"><input type="checkbox" id="er_deleteCurrentPhoto"> Delete current photo</label></div>` : '<div class="muted" style="font-size:12px;">No return photo on file.</div>'}
       </div>
       <div class="field"><label>Replace Photo (optional)</label><input type="file" id="er_photo" accept="image/*" /></div>
       <div class="field full" id="er_photoPreviewWrap" style="display:none;"><img id="er_photoPreview" style="max-width:220px; border-radius:10px; border:1px solid #ddd;" /><button type="button" class="btn btn-ghost btn-sm" id="er_photoClear" style="margin-top:8px;">Remove Selection</button></div>
@@ -630,39 +481,31 @@ function renderEditReturnForm() {
 let toolFormError = '';
 function renderToolsAdmin() {
   const tools = [...toolsCache].sort((a, b) => a.toolName.localeCompare(b.toolName));
-  return `<div class="page-head"><div><span class="eyebrow">Inventory</span><h1>Tool Master</h1></div></div>
+  return `<div class="page-head"><div><span class="eyebrow">Inventory</span><h1>Tool Master List</h1></div></div>
     ${toolFormError ? `<div class="alert alert-error">${escapeHtml(toolFormError)}</div>` : ''}
     <div class="panel"><div class="table-wrap"><table class="reg"><thead><tr><th>Code</th><th>Name</th><th>Spec</th><th>Category</th><th>Unit</th><th>Stock</th><th>Loc</th><th>Act</th></tr></thead>
           <tbody>${tools.map((t) => `<tr data-tool-row="${t.id}"><td class="mono tag">${escapeHtml(t.toolCode)}</td><td><input type="text" data-field="toolName" value="${escapeHtml(t.toolName)}"></td><td><input type="text" data-field="specification" value="${escapeHtml(t.specification)}"></td><td><input type="text" data-field="category" value="${escapeHtml(t.category)}"></td><td><select data-field="unit">${['Nos','Set','Pair','Box','Kit'].map((u) => `<option ${t.unit === u ? 'selected' : ''}>${u}</option>`).join('')}</select></td><td><input type="number" min="0" data-field="totalStock" value="${t.totalStock}"></td><td><input type="text" data-field="storageLocation" value="${escapeHtml(t.storageLocation)}"></td><td style="display:flex;gap:4px;"><button class="btn btn-dark btn-sm" data-save-tool="${t.id}">Sav</button><button class="btn btn-danger btn-sm" data-delete-tool="${t.id}">Del</button></td></tr>`).join('')}</tbody></table></div></div>
-    <div class="panel panel-pad"><h2>Add New Tool</h2><form id="newToolForm"><div class="form-grid"><div class="field"><label>Tool Code</label><input type="text" id="nt_code" required /></div><div class="field"><label>Name</label><input type="text" id="nt_name" required /></div><div class="field"><label>Stock</label><input type="number" min="0" id="nt_stock" required /></div><div class="field"><label>Unit</label><select id="nt_unit"><option>Nos</option><option>Set</option></select></div></div><div class="actions-row"><button type="submit" class="btn btn-primary">Add Tool</button></div></form></div>`;
+    <div class="panel panel-pad" style="margin-top:24px;"><h2>Add New Tool</h2><form id="newToolForm"><div class="form-grid"><div class="field"><label>Tool Code</label><input type="text" id="nt_code" required /></div><div class="field"><label>Name</label><input type="text" id="nt_name" required /></div><div class="field"><label>Stock</label><input type="number" min="0" id="nt_stock" required /></div><div class="field"><label>Unit</label><select id="nt_unit"><option>Nos</option><option>Set</option><option>Pair</option></select></div></div><div class="actions-row"><button type="submit" class="btn btn-primary">Add Tool</button></div></form></div>`;
 }
 
-let userFormError = '';
 function renderUsersAdmin() {
-  return `<div class="page-head"><div><span class="eyebrow">Admin</span><h1>Users</h1></div></div>${userFormError ? `<div class="alert alert-error">${escapeHtml(userFormError)}</div>` : ''}
+  return `<div class="page-head"><div><span class="eyebrow">Admin</span><h1>Users</h1></div></div>
     <div id="requestsHolder" class="panel" style="margin-bottom:24px;"><div class="panel-head"><h2>Pending Requests</h2></div><div class="panel-pad"><span class="spinner"></span></div></div>
     <div id="usersTableHolder" class="panel" style="margin-bottom:24px;"><div class="panel-pad"><span class="spinner"></span></div></div>
     <div class="panel panel-pad"><h2>Add Account</h2><form id="newUserForm"><div class="form-grid"><div class="field"><label>Username</label><input type="text" id="nu_username" required /></div><div class="field"><label>Name</label><input type="text" id="nu_fullname" required /></div><div class="field full"><label>Password</label><input type="password" id="nu_password" required /></div></div><div class="actions-row"><button type="submit" class="btn btn-primary">Create Account</button></div></form></div>`;
 }
 
-function renderSettingsAdmin() { return `<div class="page-head"><div><span class="eyebrow">Admin</span><h1>Settings</h1></div></div><div class="panel"><div class="panel-head"><h2>Cloud Storage</h2></div><div class="panel-pad" id="storageUsageHolder"></div></div>`; }
-function renderStorageUsage() { const holder = $('#storageUsageHolder'); if (holder) holder.innerHTML = `<div class="muted">Storage calculation disabled for UI brevity. Check Firebase Console.</div>`; }
-
 /* =========================================================================
-   5. PHOTO UPLOAD UTILITY & DATA OPERATIONS
+   5. PHOTO UPLOAD UTILITY & EVENT OPERATIONS
    ========================================================================= */
-
-// Reusable variables for file inputs
 let fileRegistry = { f: null, ei: null, r: null, er: null };
 
-// FIX: Bulletproof upload with 15-second timeout to prevent infinite hangs
+// FIX: Robust Upload with a hard 15-second timeout
 async function robustUpload(file, path) {
-  if (!storage) throw new Error("Firebase Storage is not initialized.");
+  if (!storage) throw new Error("Storage unavailable");
   const fileRef = storageRef(storage, path);
-  
   const uploadTask = uploadBytes(fileRef, file);
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out. Ensure Firebase Storage is enabled and rules allow public writes.")), 15000));
-  
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Upload timed out.")), 15000));
   await Promise.race([uploadTask, timeout]);
   return await getDownloadURL(fileRef);
 }
@@ -672,7 +515,6 @@ function handlePhotoSelect(e, prefix) {
   if (!file) { handlePhotoClear(prefix); return; }
   if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
   if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB.'); e.target.value = ''; return; }
-  
   fileRegistry[prefix] = file;
   const reader = new FileReader();
   reader.onload = () => { $(`#${prefix}_photoPreview`).src = reader.result; $(`#${prefix}_photoPreviewWrap`).style.display = 'block'; };
@@ -680,10 +522,8 @@ function handlePhotoSelect(e, prefix) {
 }
 
 function handlePhotoClear(prefix) {
-  fileRegistry[prefix] = null;
-  const input = $(`#${prefix}_photo`);
-  if (input) input.value = '';
-  $(`#${prefix}_photoPreviewWrap`).style.display = 'none';
+  fileRegistry[prefix] = null; const input = $(`#${prefix}_photo`);
+  if (input) input.value = ''; $(`#${prefix}_photoPreviewWrap`).style.display = 'none';
 }
 
 function wireViewEvents(viewId) {
@@ -702,48 +542,26 @@ function wireViewEvents(viewId) {
     $$('[data-edit-issue]').forEach((btn) => btn.addEventListener('click', () => { editIssueTargetId = btn.dataset.editIssue; editIssueError = ''; navigateTo('edit-issue'); }));
   }
 
-  // Bind forms and standardized photo pickers
-  if (viewId === 'issue-new') {
-    $('#issueForm').addEventListener('submit', handleIssueSubmit);
-    $('#f_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'f'));
-    $('#f_photoClear').addEventListener('click', () => handlePhotoClear('f'));
-  }
-  if (viewId === 'edit-issue') {
-    $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit);
-    $('#ei_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'ei'));
-    $('#ei_photoClear').addEventListener('click', () => handlePhotoClear('ei'));
-  }
-  if (viewId === 'return-record') {
-    $('#returnForm').addEventListener('submit', handleReturnSubmit);
-    $('#r_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'r'));
-    $('#r_photoClear').addEventListener('click', () => handlePhotoClear('r'));
-  }
-  if (viewId === 'edit-return') {
-    $('#editReturnForm').addEventListener('submit', handleEditReturnSubmit);
-    $('#er_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'er'));
-    $('#er_photoClear').addEventListener('click', () => handlePhotoClear('er'));
-  }
-
+  if (viewId === 'issue-new') { $('#issueForm').addEventListener('submit', handleIssueSubmit); $('#f_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'f')); $('#f_photoClear').addEventListener('click', () => handlePhotoClear('f')); }
+  if (viewId === 'edit-issue') { $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit); $('#ei_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'ei')); $('#ei_photoClear').addEventListener('click', () => handlePhotoClear('ei')); }
+  if (viewId === 'return-record') { $('#returnForm').addEventListener('submit', handleReturnSubmit); $('#r_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'r')); $('#r_photoClear').addEventListener('click', () => handlePhotoClear('r')); }
+  if (viewId === 'edit-return') { $('#editReturnForm').addEventListener('submit', handleEditReturnSubmit); $('#er_photo').addEventListener('change', (e) => handlePhotoSelect(e, 'er')); $('#er_photoClear').addEventListener('click', () => handlePhotoClear('er')); }
   if (viewId === 'tools-admin') { $('#newToolForm').addEventListener('submit', handleNewToolSubmit); $$('[data-save-tool]').forEach((btn) => btn.addEventListener('click', () => handleSaveTool(btn.dataset.saveTool))); $$('[data-delete-tool]').forEach((btn) => btn.addEventListener('click', () => handleDeleteTool(btn.dataset.deleteTool))); }
   if (viewId === 'users-admin') { $('#newUserForm').addEventListener('submit', handleNewUserSubmit); loadRequestsTable(); loadUsersTable(); }
-  if (viewId === 'settings-admin') { renderStorageUsage(); }
 }
 
 async function handleIssueSubmit(e) {
   e.preventDefault(); issueFormError = '';
   const btn = $('#issueSubmitBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
-  
   try {
     const newRef = push(ref(db, 'issues'));
     let pUrl = null, pPath = null;
-
     if (fileRegistry['f'] && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
       const ext = fileRegistry['f'].name.split('.').pop() || 'jpg';
       pPath = `issue-photos/${newRef.key}.${ext}`;
       pUrl = await robustUpload(fileRegistry['f'], pPath);
     }
-
     await set(newRef, {
       materialName: $('#f_material').value.trim(), qtyIssued: parseInt($('#f_qty').value, 10),
       vendor: $('#f_vendor').value.trim(), area: $('#f_area').value.trim(), issueDate: $('#f_issueDate').value,
@@ -754,9 +572,7 @@ async function handleIssueSubmit(e) {
       photoUrl: pUrl, photoPath: pPath,
       createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     });
-
-    handlePhotoClear('f');
-    navigateTo('register');
+    handlePhotoClear('f'); navigateTo('register');
   } catch (err) { issueFormError = err.message; render(); }
 }
 
@@ -765,7 +581,6 @@ async function handleEditIssueSubmit(e) {
   const issue = issuesCache.find((i) => i.id === editIssueTargetId); if (!issue) return;
   const qty = parseInt($('#ei_qty').value, 10);
   if (qty < (issue.qtyReturned || 0)) { editIssueError = 'Quantity issued cannot be less than returned.'; return render(); }
-  
   const btn = $('#editIssueSubmitBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   
   try {
@@ -774,27 +589,20 @@ async function handleEditIssueSubmit(e) {
       area: $('#ei_area').value.trim(), issueDate: $('#ei_issueDate').value, supervisorName: $('#ei_supervisorName').value.trim(),
       supervisorContact: $('#ei_supervisorContact').value.trim(), empCode: $('#ei_empCode').value.trim(), remarks: $('#ei_remarks').value.trim(), updatedAt: serverTimestamp()
     };
+    const newPhoto = fileRegistry['ei']; const deleteOld = $('#ei_deleteCurrentPhoto')?.checked || false;
 
-    const newPhoto = fileRegistry['ei'];
-    const deleteOld = $('#ei_deleteCurrentPhoto')?.checked || false;
-
-    // Remove old photo if deleting or replacing
     if ((newPhoto || deleteOld) && issue.photoPath && storage) {
       try { await deleteObject(storageRef(storage, issue.photoPath)); } catch(_) {}
       if (deleteOld && !newPhoto) { updates.photoUrl = null; updates.photoPath = null; }
     }
-
     if (newPhoto && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
       const ext = newPhoto.name.split('.').pop() || 'jpg';
       const pPath = `issue-photos/${issue.id}.${ext}`;
-      updates.photoUrl = await robustUpload(newPhoto, pPath);
-      updates.photoPath = pPath;
+      updates.photoUrl = await robustUpload(newPhoto, pPath); updates.photoPath = pPath;
     }
-
     await update(ref(db, 'issues/' + issue.id), updates);
-    handlePhotoClear('ei');
-    navigateTo('register');
+    handlePhotoClear('ei'); navigateTo('register');
   } catch (err) { editIssueError = err.message; render(); }
 }
 
@@ -810,18 +618,14 @@ async function handleReturnSubmit(e) {
       conditionOnReturn: $('#r_condition').value, remarks: $('#r_remarks').value.trim(),
       updatedAt: serverTimestamp(), returnedAt: serverTimestamp()
     };
-
     if (fileRegistry['r'] && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
       const ext = fileRegistry['r'].name.split('.').pop() || 'jpg';
       const pPath = `return-photos/${issue.id}.${ext}`;
-      updates.returnPhotoUrl = await robustUpload(fileRegistry['r'], pPath);
-      updates.returnPhotoPath = pPath;
+      updates.returnPhotoUrl = await robustUpload(fileRegistry['r'], pPath); updates.returnPhotoPath = pPath;
     }
-
     await update(ref(db, 'issues/' + issue.id), updates);
-    handlePhotoClear('r');
-    navigateTo('register');
+    handlePhotoClear('r'); navigateTo('register');
   } catch (err) { returnFormError = err.message; render(); }
 }
 
@@ -835,33 +639,26 @@ async function handleEditReturnSubmit(e) {
       returnDate: $('#er_date').value, qtyReturned: parseInt($('#er_qty').value, 10),
       conditionOnReturn: $('#er_condition').value, remarks: $('#er_remarks').value.trim(), updatedAt: serverTimestamp()
     };
-
-    const newPhoto = fileRegistry['er'];
-    const deleteOld = $('#er_deleteCurrentPhoto')?.checked || false;
+    const newPhoto = fileRegistry['er']; const deleteOld = $('#er_deleteCurrentPhoto')?.checked || false;
 
     if ((newPhoto || deleteOld) && issue.returnPhotoPath && storage) {
       try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch(_) {}
       if (deleteOld && !newPhoto) { updates.returnPhotoUrl = null; updates.returnPhotoPath = null; }
     }
-
     if (newPhoto && storage) {
       btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
       const ext = newPhoto.name.split('.').pop() || 'jpg';
       const pPath = `return-photos/${issue.id}.${ext}`;
-      updates.returnPhotoUrl = await robustUpload(newPhoto, pPath);
-      updates.returnPhotoPath = pPath;
+      updates.returnPhotoUrl = await robustUpload(newPhoto, pPath); updates.returnPhotoPath = pPath;
     }
-
     await update(ref(db, 'issues/' + issue.id), updates);
-    handlePhotoClear('er');
-    navigateTo('register');
+    handlePhotoClear('er'); navigateTo('register');
   } catch (err) { editReturnError = err.message; render(); }
 }
 
 async function deleteIssue(id) {
   try {
-    const issue = issuesCache.find((i) => i.id === id);
-    await remove(ref(db, 'issues/' + id));
+    const issue = issuesCache.find((i) => i.id === id); await remove(ref(db, 'issues/' + id));
     if (storage && issue) {
       if (issue.photoPath) { try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {} }
       if (issue.returnPhotoPath) { try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {} }
@@ -869,7 +666,6 @@ async function deleteIssue(id) {
   } catch (err) { alert(err.message); }
 }
 
-// User and Tool management functions remained the same.
 async function handleNewToolSubmit(e) { e.preventDefault(); try { await push(ref(db, 'tools'), { toolCode: $('#nt_code').value.trim(), toolName: $('#nt_name').value.trim(), unit: $('#nt_unit').value, totalStock: parseInt($('#nt_stock').value, 10), createdAt: serverTimestamp() }); navigateTo('tools-admin'); } catch (err) { toolFormError = err.message; render(); } }
 async function handleSaveTool(id) { const row = document.querySelector(`[data-tool-row="${id}"]`); if (!row) return; const v = (f) => row.querySelector(`[data-field="${f}"]`)?.value || ''; try { await update(ref(db, 'tools/' + id), { toolName: v('toolName'), specification: v('specification'), category: v('category'), unit: v('unit'), totalStock: parseInt(v('totalStock'), 10), storageLocation: v('storageLocation') }); } catch (err) { alert(err.message); } }
 async function handleDeleteTool(id) { if (confirm('Delete?')) { try { await remove(ref(db, 'tools/' + id)); } catch (e) { alert(e.message); } } }
