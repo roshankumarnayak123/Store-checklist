@@ -816,7 +816,6 @@ function renderAdminDashboard() {
     </div>`;
 }
 
-// FILTER STATE - Added Month & Year
 let registerFilterState = { q: '', status: 'all', month: 'all', year: 'all' };
 
 function formatTimestamp(ms) {
@@ -914,7 +913,6 @@ function renderRegister() {
             <tr>
               <th>Material</th><th>Qty Issued</th><th>Vendor</th><th>Area</th>
               <th>Issue Date</th><th>Issued At</th><th>Supervisor</th><th>Issued By</th>
-              
               <th>Return Date</th><th>Returned At</th><th>Qty Returned</th><th>Qty Remaining</th><th>Condition</th><th>Return Photo</th><th>Issue Photo</th><th>Status</th>
               <th>Action</th>
             </tr>
@@ -933,7 +931,6 @@ function renderRegister() {
                 <td class="mono" data-label="Issued At">${formatTimestamp(r.createdAt)}</td>
                 <td data-label="Supervisor">${escapeHtml(r.supervisorName) || '—'}${r.supervisorContact ? `<br/><span class="muted" style="font-size:11px;">${escapeHtml(r.supervisorContact)}</span>` : ''}</td>
                 <td data-label="Issued By">${escapeHtml(r.issuedByName) || '—'}${r.empCode ? `<br/><span class="muted" style="font-size:11px;">${escapeHtml(r.empCode)}</span>` : ''}</td>
-                
                 <td class="mono" data-label="Return Date">${escapeHtml(r.returnDate) || '—'}</td>
                 <td class="mono" data-label="Returned At">${r.returnedAt ? formatTimestamp(r.returnedAt) : '—'}</td>
                 
@@ -947,7 +944,9 @@ function renderRegister() {
                 </td>
                 <td data-label="Action" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
                   ${r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
-                  <button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>
+                  
+                  ${r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
+                  
                   ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>` : ''}
                   ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete-issue="${r.id}">Delete</button>` : ''}
                 </td>
