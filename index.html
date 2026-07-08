@@ -1099,7 +1099,7 @@ function renderIssueForm() {
           </div>
           <div class="field">
             <label for="f_supervisorContact">Supervisor Contact Number</label>
-            <input type="tel" id="f_supervisorContact" required />
+            <input type="tel" id="f_supervisorContact" pattern="[0-9]{10}" maxlength="10" minlength="10" title="Please enter exactly 10 digits" required />
           </div>
           <div class="field">
             <label for="f_empCode">Employee Code / Dept.</label>
@@ -1167,7 +1167,7 @@ function renderEditIssueForm() {
           </div>
           <div class="field">
             <label for="ei_supervisorContact">Supervisor Contact Number</label>
-            <input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" required />
+            <input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" pattern="[0-9]{10}" maxlength="10" minlength="10" title="Please enter exactly 10 digits" required />
           </div>
           <div class="field">
             <label for="ei_empCode">Employee Code / Dept.</label>
@@ -1642,6 +1642,11 @@ async function handleIssueSubmit(e) {
     issueFormError = 'Please fill in material, quantity, vendor, area, supervisor name, and supervisor contact number.';
     return render();
   }
+  
+  if (!/^\d{10}$/.test(supervisorContact)) {
+    issueFormError = 'Supervisor contact number must be exactly 10 digits.';
+    return render();
+  }
 
   const btn = $('#issueSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
@@ -1697,6 +1702,11 @@ async function handleEditIssueSubmit(e) {
 
   if (!materialName || isNaN(qtyIssued) || qtyIssued < (issue.qtyReturned || 0) || !vendor || !area || !supervisorName || !supervisorContact) {
     editIssueError = `Please fill all required fields. Quantity issued cannot be less than quantity already returned (${issue.qtyReturned || 0}).`;
+    return render();
+  }
+  
+  if (!/^\d{10}$/.test(supervisorContact)) {
+    editIssueError = 'Supervisor contact number must be exactly 10 digits.';
     return render();
   }
 
