@@ -488,7 +488,7 @@ import {
   getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 import {
-  getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject
+  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
 /* =========================================================================
@@ -526,17 +526,50 @@ const todayStr = () => {
 };
 
 // Sync State Helper
-function setSyncingState(isSyncing) {
+function setSyncingState(isSyncing, text = null) {
   const icon = $('#syncIcon');
-  if (!icon) return;
+  const label = $('#appSyncLabel');
+  if (!icon || !label) return;
   if (isSyncing) {
     icon.textContent = '⟳';
     icon.style.display = 'inline-block';
     icon.classList.add('syncing-icon');
+    if (text) label.textContent = text;
   } else {
     icon.style.display = 'none';
     icon.classList.remove('syncing-icon');
+    label.textContent = cloudConnected ? 'Cloud Connected' : 'Cloud Disconnected';
   }
+}
+
+// Upload Progress Wrapper
+async function uploadWithProgress(path, file, btnEl) {
+  if (!storage) throw new Error("Storage not initialized");
+  const fileRef = storageRef(storage, path);
+  const uploadTask = uploadBytesResumable(fileRef, file);
+  
+  return new Promise((resolve, reject) => {
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        const pct = Math.round(progress);
+        if (btnEl) btnEl.innerHTML = `<span class="spinner"></span> Uploading... ${pct}%`;
+        setSyncingState(true, `Uploading ${pct}%...`);
+      }, 
+      (error) => {
+        console.error("Upload error:", error);
+        reject(error);
+      }, 
+      async () => {
+        try {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(url);
+        } catch (e) {
+          reject(e);
+        }
+      }
+    );
+  });
 }
 
 // Auto-select current month and year on load
@@ -1162,6 +1195,10 @@ function renderEditIssueForm() {
             <input type="text" id="ei_area" value="${escapeHtml(issue.area || '')}" required />
           </div>
           <div class="field">
+            <label>Issue Date</label>
+            <input type="date" value="${escapeHtml(issue.issueDate)}" disabled />
+          </div>
+          <div class="field">
             <label for="ei_supervisorName">Supervisor Name</label>
             <input type="text" id="ei_supervisorName" value="${escapeHtml(issue.supervisorName || '')}" required />
           </div>
@@ -1261,7 +1298,7 @@ function renderReturnForm() {
           </div>
         </div>
         <div class="actions-row">
-          <button type="submit" class="btn btn-primary">Save Return</button>
+          <button type="submit" class="btn btn-primary" id="returnSubmitBtn">Save Return</button>
           <button type="button" class="btn btn-ghost" data-nav="register">Cancel</button>
         </div>
       </form>
@@ -1651,7 +1688,7 @@ async function handleIssueSubmit(e) {
   const btn = $('#issueSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   
-  setSyncingState(true);
+  setSyncingState(true, 'Saving record...');
   try {
     const newRef = push(ref(db, 'issues'));
     await set(newRef, {
@@ -1663,12 +1700,9 @@ async function handleIssueSubmit(e) {
 
     if (selectedPhotoFile && storage) {
       try {
-        btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
         const ext = (selectedPhotoFile.name.split('.').pop() || 'jpg').slice(0, 8);
         const path = `issue-photos/${newRef.key}.${ext}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, selectedPhotoFile);
-        const url = await getDownloadURL(fileRef);
+        const url = await uploadWithProgress(path, selectedPhotoFile, btn);
         await update(newRef, { photoUrl: url, photoPath: path });
       } catch (photoErr) {
         alert('The issue was saved, but the photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
@@ -1713,7 +1747,7 @@ async function handleEditIssueSubmit(e) {
   const btn = $('#editIssueSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
-  setSyncingState(true);
+  setSyncingState(true, 'Updating record...');
   try {
     const updates = {
       materialName, qtyIssued, vendor, area, supervisorName, supervisorContact,
@@ -1723,13 +1757,11 @@ async function handleEditIssueSubmit(e) {
     const newPhoto = editIssueSelectedPhotoFile;
     if (newPhoto && storage) {
       try {
-        if (btn) btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
         if (issue.photoPath && storage) try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {}
         const ext = (newPhoto.name.split('.').pop() || 'jpg').slice(0, 8);
         const path = `issue-photos/${issue.id}.${ext}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, newPhoto);
-        updates.photoUrl = await getDownloadURL(fileRef);
+        const url = await uploadWithProgress(path, newPhoto, btn);
+        updates.photoUrl = url;
         updates.photoPath = path;
       } catch (photoErr) {
         alert('Changes saved, but photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
@@ -1768,7 +1800,7 @@ async function handleReturnSubmit(e) {
   const submitBtn = document.querySelector('#returnForm button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
-  setSyncingState(true);
+  setSyncingState(true, 'Recording return...');
   try {
     const updates = {
       returnDate, qtyReturned: increment(qty), conditionOnReturn: condition,
@@ -1778,12 +1810,10 @@ async function handleReturnSubmit(e) {
 
     if (returnSelectedPhotoFile && storage) {
       try {
-        if (submitBtn) submitBtn.innerHTML = '<span class="spinner"></span> Uploading photo…';
         const ext = (returnSelectedPhotoFile.name.split('.').pop() || 'jpg').slice(0, 8);
         const path = `return-photos/${issue.id}.${ext}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, returnSelectedPhotoFile);
-        updates.returnPhotoUrl = await getDownloadURL(fileRef);
+        const url = await uploadWithProgress(path, returnSelectedPhotoFile, submitBtn);
+        updates.returnPhotoUrl = url;
         updates.returnPhotoPath = path;
       } catch (photoErr) {
         alert('Return saved, but photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
@@ -1820,20 +1850,18 @@ async function handleEditReturnSubmit(e) {
   const btn = $('#editReturnSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
-  setSyncingState(true);
+  setSyncingState(true, 'Updating return...');
   try {
     const updates = { returnDate, qtyReturned: qty, conditionOnReturn: condition, remarks: remarks || issue.remarks || null, updatedAt: serverTimestamp(), };
 
     const newPhoto = editReturnSelectedPhotoFile;
     if (newPhoto && storage) {
       try {
-        if (btn) btn.innerHTML = '<span class="spinner"></span> Uploading photo…';
         if (issue.returnPhotoPath && storage) try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {}
         const ext = (newPhoto.name.split('.').pop() || 'jpg').slice(0, 8);
         const path = `return-photos/${issue.id}.${ext}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, newPhoto);
-        updates.returnPhotoUrl = await getDownloadURL(fileRef);
+        const url = await uploadWithProgress(path, newPhoto, btn);
+        updates.returnPhotoUrl = url;
         updates.returnPhotoPath = path;
       } catch (photoErr) {
         alert('Changes saved, but photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
@@ -1852,7 +1880,7 @@ async function handleEditReturnSubmit(e) {
 }
 
 async function deleteIssue(id) {
-  setSyncingState(true);
+  setSyncingState(true, 'Deleting record...');
   try {
     const issue = issuesCache.find((i) => i.id === id);
     if (!issue) return;
@@ -1872,7 +1900,7 @@ async function loadRequestsTable() {
   if (!holder) return;
   const pad = holder.querySelector('.panel-pad');
   
-  setSyncingState(true);
+  setSyncingState(true, 'Loading requests...');
   try {
     const snap = await get(ref(db, 'accessRequests'));
     const requests = snapshotToArray(snap);
@@ -1904,7 +1932,7 @@ async function loadRequestsTable() {
 }
 
 async function handleApproveRequest(username) {
-  setSyncingState(true);
+  setSyncingState(true, 'Approving user...');
   try {
     const reqSnap = await get(ref(db, 'accessRequests/' + username));
     if (!reqSnap.exists()) { loadRequestsTable(); return; }
@@ -1924,7 +1952,7 @@ async function handleApproveRequest(username) {
 
 async function handleRejectRequest(username) {
   if (!confirm(`Reject the access request from "${username}"?`)) return;
-  setSyncingState(true);
+  setSyncingState(true, 'Rejecting request...');
   try { 
     await remove(ref(db, 'accessRequests/' + username)); 
     loadRequestsTable(); 
@@ -1952,7 +1980,7 @@ async function loadUsersTable() {
   const holder = $('#usersTableHolder');
   if (!holder) return;
   
-  setSyncingState(true);
+  setSyncingState(true, 'Loading users...');
   try {
     const snap = await get(ref(db, 'users'));
     const users = snapshotToArray(snap);
@@ -1975,7 +2003,7 @@ async function loadUsersTable() {
     holder.querySelectorAll('[data-remove-user]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (!confirm(`Delete the account "${btn.dataset.removeUser}"? They will no longer be able to log in.`)) return;
-        setSyncingState(true);
+        setSyncingState(true, 'Deleting user...');
         try { 
           await remove(ref(db, 'users/' + btn.dataset.removeUser)); 
           loadUsersTable(); 
@@ -2004,7 +2032,7 @@ async function handleNewUserSubmit(e) {
   if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; return render(); }
   if (/[.#$\[\]\/\s'"]/.test(username)) { userFormError = 'Username can\'t contain spaces, quotes, or the characters . # $ [ ] /'; return render(); }
 
-  setSyncingState(true);
+  setSyncingState(true, 'Creating account...');
   try {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { userFormError = 'That username already exists.'; return render(); }
