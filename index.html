@@ -120,6 +120,7 @@ a:hover { color: var(--amber); }
 .nav button.navlink.active { color: var(--steel-950); background: var(--amber); box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
 
 .who { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: var(--steel-300); flex-shrink: 0; border: 2px solid var(--steel-600); }
 .who-name { color: var(--steel-100); font-size: 13.5px; font-weight: 600; }
 .who-role { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 999px; font-weight: 600; }
 .who-role.role-admin { background: var(--amber-soft); color: var(--amber-dark); }
@@ -462,6 +463,7 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
       </div>
       <nav class="nav" id="navLinks"></nav>
       <div class="who">
+        <img id="topbarAvatar" class="avatar hidden" alt="Avatar" />
         <span class="who-name" id="whoName"></span>
         <span class="who-role" id="whoRole"></span>
         <button class="link-btn" id="logoutBtn">Log out</button>
@@ -543,7 +545,6 @@ function setSyncingState(isSyncing, text = null) {
 }
 
 // Tracks whichever upload is currently in flight, so it can be cancelled
-// (e.g. from the Cancel button) instead of being left to run in the background.
 let activeUploadTask = null;
 
 // Upload Progress Wrapper
@@ -553,7 +554,7 @@ async function uploadWithProgress(path, file, btnEl) {
   const uploadTask = uploadBytesResumable(fileRef, file);
   activeUploadTask = uploadTask;
 
-  const STALL_TIMEOUT_MS = 30000; // no real progress for this long => give up
+  const STALL_TIMEOUT_MS = 30000;
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -570,17 +571,17 @@ async function uploadWithProgress(path, file, btnEl) {
         settled = true;
         try { uploadTask.cancel(); } catch (_) {}
         finish();
-        reject(new Error('Upload stalled with no progress for 30 seconds. Check your connection, or ask an admin to verify Firebase Storage CORS/rules are configured.'));
+        reject(new Error('Upload stalled with no progress for 30 seconds. Check your connection, or ask an admin.'));
       }, STALL_TIMEOUT_MS);
     };
 
-    armStallTimer(); // covers the case where we never even get a first snapshot
+    armStallTimer();
 
     uploadTask.on('state_changed', 
       (snapshot) => {
         if (snapshot.bytesTransferred > lastBytes) {
           lastBytes = snapshot.bytesTransferred;
-          armStallTimer(); // real forward progress happened - reset the stall clock
+          armStallTimer(); 
         }
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         const pct = Math.round(progress);
@@ -621,7 +622,6 @@ async function compressImage(file, maxWidth = 1280, quality = 0.7) {
         let width = img.width;
         let height = img.height;
 
-        // Calculate aspect ratio if image is too large
         if (width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
           width = maxWidth;
@@ -633,7 +633,6 @@ async function compressImage(file, maxWidth = 1280, quality = 0.7) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert canvas back to a compressed File object
         canvas.toBlob((blob) => {
           if (blob) {
             const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
@@ -642,17 +641,16 @@ async function compressImage(file, maxWidth = 1280, quality = 0.7) {
             });
             resolve(compressedFile);
           } else {
-            resolve(file); // Fallback to original if blob creation fails
+            resolve(file); 
           }
         }, 'image/jpeg', quality);
       };
-      img.onerror = () => resolve(file); // Fallback to original on error
+      img.onerror = () => resolve(file); 
     };
-    reader.onerror = () => resolve(file); // Fallback to original on error
+    reader.onerror = () => resolve(file); 
   });
 }
 
-// Auto-select current month and year on load
 const initDate = new Date();
 initDate.setMinutes(initDate.getMinutes() - initDate.getTimezoneOffset());
 const initMonth = initDate.toISOString().slice(5, 7);
@@ -785,7 +783,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
 
   try {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', role: 'admin' };
+      currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', role: 'admin', profilePhotoUrl: null };
       saveSession(currentUser);
       initTopbar();
       listenToCollections();
@@ -801,7 +799,8 @@ $('#loginForm').addEventListener('submit', async (e) => {
     currentUser = { 
       username, 
       fullName: record.fullName || username, 
-      role: 'user'
+      role: 'user',
+      profilePhotoUrl: record.profilePhotoUrl || null
     };
     
     saveSession(currentUser);
@@ -885,6 +884,14 @@ function initTopbar() {
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
   $('#whoRole').textContent = currentUser.role;
   $('#whoRole').className = 'who-role role-' + currentUser.role;
+  
+  if (currentUser.profilePhotoUrl) {
+    $('#topbarAvatar').src = currentUser.profilePhotoUrl;
+    $('#topbarAvatar').classList.remove('hidden');
+  } else {
+    $('#topbarAvatar').classList.add('hidden');
+  }
+
   updateLoginSyncIndicator(cloudConnected);
   if (!clockStarted) { startLiveClock(); clockStarted = true; }
 
@@ -900,6 +907,7 @@ function initTopbar() {
         ['dashboard', 'Dashboard'],
         ['register', 'Register'],
         ['issue-new', 'New Issue'],
+        ['profile', 'My Profile']
       ];
 
   nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
@@ -954,17 +962,19 @@ function render() {
   returnSelectedPhotoFile = null;
   editReturnSelectedPhotoFile = null;
   editIssueSelectedPhotoFile = null;
+  profileSelectedPhotoFile = null;
 
   const main = $('#appMain');
   const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
   
   if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
   
-  const storekeeperOnlyViews = ['dashboard']; 
+  const storekeeperOnlyViews = ['dashboard', 'profile']; 
   if (currentUser.role === 'admin' && storekeeperOnlyViews.includes(currentView)) currentView = 'admin-dashboard';
 
   const views = {
     'dashboard': renderUserDashboard,
+    'profile': renderProfile,
     'admin-dashboard': renderAdminDashboard,
     'register': renderRegister,
     'issue-new': renderIssueForm,
@@ -1014,6 +1024,43 @@ function renderUserDashboard() {
     </div>`;
 }
 
+function renderProfile() {
+  const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDJDMi40OCAyIDIgMi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMyMS41MiAyIDEyIDJ6bTAgM2MxLjY2IDAgMyAxLjM0IDMgM3MtMS4zNCAzLTMgMy0zLTEuMzQtMy0zIDEuMzQtMyAzLTN6bTAgMTQuMmMtMi41IDAtNC43MS0xLjI4LTYtMy4yMi4wMy0xLjk5IDQtMy4wOCA2LTMuMDggMiAwIDUuOTcgMS4wOSA2IDMuMDgtMS4yOSAxLjk0LTMuNSAzLjIyLTYgMy4yMnoiLz48L3N2Zz4=';
+  return `
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Account</span>
+        <h1>My Profile</h1>
+        <div class="page-sub">Manage your storekeeper account details.</div>
+      </div>
+    </div>
+    <div class="panel panel-pad" style="max-width:600px;">
+      <form id="profileForm">
+        <div class="form-grid">
+          <div class="field full" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+            <img id="p_avatarPreview" src="${currentUser.profilePhotoUrl || placeholderSvg}" class="avatar" style="width:80px; height:80px; border-width:3px;" />
+            <div>
+              <input type="file" id="p_photo" accept="image/*" style="display:none;" />
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('p_photo').click()">Choose Profile Photo</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Username</label>
+            <input type="text" value="${escapeHtml(currentUser.username)}" disabled />
+          </div>
+          <div class="field">
+            <label>Full Name</label>
+            <input type="text" value="${escapeHtml(currentUser.fullName)}" disabled />
+          </div>
+        </div>
+        <div class="actions-row" style="margin-top:32px;">
+          <button type="submit" class="btn btn-primary" id="profileSubmitBtn">Save Profile Photo</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
 function renderAdminDashboard() {
   const s = statsSummary();
   return `
@@ -1053,7 +1100,6 @@ function renderRegister() {
   if (registerFilterState.q) {
     const needle = registerFilterState.q.toLowerCase();
     rows = rows.filter((r) => {
-      // Combine all visible text fields for a robust state-based search (matches DOM search)
       const rowText = [
         r.materialName, r.vendor, r.area, r.supervisorName, 
         r.empCode, r.issueDate, r.returnDate, r.status
@@ -1527,6 +1573,18 @@ function renderSettingsAdmin() {
       </div>
     </div>
 
+    <div class="panel" style="margin-bottom:32px;">
+      <div class="panel-head"><h2>Data Management</h2></div>
+      <div class="panel-pad">
+        <p style="margin-top:0; margin-bottom:20px; color:var(--steel-600); font-size:14px;">
+          Keep your database fast and free up cloud storage by permanently removing old, fully returned records.
+        </p>
+        <div class="actions-row">
+          <button class="btn btn-danger" id="cleanupOldRecordsBtn">Delete Returned Records Older Than 6 Months</button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel">
       <div class="panel-head"><h2>Cloud Storage Usage</h2></div>
       <div class="panel-pad" id="storageUsageHolder">
@@ -1539,7 +1597,7 @@ function renderStorageUsage() {
   const holder = $('#storageUsageHolder');
   if (!holder) return;
 
-  const LIMIT_KB = 1024 * 1024; // ~1 GB in KB
+  const LIMIT_KB = 1024 * 1024; 
 
   const sections = [
     { label: 'Issues', data: issuesCache, color: '#3b82f6' },
@@ -1552,7 +1610,7 @@ function renderStorageUsage() {
   }).catch(() => { usersKB = 0; });
 
   usersSizePromise.then(() => {
-    if (!document.contains(holder)) return; // Abort if user navigated away
+    if (!document.contains(holder)) return;
 
     const breakdown = sections.map((s) => ({
       ...s, kb: new Blob([JSON.stringify(s.data)]).size / 1024,
@@ -1605,9 +1663,8 @@ function wireViewEvents(viewId) {
   if (viewId === 'register') {
     $('#regSearch')?.addEventListener('input', (e) => { 
       const needle = e.target.value.toLowerCase();
-      registerFilterState.q = needle; // Keep state in sync in case of tab switches
+      registerFilterState.q = needle; 
       
-      // Directly filter the rows in the DOM instead of re-rendering everything
       document.querySelectorAll('table.reg tbody tr').forEach(row => {
         const text = row.innerText.toLowerCase();
         row.style.display = text.includes(needle) ? '' : 'none';
@@ -1636,6 +1693,22 @@ function wireViewEvents(viewId) {
       editIssueError = '';
       navigateTo('edit-issue');
     }));
+  }
+
+  if (viewId === 'profile') {
+    $('#p_photo').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) { profileSelectedPhotoFile = null; return; }
+      if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
+      
+      const reader = new FileReader();
+      reader.onload = () => { $('#p_avatarPreview').src = reader.result; };
+      reader.readAsDataURL(file);
+      
+      // Compress the profile photo to max width 400px, 80% quality
+      profileSelectedPhotoFile = await compressImage(file, 400, 0.8);
+    });
+    $('#profileForm').addEventListener('submit', handleProfileSubmit);
   }
 
   if (viewId === 'issue-new') {
@@ -1716,6 +1789,7 @@ function wireViewEvents(viewId) {
   if (viewId === 'settings-admin') {
     renderStorageUsage();
     $('#refreshSyncStatusBtn')?.addEventListener('click', () => render());
+    $('#cleanupOldRecordsBtn')?.addEventListener('click', handleCleanupOldRecords);
   }
 }
 
@@ -1726,6 +1800,39 @@ let selectedPhotoFile = null;
 let returnSelectedPhotoFile = null;
 let editReturnSelectedPhotoFile = null;
 let editIssueSelectedPhotoFile = null;
+let profileSelectedPhotoFile = null;
+
+async function handleProfileSubmit(e) {
+  e.preventDefault();
+  if (!profileSelectedPhotoFile) { alert('No new photo selected.'); return; }
+  
+  const btn = $('#profileSubmitBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
+  setSyncingState(true, 'Uploading profile photo...');
+  
+  try {
+    const ext = (profileSelectedPhotoFile.name.split('.').pop() || 'jpg').slice(0, 8);
+    const path = `profile-photos/${currentUser.username}.${ext}`;
+    const url = await uploadWithProgress(path, profileSelectedPhotoFile, btn);
+    
+    await update(ref(db, 'users/' + currentUser.username), { profilePhotoUrl: url, profilePhotoPath: path });
+    
+    currentUser.profilePhotoUrl = url;
+    saveSession(currentUser);
+    
+    $('#topbarAvatar').src = url;
+    $('#topbarAvatar').classList.remove('hidden');
+    
+    alert('Profile photo updated successfully!');
+    profileSelectedPhotoFile = null;
+    render();
+  } catch (err) {
+    alert('Could not upload photo: ' + (err.message || 'unknown error'));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Profile Photo'; }
+    setSyncingState(false);
+  }
+}
 
 async function handlePhotoSelected(e) {
   const file = e.target.files && e.target.files[0];
@@ -1755,7 +1862,6 @@ async function handleIssueSubmit(e) {
   const qty = parseInt($('#f_qty').value, 10);
   const vendor = $('#f_vendor').value.trim();
   const area = $('#f_area').value.trim();
-  // Auto-capture the date for new issues
   const issueDate = todayStr();
   const supervisorName = $('#f_supervisorName').value.trim();
   const supervisorContact = $('#f_supervisorContact').value.trim();
@@ -1893,8 +1999,6 @@ async function handleReturnSubmit(e) {
   const submitBtn = document.querySelector('#returnForm button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
-  // Same defensive capture as handleIssueSubmit - a concurrent write from elsewhere
-  // in the app firing the realtime listener could otherwise clear this mid-submit.
   const photoToUpload = returnSelectedPhotoFile;
 
   setSyncingState(true, 'Recording return...');
@@ -1990,6 +2094,54 @@ async function deleteIssue(id) {
     }
   } catch (err) { alert('Could not delete this record: ' + (err.message || 'unknown error')); }
   finally { setSyncingState(false); }
+}
+
+async function handleCleanupOldRecords() {
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+
+  const toDelete = issuesCache.filter(issue => {
+    if (statusOf(issue) !== 'Returned') return false; 
+    if (!issue.issueDate) return false;
+    
+    const itemDate = new Date(issue.issueDate);
+    return itemDate < cutoffDate;
+  });
+
+  if (toDelete.length === 0) {
+    alert('Your database is already clean! No completed records older than 6 months were found.');
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to permanently delete ${toDelete.length} old returned record(s)?\n\nThis will also delete their attached photos to free up storage space. This action cannot be undone.`)) {
+    return;
+  }
+
+  setSyncingState(true, `Deleting ${toDelete.length} records...`);
+  const btn = $('#cleanupOldRecordsBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Deleting...'; }
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const issue of toDelete) {
+    try {
+      await remove(ref(db, 'issues/' + issue.id));
+      
+      if (storage) {
+        if (issue.photoPath) try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {}
+        if (issue.returnPhotoPath) try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {}
+      }
+      successCount++;
+    } catch (e) {
+      console.error('Failed to delete issue', issue.id, e);
+      failCount++;
+    }
+  }
+
+  setSyncingState(false);
+  alert(`Cleanup complete.\n\nSuccessfully deleted: ${successCount} record(s).\n${failCount > 0 ? `Failed to delete: ${failCount} record(s).` : ''}`);
+  render();
 }
 
 async function loadRequestsTable() {
