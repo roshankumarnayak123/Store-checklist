@@ -80,6 +80,17 @@ a { color: var(--amber-dark); text-decoration: none; transition: color 0.2s var(
 a:hover { color: var(--amber); }
 .hidden { display: none !important; }
 
+/* Sync Spinner Animation */
+@keyframes syncRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.syncing-icon {
+  display: inline-block;
+  animation: syncRotate 1s linear infinite;
+  color: var(--amber);
+}
+
 /* Topbar */
 .topbar { 
   background: rgba(15, 23, 42, 0.85); 
@@ -460,6 +471,8 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
       <div class="status-bar-inner">
         <span class="status-sync">
           <span class="sync-dot sync-dot-bad" id="appSyncDot"></span>
+          <!-- Dynamic Sync Icon -->
+          <span id="syncIcon" style="display:none; margin-left:4px; font-weight:bold;"></span>
           <span id="appSyncLabel">Checking…</span>
         </span>
         <span class="status-clock mono" id="appClock"></span>
@@ -511,6 +524,20 @@ const todayStr = () => {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
 };
+
+// Sync State Helper
+function setSyncingState(isSyncing) {
+  const icon = $('#syncIcon');
+  if (!icon) return;
+  if (isSyncing) {
+    icon.textContent = '⟳';
+    icon.style.display = 'inline-block';
+    icon.classList.add('syncing-icon');
+  } else {
+    icon.style.display = 'none';
+    icon.classList.remove('syncing-icon');
+  }
+}
 
 // Auto-select current month and year on load
 const initDate = new Date();
@@ -715,6 +742,7 @@ $('#requestForm').addEventListener('submit', async (e) => {
   if (/[.#$\[\]\/\s'"]/.test(username)) { showAuthError('Username can\'t contain spaces, quotes, or the characters . # $ [ ] /'); return; }
 
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…';
+  setSyncingState(true);
   try {
     const existingUser = await get(ref(db, 'users/' + username));
     if (existingUser.exists()) { showAuthError('That username is already taken.'); return; }
@@ -729,6 +757,7 @@ $('#requestForm').addEventListener('submit', async (e) => {
   } catch (err) {
     showAuthError('Unable to submit request: failed to sync with cloud.');
   } finally {
+    setSyncingState(false);
     btn.disabled = false; btn.textContent = 'Submit Request';
   }
 });
@@ -1616,7 +1645,8 @@ async function handleIssueSubmit(e) {
 
   const btn = $('#issueSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
-
+  
+  setSyncingState(true);
   try {
     const newRef = push(ref(db, 'issues'));
     await set(newRef, {
@@ -1645,6 +1675,8 @@ async function handleIssueSubmit(e) {
   } catch (err) {
     issueFormError = 'Could not save this record: ' + (err.message || 'unknown error');
     render();
+  } finally {
+    setSyncingState(false);
   }
 }
 
@@ -1671,6 +1703,7 @@ async function handleEditIssueSubmit(e) {
   const btn = $('#editIssueSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
+  setSyncingState(true);
   try {
     const updates = {
       materialName, qtyIssued, vendor, area, supervisorName, supervisorContact,
@@ -1699,6 +1732,8 @@ async function handleEditIssueSubmit(e) {
   } catch (err) {
     editIssueError = 'Could not save changes: ' + (err.message || 'unknown error');
     render();
+  } finally {
+    setSyncingState(false);
   }
 }
 
@@ -1723,6 +1758,7 @@ async function handleReturnSubmit(e) {
   const submitBtn = document.querySelector('#returnForm button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
+  setSyncingState(true);
   try {
     const updates = {
       returnDate, qtyReturned: increment(qty), conditionOnReturn: condition,
@@ -1750,6 +1786,8 @@ async function handleReturnSubmit(e) {
   } catch (err) {
     returnFormError = 'Could not save the return: ' + (err.message || 'unknown error');
     render();
+  } finally {
+    setSyncingState(false);
   }
 }
 
@@ -1772,6 +1810,7 @@ async function handleEditReturnSubmit(e) {
   const btn = $('#editReturnSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
+  setSyncingState(true);
   try {
     const updates = { returnDate, qtyReturned: qty, conditionOnReturn: condition, remarks: remarks || issue.remarks || null, updatedAt: serverTimestamp(), };
 
@@ -1797,10 +1836,13 @@ async function handleEditReturnSubmit(e) {
   } catch (err) {
     editReturnError = 'Could not save changes: ' + (err.message || 'unknown error');
     render();
+  } finally {
+    setSyncingState(false);
   }
 }
 
 async function deleteIssue(id) {
+  setSyncingState(true);
   try {
     const issue = issuesCache.find((i) => i.id === id);
     if (!issue) return;
@@ -1812,12 +1854,15 @@ async function deleteIssue(id) {
       if (issue.returnPhotoPath) try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {}
     }
   } catch (err) { alert('Could not delete this record: ' + (err.message || 'unknown error')); }
+  finally { setSyncingState(false); }
 }
 
 async function loadRequestsTable() {
   const holder = $('#requestsHolder');
   if (!holder) return;
   const pad = holder.querySelector('.panel-pad');
+  
+  setSyncingState(true);
   try {
     const snap = await get(ref(db, 'accessRequests'));
     const requests = snapshotToArray(snap);
@@ -1841,10 +1886,15 @@ async function loadRequestsTable() {
 
     pad.querySelectorAll('[data-approve-request]').forEach((btn) => { btn.addEventListener('click', () => handleApproveRequest(btn.dataset.approveRequest)); });
     pad.querySelectorAll('[data-reject-request]').forEach((btn) => { btn.addEventListener('click', () => handleRejectRequest(btn.dataset.rejectRequest)); });
-  } catch (err) { pad.innerHTML = `<div class="alert alert-error">Could not load requests: ${escapeHtml(err.message || 'unknown error')}</div>`; }
+  } catch (err) { 
+    pad.innerHTML = `<div class="alert alert-error">Could not load requests: ${escapeHtml(err.message || 'unknown error')}</div>`; 
+  } finally {
+    setSyncingState(false);
+  }
 }
 
 async function handleApproveRequest(username) {
+  setSyncingState(true);
   try {
     const reqSnap = await get(ref(db, 'accessRequests/' + username));
     if (!reqSnap.exists()) { loadRequestsTable(); return; }
@@ -1855,12 +1905,24 @@ async function handleApproveRequest(username) {
     await remove(ref(db, 'accessRequests/' + username));
     loadRequestsTable();
     loadUsersTable();
-  } catch (err) { alert('Could not approve this request: ' + (err.message || 'unknown error')); }
+  } catch (err) { 
+    alert('Could not approve this request: ' + (err.message || 'unknown error')); 
+  } finally {
+    setSyncingState(false);
+  }
 }
 
 async function handleRejectRequest(username) {
   if (!confirm(`Reject the access request from "${username}"?`)) return;
-  try { await remove(ref(db, 'accessRequests/' + username)); loadRequestsTable(); } catch (err) { alert('Could not reject this request: ' + (err.message || 'unknown error')); }
+  setSyncingState(true);
+  try { 
+    await remove(ref(db, 'accessRequests/' + username)); 
+    loadRequestsTable(); 
+  } catch (err) { 
+    alert('Could not reject this request: ' + (err.message || 'unknown error')); 
+  } finally {
+    setSyncingState(false);
+  }
 }
 
 function updatePendingRequestsNavBadge(count) {
@@ -1879,6 +1941,8 @@ function updatePendingRequestsNavBadge(count) {
 async function loadUsersTable() {
   const holder = $('#usersTableHolder');
   if (!holder) return;
+  
+  setSyncingState(true);
   try {
     const snap = await get(ref(db, 'users'));
     const users = snapshotToArray(snap);
@@ -1901,10 +1965,22 @@ async function loadUsersTable() {
     holder.querySelectorAll('[data-remove-user]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (!confirm(`Delete the account "${btn.dataset.removeUser}"? They will no longer be able to log in.`)) return;
-        try { await remove(ref(db, 'users/' + btn.dataset.removeUser)); loadUsersTable(); } catch (err) { alert('Could not delete this account: ' + (err.message || 'unknown error')); }
+        setSyncingState(true);
+        try { 
+          await remove(ref(db, 'users/' + btn.dataset.removeUser)); 
+          loadUsersTable(); 
+        } catch (err) { 
+          alert('Could not delete this account: ' + (err.message || 'unknown error')); 
+        } finally {
+          setSyncingState(false);
+        }
       });
     });
-  } catch (err) { holder.innerHTML = `<div class="alert alert-error" style="margin:20px;">Could not load users: ${escapeHtml(err.message || 'unknown error')}</div>`; }
+  } catch (err) { 
+    holder.innerHTML = `<div class="alert alert-error" style="margin:20px;">Could not load users: ${escapeHtml(err.message || 'unknown error')}</div>`; 
+  } finally {
+    setSyncingState(false);
+  }
 }
 
 async function handleNewUserSubmit(e) {
@@ -1918,12 +1994,18 @@ async function handleNewUserSubmit(e) {
   if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; return render(); }
   if (/[.#$\[\]\/\s'"]/.test(username)) { userFormError = 'Username can\'t contain spaces, quotes, or the characters . # $ [ ] /'; return render(); }
 
+  setSyncingState(true);
   try {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { userFormError = 'That username already exists.'; return render(); }
     await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp(), });
     navigateTo('users-admin');
-  } catch (err) { userFormError = 'Could not create this account: ' + (err.message || 'unknown error'); render(); }
+  } catch (err) { 
+    userFormError = 'Could not create this account: ' + (err.message || 'unknown error'); 
+    render(); 
+  } finally {
+    setSyncingState(false);
+  }
 }
 </script>
 
