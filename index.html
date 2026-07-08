@@ -495,9 +495,7 @@ const firebaseConfig = {
    STATE
    ========================================================================= */
 let currentUser = null; 
-let toolsCache = [];
 let issuesCache = [];
-let unsubTools = null;
 let unsubIssues = null;
 let unsubRequests = null;
 let currentView = 'dashboard';
@@ -513,6 +511,14 @@ const todayStr = () => {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 10);
 };
+
+// Auto-select current month and year on load
+const initDate = new Date();
+initDate.setMinutes(initDate.getMinutes() - initDate.getTimezoneOffset());
+const initMonth = initDate.toISOString().slice(5, 7);
+const initYear = initDate.toISOString().slice(0, 4);
+
+let registerFilterState = { q: '', status: 'all', month: initMonth, year: initYear };
 
 function showScreen(id) {
   ['authScreen', 'appScreen'].forEach((s) => {
@@ -655,8 +661,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     currentUser = { 
       username, 
       fullName: record.fullName || username, 
-      role: 'user',
-      toolStockAuth: !!record.toolStockAuth 
+      role: 'user'
     };
     
     saveSession(currentUser);
@@ -673,7 +678,6 @@ $('#loginForm').addEventListener('submit', async (e) => {
 });
 
 $('#logoutBtn').addEventListener('click', () => {
-  if (unsubTools) { unsubTools(); unsubTools = null; }
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
   if (unsubRequests) { unsubRequests(); unsubRequests = null; }
   
@@ -747,7 +751,6 @@ function initTopbar() {
     ? [
         ['admin-dashboard', 'Dashboard'],
         ['register', 'Register'],
-        ['tools-admin', 'Tools'],
         ['users-admin', 'Users'],
         ['settings-admin', 'Settings'],
       ]
@@ -755,7 +758,6 @@ function initTopbar() {
         ['dashboard', 'Dashboard'],
         ['register', 'Register'],
         ['issue-new', 'New Issue'],
-        ...(currentUser.toolStockAuth ? [['tools-admin', 'Tools']] : [])
       ];
 
   nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
@@ -785,14 +787,8 @@ function snapshotToArray(snap) {
 }
 
 function listenToCollections() {
-  if (unsubTools) unsubTools();
   if (unsubIssues) unsubIssues();
   
-  unsubTools = onValue(ref(db, 'tools'), (snap) => {
-    toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
-    render();
-  });
-
   unsubIssues = onValue(ref(db, 'issues'), (snap) => {
     issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     render();
@@ -803,22 +799,23 @@ function statusOf(issue) { return ((issue.qtyReturned || 0) >= issue.qtyIssued) 
 
 function enrichedIssues() {
   return issuesCache.map((i) => {
-    let displayName = i.materialName;
-    if (!displayName && i.toolId) {
-      const legacyTool = toolsCache.find((t) => t.id === i.toolId);
-      displayName = legacyTool ? legacyTool.toolName : '(unknown material)';
-    }
-    return { ...i, materialName: displayName || '(unnamed)', status: statusOf(i) };
+    const displayName = i.materialName || '(unnamed)';
+    return { ...i, materialName: displayName, status: statusOf(i) };
   });
 }
 
 function render() {
   if (!currentUser) return;
-  const main = $('#appMain');
+  
+  // Clear pending photos when navigating views to prevent memory/state leaks
+  selectedPhotoFile = null;
+  returnSelectedPhotoFile = null;
+  editReturnSelectedPhotoFile = null;
+  editIssueSelectedPhotoFile = null;
 
+  const main = $('#appMain');
   const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
   
-  if (currentUser.role !== 'admin' && currentView === 'tools-admin' && !currentUser.toolStockAuth) currentView = 'dashboard';
   if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
   
   const storekeeperOnlyViews = ['dashboard']; 
@@ -829,7 +826,6 @@ function render() {
     'admin-dashboard': renderAdminDashboard,
     'register': renderRegister,
     'issue-new': renderIssueForm,
-    'tools-admin': renderToolsAdmin,
     'users-admin': renderUsersAdmin,
     'settings-admin': renderSettingsAdmin,
     'return-record': renderReturnForm,
@@ -872,7 +868,6 @@ function renderUserDashboard() {
       <div class="actions-row">
         <button class="btn btn-dark" data-nav="issue-new">Log a New Issue</button>
         <button class="btn btn-ghost" data-nav="register">View Full Register</button>
-        ${currentUser.toolStockAuth ? `<button class="btn btn-ghost" data-nav="tools-admin">Manage Tool Stock</button>` : ''}
       </div>
     </div>`;
 }
@@ -899,8 +894,6 @@ function renderAdminDashboard() {
     </div>`;
 }
 
-let registerFilterState = { q: '', status: 'all', month: 'all', year: 'all' };
-
 function formatTimestamp(ms) {
   if (!ms || typeof ms !== 'number') return 'Syncing...'; 
   
@@ -917,13 +910,15 @@ function renderRegister() {
 
   if (registerFilterState.q) {
     const needle = registerFilterState.q.toLowerCase();
-    rows = rows.filter((r) =>
-      r.materialName.toLowerCase().includes(needle) ||
-      (r.vendor || '').toLowerCase().includes(needle) ||
-      (r.area || '').toLowerCase().includes(needle) ||
-      (r.supervisorName || '').toLowerCase().includes(needle) ||
-      (r.empCode || '').toLowerCase().includes(needle)
-    );
+    rows = rows.filter((r) => {
+      // Combine all visible text fields for a robust state-based search (matches DOM search)
+      const rowText = [
+        r.materialName, r.vendor, r.area, r.supervisorName, 
+        r.empCode, r.issueDate, r.returnDate, r.status
+      ].join(' ').toLowerCase();
+      
+      return rowText.includes(needle);
+    });
   }
   
   if (registerFilterState.status !== 'all') {
@@ -1054,11 +1049,8 @@ function renderIssueForm() {
       <form id="issueForm">
         <div class="form-grid">
           <div class="field full">
-            <label for="f_toolId">Material / Tool</label>
-            <select id="f_toolId" required>
-              <option value="" disabled selected>Select from Master List...</option>
-              ${toolsCache.map(t => `<option value="${t.id}">${escapeHtml(t.toolName)} (Stock: ${t.totalStock})</option>`).join('')}
-            </select>
+            <label for="f_material">Material</label>
+            <input type="text" id="f_material" placeholder="Enter material name..." required />
           </div>
           <div class="field">
             <label for="f_qty">Quantity Issued</label>
@@ -1068,13 +1060,9 @@ function renderIssueForm() {
             <label for="f_vendor">Vendor</label>
             <input type="text" id="f_vendor" required />
           </div>
-          <div class="field">
+          <div class="field full">
             <label for="f_area">Area</label>
             <input type="text" id="f_area" required />
-          </div>
-          <div class="field">
-            <label for="f_issueDate">Issue Date</label>
-            <input type="date" id="f_issueDate" value="${todayStr()}" required />
           </div>
           <div class="field">
             <label for="f_supervisorName">Supervisor Name</label>
@@ -1111,7 +1099,6 @@ function renderIssueForm() {
 
 let editIssueTargetId = null;
 let editIssueError = '';
-let editIssueSelectedPhotoFile = null;
 
 function renderEditIssueForm() {
   const issue = issuesCache.find((i) => i.id === editIssueTargetId);
@@ -1130,8 +1117,8 @@ function renderEditIssueForm() {
       <form id="editIssueForm">
         <div class="form-grid">
           <div class="field full">
-            <label for="ei_material">Material Name</label>
-            <input type="text" id="ei_material" value="${escapeHtml(issue.materialName)}" disabled />
+            <label for="ei_material">Material</label>
+            <input type="text" id="ei_material" value="${escapeHtml(issue.materialName)}" required />
           </div>
           <div class="field">
             <label for="ei_qty">Quantity Issued</label>
@@ -1141,13 +1128,9 @@ function renderEditIssueForm() {
             <label for="ei_vendor">Vendor</label>
             <input type="text" id="ei_vendor" value="${escapeHtml(issue.vendor || '')}" required />
           </div>
-          <div class="field">
+          <div class="field full">
             <label for="ei_area">Area</label>
             <input type="text" id="ei_area" value="${escapeHtml(issue.area || '')}" required />
-          </div>
-          <div class="field">
-            <label for="ei_issueDate">Issue Date</label>
-            <input type="date" id="ei_issueDate" value="${escapeHtml(issue.issueDate)}" required />
           </div>
           <div class="field">
             <label for="ei_supervisorName">Supervisor Name</label>
@@ -1194,8 +1177,6 @@ let returnFormTargetId = null;
 let returnFormError = '';
 let editReturnTargetId = null;
 let editReturnError = '';
-let returnSelectedPhotoFile = null;
-let editReturnSelectedPhotoFile = null;
 
 function renderReturnForm() {
   const issue = issuesCache.find((i) => i.id === returnFormTargetId);
@@ -1324,64 +1305,6 @@ function renderEditReturnForm() {
     </div>`;
 }
 
-let toolFormError = '';
-function renderToolsAdmin() {
-  const tools = [...toolsCache].sort((a, b) => a.toolName.localeCompare(b.toolName));
-  return `
-    <div class="page-head">
-      <div>
-        <span class="eyebrow">Administrator</span>
-        <h1>Tool Master List</h1>
-        <div class="page-sub">Add, edit, or remove tools tracked by the store.</div>
-      </div>
-    </div>
-    ${toolFormError ? `<div class="alert alert-error">${escapeHtml(toolFormError)}</div>` : ''}
-    <div class="panel" style="margin-bottom:32px;">
-      <div class="table-wrap">
-        <table class="reg">
-          <thead>
-            <tr><th>Code</th><th>Name</th><th>Spec</th><th>Category</th><th>Unit</th><th>Total Stock</th><th>Location</th><th colspan="2">Action</th></tr>
-          </thead>
-          <tbody>
-            ${tools.map((t) => `<tr data-tool-row="${t.id}">
-                <td class="mono tag" data-label="Code">${escapeHtml(t.toolCode)}</td>
-                <td data-label="Name"><input type="text" data-field="toolName" value="${escapeHtml(t.toolName)}"></td>
-                <td data-label="Spec"><input type="text" data-field="specification" value="${escapeHtml(t.specification)}"></td>
-                <td data-label="Category"><input type="text" data-field="category" value="${escapeHtml(t.category)}"></td>
-                <td data-label="Unit">
-                  <select data-field="unit">
-                    ${['Nos','Set','Pair','Box','Kit'].map((u) => `<option value="${u}" ${t.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
-                  </select>
-                </td>
-                <td data-label="Total Stock"><input type="number" min="0" data-field="totalStock" value="${t.totalStock}"></td>
-                <td data-label="Location"><input type="text" data-field="storageLocation" value="${escapeHtml(t.storageLocation)}"></td>
-                <td data-label=""><button class="btn btn-dark btn-sm" data-save-tool="${t.id}">Save</button></td>
-                <td data-label=""><button class="btn btn-danger btn-sm" data-delete-tool="${t.id}">Delete</button></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="panel panel-pad">
-      <h2 style="margin-top:0;">Add New Tool</h2>
-      <form id="newToolForm">
-        <div class="form-grid">
-          <div class="field"><label for="nt_code">Tool Code</label><input type="text" id="nt_code" required /></div>
-          <div class="field"><label for="nt_name">Tool Name</label><input type="text" id="nt_name" required /></div>
-          <div class="field"><label for="nt_spec">Specification</label><input type="text" id="nt_spec" /></div>
-          <div class="field"><label for="nt_cat">Category</label><input type="text" id="nt_cat" /></div>
-          <div class="field">
-            <label for="nt_unit">Unit</label>
-            <select id="nt_unit"><option>Nos</option><option>Set</option><option>Pair</option><option>Box</option><option>Kit</option></select>
-          </div>
-          <div class="field"><label for="nt_stock">Total Stock Qty</label><input type="number" min="0" id="nt_stock" required /></div>
-          <div class="field full"><label for="nt_loc">Storage Location / Rack</label><input type="text" id="nt_loc" /></div>
-        </div>
-        <div class="actions-row"><button type="submit" class="btn btn-primary">Add Tool</button></div>
-      </form>
-    </div>`;
-}
-
 let userFormError = '';
 function renderUsersAdmin() {
   return `
@@ -1422,12 +1345,6 @@ function renderUsersAdmin() {
             <label for="nu_password">Password</label>
             <input type="password" id="nu_password" required minlength="4" />
           </div>
-          <div class="field full">
-             <label style="display:flex; align-items:center; gap:8px; font-size:14px; font-weight:normal; text-transform:none; cursor:pointer;">
-               <input type="checkbox" id="nu_toolAuth" style="width:auto; margin:0;" />
-               Grant authority to view/edit Master Tool Stock
-             </label>
-          </div>
         </div>
         <div class="actions-row"><button type="submit" class="btn btn-primary">Create Storekeeper Account</button></div>
       </form>
@@ -1456,7 +1373,6 @@ function renderSettingsAdmin() {
           <div class="kv-row"><span class="kv-key">Last synced</span><span class="kv-val mono">${lastSyncedAt ? lastSyncedAt.toLocaleString() : '—'}</span></div>
           <div class="kv-row"><span class="kv-key">Database URL</span><span class="kv-val mono" style="word-break:break-all;">${escapeHtml(dbUrl)}</span></div>
           <div class="kv-row"><span class="kv-key">Project ID</span><span class="kv-val mono">${escapeHtml(firebaseConfig.projectId || '—')}</span></div>
-          <div class="kv-row"><span class="kv-key">Tools cached</span><span class="kv-val mono">${toolsCache.length}</span></div>
           <div class="kv-row"><span class="kv-key">Issue records cached</span><span class="kv-val mono">${issuesCache.length}</span></div>
         </div>
         <div class="actions-row">
@@ -1480,7 +1396,6 @@ function renderStorageUsage() {
   const LIMIT_KB = 1024 * 1024; // ~1 GB in KB
 
   const sections = [
-    { label: 'Tools', data: toolsCache, color: '#f59e0b' },
     { label: 'Issues', data: issuesCache, color: '#3b82f6' },
   ];
 
@@ -1640,12 +1555,6 @@ function wireViewEvents(viewId) {
     });
   }
 
-  if (viewId === 'tools-admin') {
-    $('#newToolForm').addEventListener('submit', handleNewToolSubmit);
-    $$('[data-save-tool]').forEach((btn) => btn.addEventListener('click', () => handleSaveTool(btn.dataset.saveTool)));
-    $$('[data-delete-tool]').forEach((btn) => btn.addEventListener('click', () => handleDeleteTool(btn.dataset.deleteTool)));
-  }
-
   if (viewId === 'users-admin') {
     $('#newUserForm').addEventListener('submit', handleNewUserSubmit);
     loadRequestsTable();
@@ -1662,6 +1571,9 @@ function wireViewEvents(viewId) {
    WRITE OPERATIONS
    ========================================================================= */
 let selectedPhotoFile = null;
+let returnSelectedPhotoFile = null;
+let editReturnSelectedPhotoFile = null;
+let editIssueSelectedPhotoFile = null;
 
 function handlePhotoSelected(e) {
   const file = e.target.files && e.target.files[0];
@@ -1686,29 +1598,19 @@ async function handleIssueSubmit(e) {
   e.preventDefault();
   issueFormError = '';
   
-  const toolId = $('#f_toolId').value;
-  const tool = toolsCache.find(t => t.id === toolId);
-  
-  if (!tool) { issueFormError = 'Please select a tool.'; return render(); }
-  
-  const materialName = tool.toolName;
+  const materialName = $('#f_material').value.trim();
   const qty = parseInt($('#f_qty').value, 10);
-  
-  if (tool.totalStock < qty) {
-    issueFormError = `Insufficient stock! Only ${tool.totalStock} available.`;
-    return render();
-  }
-
   const vendor = $('#f_vendor').value.trim();
   const area = $('#f_area').value.trim();
-  const issueDate = $('#f_issueDate').value;
+  // Auto-capture the date for new issues
+  const issueDate = todayStr();
   const supervisorName = $('#f_supervisorName').value.trim();
   const supervisorContact = $('#f_supervisorContact').value.trim();
   const empCode = $('#f_empCode').value.trim();
   const remarks = $('#f_remarks').value.trim();
 
-  if (!qty || qty <= 0 || !vendor || !area || !issueDate || !supervisorName || !supervisorContact) {
-    issueFormError = 'Please fill in quantity, vendor, area, issue date, supervisor name, and supervisor contact number.';
+  if (!materialName || !qty || qty <= 0 || !vendor || !area || !supervisorName || !supervisorContact) {
+    issueFormError = 'Please fill in material, quantity, vendor, area, supervisor name, and supervisor contact number.';
     return render();
   }
 
@@ -1718,14 +1620,11 @@ async function handleIssueSubmit(e) {
   try {
     const newRef = push(ref(db, 'issues'));
     await set(newRef, {
-      toolId, materialName, qtyIssued: qty, vendor, area, empCode: empCode || null,
+      materialName, qtyIssued: qty, vendor, area, empCode: empCode || null,
       issueDate, supervisorName, supervisorContact, returnDate: null, qtyReturned: 0, conditionOnReturn: null,
       issuedBy: currentUser.username, issuedByName: currentUser.fullName, receivedBy: null, receivedByName: null,
       remarks: remarks || null, photoUrl: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
-
-    // Debit the stock automatically
-    await update(ref(db, `tools/${toolId}`), { totalStock: increment(-qty) });
 
     if (selectedPhotoFile && storage) {
       try {
@@ -1755,16 +1654,16 @@ async function handleEditIssueSubmit(e) {
   const issue = issuesCache.find((i) => i.id === editIssueTargetId);
   if (!issue) return;
 
+  const materialName = $('#ei_material').value.trim();
   const qtyIssued = parseInt($('#ei_qty').value, 10);
   const vendor = $('#ei_vendor').value.trim();
   const area = $('#ei_area').value.trim();
-  const issueDate = $('#ei_issueDate').value;
   const supervisorName = $('#ei_supervisorName').value.trim();
   const supervisorContact = $('#ei_supervisorContact').value.trim();
   const empCode = $('#ei_empCode').value.trim();
   const remarks = $('#ei_remarks').value.trim();
 
-  if (isNaN(qtyIssued) || qtyIssued < (issue.qtyReturned || 0) || !vendor || !area || !issueDate || !supervisorName || !supervisorContact) {
+  if (!materialName || isNaN(qtyIssued) || qtyIssued < (issue.qtyReturned || 0) || !vendor || !area || !supervisorName || !supervisorContact) {
     editIssueError = `Please fill all required fields. Quantity issued cannot be less than quantity already returned (${issue.qtyReturned || 0}).`;
     return render();
   }
@@ -1773,21 +1672,8 @@ async function handleEditIssueSubmit(e) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
   try {
-    const diff = qtyIssued - issue.qtyIssued;
-    
-    // Adjust stock if they changed the issued quantity
-    if (issue.toolId && diff !== 0) {
-      const tool = toolsCache.find(t => t.id === issue.toolId);
-      if (tool && tool.totalStock < diff) {
-        editIssueError = `Insufficient stock to increase this issue by ${diff}.`;
-        if(btn) { btn.disabled = false; btn.innerHTML = 'Save Changes'; }
-        return render();
-      }
-      await update(ref(db, `tools/${issue.toolId}`), { totalStock: increment(-diff) });
-    }
-
     const updates = {
-      qtyIssued, vendor, area, issueDate, supervisorName, supervisorContact,
+      materialName, qtyIssued, vendor, area, supervisorName, supervisorContact,
       empCode: empCode || null, remarks: remarks || null, updatedAt: serverTimestamp(),
     };
 
@@ -1844,11 +1730,6 @@ async function handleReturnSubmit(e) {
       remarks: remarks || issue.remarks || null, updatedAt: serverTimestamp(), returnedAt: serverTimestamp(),
     };
 
-    // Credit stock back to master list
-    if (issue.toolId) {
-      await update(ref(db, `tools/${issue.toolId}`), { totalStock: increment(qty) });
-    }
-
     if (returnSelectedPhotoFile && storage) {
       try {
         if (submitBtn) submitBtn.innerHTML = '<span class="spinner"></span> Uploading photo…';
@@ -1892,13 +1773,6 @@ async function handleEditReturnSubmit(e) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
   try {
-    const diff = qty - (issue.qtyReturned || 0);
-    
-    // Adjust stock back to master list based on return difference
-    if (issue.toolId && diff !== 0) {
-      await update(ref(db, `tools/${issue.toolId}`), { totalStock: increment(diff) });
-    }
-
     const updates = { returnDate, qtyReturned: qty, conditionOnReturn: condition, remarks: remarks || issue.remarks || null, updatedAt: serverTimestamp(), };
 
     const newPhoto = editReturnSelectedPhotoFile;
@@ -1931,67 +1805,13 @@ async function deleteIssue(id) {
     const issue = issuesCache.find((i) => i.id === id);
     if (!issue) return;
     
-    const unreturnedQty = issue.qtyIssued - (issue.qtyReturned || 0);
-    
     await remove(ref(db, 'issues/' + id));
-    
-    // Refund the items that were never returned
-    if (issue.toolId && unreturnedQty > 0) {
-       await update(ref(db, `tools/${issue.toolId}`), { totalStock: increment(unreturnedQty) });
-    }
     
     if (storage && issue) {
       if (issue.photoPath) try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {}
       if (issue.returnPhotoPath) try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {}
     }
   } catch (err) { alert('Could not delete this record: ' + (err.message || 'unknown error')); }
-}
-
-async function handleNewToolSubmit(e) {
-  e.preventDefault();
-  toolFormError = '';
-  const toolCode = $('#nt_code').value.trim();
-  const toolName = $('#nt_name').value.trim();
-  const specification = $('#nt_spec').value.trim();
-  const category = $('#nt_cat').value.trim();
-  const unit = $('#nt_unit').value;
-  const totalStock = parseInt($('#nt_stock').value, 10);
-  const storageLocation = $('#nt_loc').value.trim();
-
-  if (!toolCode || !toolName || isNaN(totalStock)) { toolFormError = 'Tool code, name, and stock quantity are required.'; return render(); }
-  if (toolsCache.some((t) => t.toolCode.toLowerCase() === toolCode.toLowerCase())) { toolFormError = 'That tool code already exists.'; return render(); }
-
-  try {
-    await push(ref(db, 'tools'), {
-      toolCode, toolName, specification: specification || null, category: category || null,
-      unit, totalStock, storageLocation: storageLocation || null, createdAt: serverTimestamp(),
-    });
-    navigateTo('tools-admin');
-  } catch (err) {
-    toolFormError = 'Could not add this tool: ' + (err.message || 'unknown error');
-    render();
-  }
-}
-
-async function handleSaveTool(id) {
-  const row = document.querySelector(`[data-tool-row="${id}"]`);
-  if (!row) return;
-  const fieldVal = (field) => row.querySelector(`[data-field="${field}"]`).value;
-  try {
-    await update(ref(db, 'tools/' + id), {
-      toolName: fieldVal('toolName').trim(), specification: fieldVal('specification').trim() || null,
-      category: fieldVal('category').trim() || null, unit: fieldVal('unit'),
-      totalStock: parseInt(fieldVal('totalStock'), 10) || 0, storageLocation: fieldVal('storageLocation').trim() || null,
-    });
-  } catch (err) {
-    toolFormError = 'Could not save changes: ' + (err.message || 'unknown error');
-    render();
-  }
-}
-
-async function handleDeleteTool(id) {
-  if (!confirm('Delete this tool from the master list?')) return;
-  try { await remove(ref(db, 'tools/' + id)); } catch (err) { toolFormError = 'Could not delete this tool: ' + (err.message || 'unknown error'); render(); }
 }
 
 async function loadRequestsTable() {
@@ -2031,7 +1851,7 @@ async function handleApproveRequest(username) {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { alert(`A user named "${username}" already exists. Reject this request or ask them to choose a different username.`); return; }
     const { fullName, password } = reqSnap.val();
-    await set(ref(db, 'users/' + username), { fullName, password, toolStockAuth: false, createdAt: serverTimestamp() });
+    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp() });
     await remove(ref(db, 'accessRequests/' + username));
     loadRequestsTable();
     loadUsersTable();
@@ -2066,31 +1886,17 @@ async function loadUsersTable() {
       <div class="table-wrap">
         ${users.length === 0 ? `<div class="empty-state"><div class="display">No staff accounts yet</div><p>Add one using the form below.</p></div>` : `
         <table class="reg">
-          <thead><tr><th>Username</th><th>Full Name</th><th>Tool Stock Auth</th><th>Action</th></tr></thead>
+          <thead><tr><th>Username</th><th>Full Name</th><th>Action</th></tr></thead>
           <tbody>
             ${users.map((u) => `
               <tr>
                 <td class="mono" data-label="Username">${escapeHtml(u.id)}</td>
                 <td data-label="Full Name">${escapeHtml(u.fullName)}</td>
-                <td data-label="Tool Stock Auth">
-                  <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                    <input type="checkbox" data-toggle-auth="${escapeHtml(u.id)}" ${u.toolStockAuth ? 'checked' : ''} style="width:16px;" />
-                    <span class="muted" style="font-size:12.5px;">Authorized</span>
-                  </label>
-                </td>
                 <td data-label="Action"><button class="btn btn-danger btn-sm" data-remove-user="${escapeHtml(u.id)}">Delete</button></td>
               </tr>`).join('')}
           </tbody>
         </table>`}
       </div>`;
-      
-    holder.querySelectorAll('[data-toggle-auth]').forEach((chk) => {
-      chk.addEventListener('change', async (e) => {
-        try { await update(ref(db, 'users/' + chk.dataset.toggleAuth), { toolStockAuth: e.target.checked }); } catch (err) {
-          alert('Could not update user authority: ' + (err.message || 'unknown error')); e.target.checked = !e.target.checked; 
-        }
-      });
-    });
 
     holder.querySelectorAll('[data-remove-user]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -2107,7 +1913,6 @@ async function handleNewUserSubmit(e) {
   const username = $('#nu_username').value.trim();
   const fullName = $('#nu_fullname').value.trim();
   const password = $('#nu_password').value;
-  const toolAuth = $('#nu_toolAuth').checked;
 
   if (!username || !fullName || !password) { userFormError = 'Please fill in username, full name, and password.'; return render(); }
   if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; return render(); }
@@ -2116,7 +1921,7 @@ async function handleNewUserSubmit(e) {
   try {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { userFormError = 'That username already exists.'; return render(); }
-    await set(ref(db, 'users/' + username), { fullName, password, toolStockAuth: toolAuth, createdAt: serverTimestamp(), });
+    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp(), });
     navigateTo('users-admin');
   } catch (err) { userFormError = 'Could not create this account: ' + (err.message || 'unknown error'); render(); }
 }
