@@ -298,7 +298,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
-  /* Enforce two-row topbar layout */
   .topbar-inner { 
     flex-wrap: wrap; 
     height: auto; 
@@ -310,7 +309,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
   .who { flex-shrink: 0; margin-left: auto; gap: 10px; }
   .who-name { display: none; } 
   
-  /* Force navigation to the second row and enable horizontal scrolling */
   .nav { 
     order: 3; 
     flex: 1 1 100%; 
@@ -327,12 +325,10 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
   .nav::-webkit-scrollbar { display: none; }
   .nav button.navlink { padding: 8px 16px; font-size: 13px; flex-shrink: 0; }
   
-  /* Fix status bar wrapping */
   .status-bar-inner { padding: 8px 16px; flex-wrap: nowrap; gap: 12px; justify-content: space-between; }
   .status-sync { font-size: 10.5px; white-space: nowrap; flex-shrink: 0; }
   .status-clock { font-size: 10.5px; white-space: nowrap; flex-shrink: 0; text-align: right; }
 
-  /* Main Layout Adjustments */
   .app-main { padding: 24px 16px 64px; }
   .page-head h1 { font-size: 24px; }
   .page-head .btn { width: 100%; justify-content: center; }
@@ -340,7 +336,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
   .form-grid { grid-template-columns: 1fr; gap: 16px; }
   .panel-pad { padding: 20px 16px; }
   
-  /* KPI Dashboard Adjustments */
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .kpi { padding: 16px; }
   .kpi-value { font-size: 28px; }
@@ -351,7 +346,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
   .filter-bar { flex-direction: column; align-items: stretch; padding: 12px; gap: 10px; }
   .filter-bar input[type="text"], .filter-bar select { width: 100%; min-width: 0; }
   
-  /* Mobile Table View (Card Format) */
   table.reg, table.reg thead, table.reg tbody, table.reg th, table.reg td, table.reg tr { display: block; }
   table.reg thead { display: none; }
   table.reg tr { 
@@ -440,6 +434,14 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
         <label for="reqPassword">Desired Password</label>
         <input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" />
       </div>
+      <div class="field">
+        <label for="reqPhoto">Profile Photo (Optional)</label>
+        <input type="file" id="reqPhoto" accept="image/*" />
+      </div>
+      <div class="field full" id="reqPhotoPreviewWrap" style="display:none; text-align:center;">
+        <img id="reqPhotoPreview" alt="Request avatar preview" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:1px solid var(--steel-300);" />
+        <button type="button" class="btn btn-ghost btn-sm" id="reqPhotoClear" style="margin:8px auto 0; display:block; width:fit-content;">Remove Photo</button>
+      </div>
       <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
     </form>
 
@@ -473,7 +475,6 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
       <div class="status-bar-inner">
         <span class="status-sync">
           <span class="sync-dot sync-dot-bad" id="appSyncDot"></span>
-          <!-- Dynamic Sync Icon -->
           <span id="syncIcon" style="display:none; margin-left:4px; font-weight:bold;"></span>
           <span id="appSyncLabel">Checking…</span>
         </span>
@@ -487,7 +488,7 @@ input:disabled { opacity: 0.6; cursor: not-allowed; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment
+  getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment, query, limitToLast
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 import {
   getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
@@ -511,8 +512,10 @@ const firebaseConfig = {
    ========================================================================= */
 let currentUser = null; 
 let issuesCache = [];
+let activityLogsCache = [];
 let unsubIssues = null;
 let unsubRequests = null;
+let unsubActivityLogs = null;
 let currentView = 'dashboard';
 
 const $ = (sel) => document.querySelector(sel);
@@ -666,7 +669,6 @@ function showScreen(id) {
 
 const configIsPlaceholder = Object.values(firebaseConfig).some((v) => v.startsWith('YOUR_'));
 let app, db, storage;
-let cloudSyncOk = false;
 let lastSyncedAt = null;
 let appBootstrapped = false;
 let clockStarted = false;
@@ -676,6 +678,22 @@ let clockInterval = null;
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin';
 const SESSION_KEY = 'mechtools_session';
+
+// Activity Tracker Logger Utility
+async function logActivity(username, activityText) {
+  if (!db) return;
+  try {
+    const logsRef = ref(db, 'activityLogs');
+    const newLogRef = push(logsRef);
+    await set(newLogRef, {
+      username: username,
+      activity: activityText,
+      timestamp: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Failed to write log trace:', err);
+  }
+}
 
 // =========================================================================
 // APP BOOTSTRAPPING
@@ -788,6 +806,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
       initTopbar();
       listenToCollections();
       showScreen('appScreen');
+      await logActivity(ADMIN_USERNAME, "Logged in to admin terminal");
       navigateTo('admin-dashboard');
       return;
     }
@@ -807,6 +826,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     initTopbar();
     listenToCollections();
     showScreen('appScreen');
+    await logActivity(username, "Logged in to store register");
     navigateTo('dashboard');
   } catch (err) {
     console.error(err);
@@ -816,9 +836,14 @@ $('#loginForm').addEventListener('submit', async (e) => {
   }
 });
 
-$('#logoutBtn').addEventListener('click', () => {
+$('#logoutBtn').addEventListener('click', async () => {
+  if (currentUser) {
+    await logActivity(currentUser.username, "Logged out of system");
+  }
+
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
   if (unsubRequests) { unsubRequests(); unsubRequests = null; }
+  if (unsubActivityLogs) { unsubActivityLogs(); unsubActivityLogs = null; }
   
   if (clockInterval) { 
     clearInterval(clockInterval); 
@@ -860,12 +885,34 @@ $('#requestForm').addEventListener('submit', async (e) => {
     if (existingUser.exists()) { showAuthError('That username is already taken.'); return; }
     const existingReq = await get(ref(db, 'accessRequests/' + username));
     if (existingReq.exists()) { showAuthError('A request for that username is already pending approval.'); return; }
-    await set(ref(db, 'accessRequests/' + username), { fullName, password, requestedAt: serverTimestamp() });
+
+    let reqUploadedPhotoUrl = null;
+    let reqUploadedPhotoPath = null;
+    if (reqSelectedPhotoFile && storage) {
+      try {
+        const ext = (reqSelectedPhotoFile.name.split('.').pop() || 'jpg').slice(0, 8);
+        reqUploadedPhotoPath = `request-photos/${username}.${ext}`;
+        reqUploadedPhotoUrl = await uploadWithProgress(reqUploadedPhotoPath, reqSelectedPhotoFile, btn);
+      } catch (photoErr) {
+        alert('The request will be saved, but your profile photo failed to upload: ' + (photoErr.message || 'unknown error'));
+      }
+    }
+
+    await set(ref(db, 'accessRequests/' + username), { 
+      fullName, 
+      password, 
+      requestedAt: serverTimestamp(),
+      profilePhotoUrl: reqUploadedPhotoUrl,
+      profilePhotoPath: reqUploadedPhotoPath
+    });
     
+    await logActivity('anonymous', `Submitted new storekeeper registration request for username: "${username}"`);
+
     $('#requestForm').classList.add('hidden'); $('#showLoginForm').classList.add('hidden');
     $('#showRequestForm').classList.remove('hidden');
     showAuthInfo('Request submitted. An Admin needs to approve it before you can log in — check back soon.');
     $('#requestForm').reset();
+    clearReqSelectedPhoto();
   } catch (err) {
     showAuthError('Unable to submit request: failed to sync with cloud.');
   } finally {
@@ -901,6 +948,7 @@ function initTopbar() {
         ['admin-dashboard', 'Dashboard'],
         ['register', 'Register'],
         ['users-admin', 'Users'],
+        ['activity-log', 'Activity Log'],
         ['settings-admin', 'Settings'],
       ]
     : [
@@ -938,11 +986,24 @@ function snapshotToArray(snap) {
 
 function listenToCollections() {
   if (unsubIssues) unsubIssues();
-  
   unsubIssues = onValue(ref(db, 'issues'), (snap) => {
     issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
-    render();
+    if (currentView === 'register' || currentView === 'admin-dashboard' || currentView === 'dashboard' || currentView === 'settings-admin') {
+      render();
+    }
   });
+
+  if (currentUser.role === 'admin') {
+    if (unsubActivityLogs) unsubActivityLogs();
+    // Enforce viewing only 200 activity logs matching requirement
+    const logsQuery = query(ref(db, 'activityLogs'), limitToLast(200));
+    unsubActivityLogs = onValue(logsQuery, (snap) => {
+      activityLogsCache = snapshotToArray(snap).sort((a, b) => b.timestamp - a.timestamp);
+      if (currentView === 'activity-log') {
+        render();
+      }
+    });
+  }
 }
 
 function statusOf(issue) { return ((issue.qtyReturned || 0) >= issue.qtyIssued) ? 'Returned' : 'Issued'; }
@@ -957,7 +1018,7 @@ function enrichedIssues() {
 function render() {
   if (!currentUser) return;
   
-  // Clear pending photos when navigating views to prevent memory/state leaks
+  // Clear pending files when switching contexts to protect sessions
   selectedPhotoFile = null;
   returnSelectedPhotoFile = null;
   editReturnSelectedPhotoFile = null;
@@ -965,7 +1026,7 @@ function render() {
   profileSelectedPhotoFile = null;
 
   const main = $('#appMain');
-  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
+  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return', 'activity-log'];
   
   if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
   
@@ -979,6 +1040,7 @@ function render() {
     'register': renderRegister,
     'issue-new': renderIssueForm,
     'users-admin': renderUsersAdmin,
+    'activity-log': renderActivityLogView,
     'settings-admin': renderSettingsAdmin,
     'return-record': renderReturnForm,
     'edit-return': renderEditReturnForm,
@@ -1025,7 +1087,7 @@ function renderUserDashboard() {
 }
 
 function renderProfile() {
-  const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDJDMi40OCAyIDIgMi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMyMS41MiAyIDEyIDJ6bTAgM2MxLjY2IDAgMyAxLjM0IDMgM3MtMS4zNCAzLTMgMy0zLTEuMzQtMy0zIDEuMzQtMyAzLTN6bTAgMTQuMmMtMi41IDAtNC43MS0xLjI4LTYtMy4yMi4wMy0xLjk5IDQtMy4wOCA2LTMuMDggMiAwIDUuOTcgMS4wOSA2IDMuMDgtMS4yOSAxLjk0LTMuNSAzLjIyLTYgMy4yMnoiLz48L3N2Zz4=';
+  const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDJDMi40OCAyIDIgMi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMyMS41MiAyIDEyIDJ6bTAgM2MxLjY2IDAgMyAxLjM0IDMgM3MtMS4zNCAzLTMgMy0zLTEuMzQtMy0zIDEuMzQtMyAzLTN6bTAgMTQuMmMtMi41IDAtNC4310xLjI4LTYtMy4yMi4wMy0xLjk5IDQtMy4wOCA2LTMuMDggMiAwIDUuOTcgMS4wOSA2IDMuMDgtMS4yOSAxLjk0LTMuNSAzLjIyLTYgMy4yMnoiLz48L3N2Zz4=';
   return `
     <div class="page-head">
       <div>
@@ -1079,13 +1141,13 @@ function renderAdminDashboard() {
     <div class="actions-row">
       <button class="btn btn-dark" data-nav="register">Manage Full Register</button>
       <button class="btn btn-ghost" data-nav="users-admin">Manage Users</button>
+      <button class="btn btn-ghost" data-nav="activity-log">View Activity Log</button>
       <button class="btn btn-ghost" data-nav="settings-admin">Settings</button>
     </div>`;
 }
 
 function formatTimestamp(ms) {
   if (!ms || typeof ms !== 'number') return 'Syncing...'; 
-  
   const d = new Date(ms);
   return d.toLocaleString(undefined, {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -1104,7 +1166,6 @@ function renderRegister() {
         r.materialName, r.vendor, r.area, r.supervisorName, 
         r.empCode, r.issueDate, r.returnDate, r.status
       ].join(' ').toLowerCase();
-      
       return rowText.includes(needle);
     });
   }
@@ -1208,9 +1269,7 @@ function renderRegister() {
                 </td>
                 <td data-label="Action" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
                   ${r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
-                  
                   ${r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
-                  
                   ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>` : ''}
                   ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete-issue="${r.id}">Delete</button>` : ''}
                 </td>
@@ -1329,7 +1388,7 @@ function renderEditIssueForm() {
             <input type="text" id="ei_supervisorName" value="${escapeHtml(issue.supervisorName || '')}" required />
           </div>
           <div class="field">
-            <label for="ei_supervisorContact">Supervisor Contact Number</label>
+            <label starve for="ei_supervisorContact">Supervisor Contact Number</label>
             <input type="tel" id="ei_supervisorContact" value="${escapeHtml(issue.supervisorContact || '')}" pattern="[0-9]{10}" maxlength="10" minlength="10" title="Please enter exactly 10 digits" required />
           </div>
           <div class="field">
@@ -1543,6 +1602,44 @@ function renderUsersAdmin() {
     </div>`;
 }
 
+// Render User Activity Log Traces View (Enforces top 200 items max matching requirement)
+function renderActivityLogView() {
+  return `
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Audit Registers</span>
+        <h1>User Login & Activity History</h1>
+        <div class="page-sub">Chronological monitoring tracking up to 200 items max operations trace history data logs.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="table-wrap">
+        ${activityLogsCache.length === 0 ? `
+          <div class="empty-state"><div class="display">No activity registered</div><p>Actions track here live on application events execution.</p></div>
+        ` : `
+        <table class="reg">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>User Terminal</th>
+              <th>Operation Description Text</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${activityLogsCache.map((log) => `
+              <tr>
+                <td class="mono" style="font-size:12.5px;" data-label="Timestamp">${formatTimestamp(log.timestamp)}</td>
+                <td data-label="User Terminal"><span class="tag">${escapeHtml(log.username)}</span></td>
+                <td data-label="Operation Description Text" style="white-space:normal; font-weight:500; color:var(--steel-950);">${escapeHtml(log.activity)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        `}
+      </div>
+    </div>`;
+}
+
 function renderSettingsAdmin() {
   const dbUrl = firebaseConfig.databaseURL || '(not set)';
   return `
@@ -1596,9 +1693,7 @@ function renderSettingsAdmin() {
 function renderStorageUsage() {
   const holder = $('#storageUsageHolder');
   if (!holder) return;
-
   const LIMIT_KB = 1024 * 1024; 
-
   const sections = [
     { label: 'Issues', data: issuesCache, color: '#3b82f6' },
   ];
@@ -1650,21 +1745,52 @@ function renderStorageUsage() {
   });
 }
 
-
 /* =========================================================================
    EVENT WIRING
    ========================================================================= */
+let reqSelectedPhotoFile = null;
+
+function clearReqSelectedPhoto() {
+  reqSelectedPhotoFile = null;
+  const input = $('#reqPhoto');
+  if (input) input.value = '';
+  const wrap = $('#reqPhotoPreviewWrap');
+  if (wrap) wrap.style.display = 'none';
+}
+
 function wireViewEvents(viewId) {
   $$('[data-nav]').forEach((btn) => btn.addEventListener('click', () => {
     if (activeUploadTask) { try { activeUploadTask.cancel(); } catch (_) {} }
     navigateTo(btn.dataset.nav);
   }));
 
+  // Wire auth screen registration photo upload change hook
+  const reqPhotoInput = $('#reqPhoto');
+  if (reqPhotoInput && !reqPhotoInput.dataset.wired) {
+    reqPhotoInput.dataset.wired = 'true';
+    reqPhotoInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) { clearReqSelectedPhoto(); return; }
+      if (!file.type.startsWith('image/')) { alert('Please select an image file format.'); e.target.value = ''; return; }
+      
+      const reader = new FileReader();
+      reader.onload = () => { 
+        $('#reqPhotoPreview').src = reader.result; 
+        $('#reqPhotoPreviewWrap').style.display = 'block'; 
+      };
+      reader.readAsDataURL(file);
+      reqSelectedPhotoFile = await compressImage(file, 400, 0.8);
+    });
+    
+    $('#reqPhotoClear')?.addEventListener('click', () => {
+      clearReqSelectedPhoto();
+    });
+  }
+
   if (viewId === 'register') {
     $('#regSearch')?.addEventListener('input', (e) => { 
       const needle = e.target.value.toLowerCase();
       registerFilterState.q = needle; 
-      
       document.querySelectorAll('table.reg tbody tr').forEach(row => {
         const text = row.innerText.toLowerCase();
         row.style.display = text.includes(needle) ? '' : 'none';
@@ -1704,8 +1830,6 @@ function wireViewEvents(viewId) {
       const reader = new FileReader();
       reader.onload = () => { $('#p_avatarPreview').src = reader.result; };
       reader.readAsDataURL(file);
-      
-      // Compress the profile photo to max width 400px, 80% quality
       profileSelectedPhotoFile = await compressImage(file, 400, 0.8);
     });
     $('#profileForm').addEventListener('submit', handleProfileSubmit);
@@ -1727,7 +1851,6 @@ function wireViewEvents(viewId) {
       const reader = new FileReader();
       reader.onload = () => { $('#r_photoPreview').src = reader.result; $('#r_photoPreviewWrap').style.display = 'block'; };
       reader.readAsDataURL(file);
-      
       returnSelectedPhotoFile = await compressImage(file);
     });
     $('#r_photoClear').addEventListener('click', () => {
@@ -1748,7 +1871,6 @@ function wireViewEvents(viewId) {
       const reader = new FileReader();
       reader.onload = () => { $('#er_photoPreview').src = reader.result; $('#er_photoPreviewWrap').style.display = 'block'; };
       reader.readAsDataURL(file);
-
       editReturnSelectedPhotoFile = await compressImage(file);
     });
     $('#er_photoClear').addEventListener('click', () => {
@@ -1769,7 +1891,6 @@ function wireViewEvents(viewId) {
       const reader = new FileReader();
       reader.onload = () => { $('#ei_photoPreview').src = reader.result; $('#ei_photoPreviewWrap').style.display = 'block'; };
       reader.readAsDataURL(file);
-
       editIssueSelectedPhotoFile = await compressImage(file);
     });
     $('#ei_photoClear').addEventListener('click', () => {
@@ -1816,7 +1937,8 @@ async function handleProfileSubmit(e) {
     const url = await uploadWithProgress(path, profileSelectedPhotoFile, btn);
     
     await update(ref(db, 'users/' + currentUser.username), { profilePhotoUrl: url, profilePhotoPath: path });
-    
+    await logActivity(currentUser.username, "Updated account layout profile photo");
+
     currentUser.profilePhotoUrl = url;
     saveSession(currentUser);
     
@@ -1842,7 +1964,6 @@ async function handlePhotoSelected(e) {
   const reader = new FileReader();
   reader.onload = () => { $('#f_photoPreview').src = reader.result; $('#f_photoPreviewWrap').style.display = 'block'; };
   reader.readAsDataURL(file);
-  
   selectedPhotoFile = await compressImage(file);
 }
 
@@ -1908,6 +2029,7 @@ async function handleIssueSubmit(e) {
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
 
+    await logActivity(currentUser.username, `Issued asset execution: logged ${qty} unit(s) of "${materialName}" for vendor "${vendor}"`);
     clearSelectedPhoto();
     navigateTo('register');
   } catch (err) {
@@ -1968,6 +2090,7 @@ async function handleEditIssueSubmit(e) {
     }
 
     await update(ref(db, 'issues/' + issue.id), updates);
+    await logActivity(currentUser.username, `Updated original issue specifications for log ID: ${issue.id} ("${materialName}")`);
     editIssueSelectedPhotoFile = null;
     navigateTo('register');
   } catch (err) {
@@ -2000,7 +2123,6 @@ async function handleReturnSubmit(e) {
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
   const photoToUpload = returnSelectedPhotoFile;
-
   setSyncingState(true, 'Recording return...');
   try {
     const updates = {
@@ -2022,6 +2144,7 @@ async function handleReturnSubmit(e) {
     }
 
     await update(ref(db, 'issues/' + issue.id), updates);
+    await logActivity(currentUser.username, `Recorded return receipt: logged entry of ${qty} unit(s) for "${issue.materialName}" in condition "${condition}"`);
     returnSelectedPhotoFile = null;
     navigateTo('register');
   } catch (err) {
@@ -2070,6 +2193,7 @@ async function handleEditReturnSubmit(e) {
     }
 
     await update(ref(db, 'issues/' + issue.id), updates);
+    await logActivity(currentUser.username, `Admin updated return transaction components on log ID: ${issue.id} ("${issue.materialName}")`);
     editReturnSelectedPhotoFile = null;
     navigateTo('register');
   } catch (err) {
@@ -2087,6 +2211,7 @@ async function deleteIssue(id) {
     if (!issue) return;
     
     await remove(ref(db, 'issues/' + id));
+    await logActivity(currentUser.username, `Deleted register transaction record index completely: ID ${id} ("${issue.materialName || 'unnamed'}")`);
     
     if (storage && issue) {
       if (issue.photoPath) try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {}
@@ -2103,7 +2228,6 @@ async function handleCleanupOldRecords() {
   const toDelete = issuesCache.filter(issue => {
     if (statusOf(issue) !== 'Returned') return false; 
     if (!issue.issueDate) return false;
-    
     const itemDate = new Date(issue.issueDate);
     return itemDate < cutoffDate;
   });
@@ -2127,7 +2251,6 @@ async function handleCleanupOldRecords() {
   for (const issue of toDelete) {
     try {
       await remove(ref(db, 'issues/' + issue.id));
-      
       if (storage) {
         if (issue.photoPath) try { await deleteObject(storageRef(storage, issue.photoPath)); } catch (_) {}
         if (issue.returnPhotoPath) try { await deleteObject(storageRef(storage, issue.returnPhotoPath)); } catch (_) {}
@@ -2139,6 +2262,7 @@ async function handleCleanupOldRecords() {
     }
   }
 
+  await logActivity(currentUser.username, `Executed register lifecycle storage cleanup. Dropped ${successCount} entries older than 6 months.`);
   setSyncingState(false);
   alert(`Cleanup complete.\n\nSuccessfully deleted: ${successCount} record(s).\n${failCount > 0 ? `Failed to delete: ${failCount} record(s).` : ''}`);
   render();
@@ -2159,10 +2283,16 @@ async function loadRequestsTable() {
 
     pad.innerHTML = requests.map((r) => `
       <div class="request-card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:700; font-size:15px; color:var(--steel-900);">${escapeHtml(r.fullName)}</div>
-            <div class="mono muted" style="font-size:12.5px; margin-top:4px;">Username: ${escapeHtml(r.id)}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            ${r.profilePhotoUrl 
+              ? `<img src="${escapeHtml(r.profilePhotoUrl)}" class="avatar" style="width:44px; height:44px; border:2px solid var(--amber);" alt="Request target photo" />` 
+              : `<div class="avatar" style="width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold; background:var(--steel-300); color:var(--steel-700); border-radius:50%;">?</div>`
+            }
+            <div>
+              <div style="font-weight:700; font-size:15px; color:var(--steel-900);">${escapeHtml(r.fullName)}</div>
+              <div class="mono muted" style="font-size:12.5px; margin-top:4px;">Username: ${escapeHtml(r.id)}</div>
+            </div>
           </div>
           <div style="display:flex; gap:12px;">
             <button class="btn btn-primary btn-sm" data-approve-request="${escapeHtml(r.id)}">Approve</button>
@@ -2187,9 +2317,21 @@ async function handleApproveRequest(username) {
     if (!reqSnap.exists()) { loadRequestsTable(); return; }
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { alert(`A user named "${username}" already exists. Reject this request or ask them to choose a different username.`); return; }
-    const { fullName, password } = reqSnap.val();
-    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp() });
+    
+    const { fullName, password, profilePhotoUrl, profilePhotoPath } = reqSnap.val();
+    
+    // Copy parameters securely into system production user records node
+    await set(ref(db, 'users/' + username), { 
+      fullName, 
+      password, 
+      profilePhotoUrl: profilePhotoUrl || null,
+      profilePhotoPath: profilePhotoPath || null,
+      createdAt: serverTimestamp() 
+    });
+    
     await remove(ref(db, 'accessRequests/' + username));
+    await logActivity(currentUser.username, `Approved storekeeper profile request registration for user: "${username}" (${fullName})`);
+    
     loadRequestsTable();
     loadUsersTable();
   } catch (err) { 
@@ -2203,7 +2345,15 @@ async function handleRejectRequest(username) {
   if (!confirm(`Reject the access request from "${username}"?`)) return;
   setSyncingState(true, 'Rejecting request...');
   try { 
+    const reqSnap = await get(ref(db, 'accessRequests/' + username));
+    if (reqSnap.exists() && storage) {
+      const rData = reqSnap.val();
+      if (rData.profilePhotoPath) {
+        try { await deleteObject(storageRef(storage, rData.profilePhotoPath)); } catch(_) {}
+      }
+    }
     await remove(ref(db, 'accessRequests/' + username)); 
+    await logActivity(currentUser.username, `Rejected and removed registration workflow for username: "${username}"`);
     loadRequestsTable(); 
   } catch (err) { 
     alert('Could not reject this request: ' + (err.message || 'unknown error')); 
@@ -2237,10 +2387,13 @@ async function loadUsersTable() {
       <div class="table-wrap">
         ${users.length === 0 ? `<div class="empty-state"><div class="display">No staff accounts yet</div><p>Add one using the form below.</p></div>` : `
         <table class="reg">
-          <thead><tr><th>Username</th><th>Full Name</th><th>Action</th></tr></thead>
+          <thead><tr><th>Avatar</th><th>Username</th><th>Full Name</th><th>Action</th></tr></thead>
           <tbody>
             ${users.map((u) => `
               <tr>
+                <td data-label="Avatar">
+                  <img src="${u.profilePhotoUrl || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2NiZDVlMSI+PHBhdGggZD0iTTEyIDJDMi40OCAyIDIgMi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMyMS41MiAyIDEyIDJ6bTAgM2MxLjY2IDAgMyAxLjM0IDMgM3MtMS4zNCAzLTMgMy0zLTEuMzQtMy0zIDEuMzQtMyAzLTN6bTAgMTQuMmMtMi41IDAtNC43MS0xLjI4LTYtMy4yMi4wMy0xLjk5IDQtMy4wOCA2LTMuMDggMiAwIDUuOTcgMS4wOSA2IDMuMDgtMS4yOSAxLjk0LTMuNSAzLjIyLTYgMy4yMnoiLz48L3N2Zz4='}" class="avatar" style="width:30px; height:30px;" alt="User profile icon" />
+                </td>
                 <td class="mono" data-label="Username">${escapeHtml(u.id)}</td>
                 <td data-label="Full Name">${escapeHtml(u.fullName)}</td>
                 <td data-label="Action"><button class="btn btn-danger btn-sm" data-remove-user="${escapeHtml(u.id)}">Delete</button></td>
@@ -2251,10 +2404,19 @@ async function loadUsersTable() {
 
     holder.querySelectorAll('[data-remove-user]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm(`Delete the account "${btn.dataset.removeUser}"? They will no longer be able to log in.`)) return;
+        const uTarget = btn.dataset.removeUser;
+        if (!confirm(`Delete the account "${uTarget}"? They will no longer be able to log in.`)) return;
         setSyncingState(true, 'Deleting user...');
         try { 
-          await remove(ref(db, 'users/' + btn.dataset.removeUser)); 
+          const uSnap = await get(ref(db, 'users/' + uTarget));
+          if (uSnap.exists() && storage) {
+            const uData = uSnap.val();
+            if (uData.profilePhotoPath) {
+              try { await deleteObject(storageRef(storage, uData.profilePhotoPath)); } catch(_) {}
+            }
+          }
+          await remove(ref(db, 'users/' + uTarget)); 
+          await logActivity(currentUser.username, `Deleted system storekeeper account terminal profile access for: "${uTarget}"`);
           loadUsersTable(); 
         } catch (err) { 
           alert('Could not delete this account: ' + (err.message || 'unknown error')); 
@@ -2285,7 +2447,8 @@ async function handleNewUserSubmit(e) {
   try {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { userFormError = 'That username already exists.'; return render(); }
-    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp(), });
+    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp(), profilePhotoUrl: null, profilePhotoPath: null });
+    await logActivity(currentUser.username, `Admin manually registered direct credentials for storekeeper: "${username}" (${fullName})`);
     navigateTo('users-admin');
   } catch (err) { 
     userFormError = 'Could not create this account: ' + (err.message || 'unknown error'); 
