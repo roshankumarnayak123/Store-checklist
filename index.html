@@ -609,6 +609,49 @@ async function uploadWithProgress(path, file, btnEl) {
   });
 }
 
+// Client-Side Image Compressor
+async function compressImage(file, maxWidth = 1280, quality = 0.7) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate aspect ratio if image is too large
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert canvas back to a compressed File object
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file); // Fallback to original if blob creation fails
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(file); // Fallback to original on error
+    };
+    reader.onerror = () => resolve(file); // Fallback to original on error
+  });
+}
+
 // Auto-select current month and year on load
 const initDate = new Date();
 initDate.setMinutes(initDate.getMinutes() - initDate.getTimezoneOffset());
@@ -1603,15 +1646,16 @@ function wireViewEvents(viewId) {
 
   if (viewId === 'return-record') {
     $('#returnForm').addEventListener('submit', handleReturnSubmit);
-    $('#r_photo').addEventListener('change', (e) => {
+    $('#r_photo').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) { returnSelectedPhotoFile = null; $('#r_photoPreviewWrap').style.display = 'none'; return; }
       if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
-      if (file.size > 5 * 1024 * 1024) { alert('Please choose an image smaller than 5 MB.'); e.target.value = ''; return; }
-      returnSelectedPhotoFile = file;
+      
       const reader = new FileReader();
       reader.onload = () => { $('#r_photoPreview').src = reader.result; $('#r_photoPreviewWrap').style.display = 'block'; };
       reader.readAsDataURL(file);
+      
+      returnSelectedPhotoFile = await compressImage(file);
     });
     $('#r_photoClear').addEventListener('click', () => {
       returnSelectedPhotoFile = null;
@@ -1623,15 +1667,16 @@ function wireViewEvents(viewId) {
 
   if (viewId === 'edit-return') {
     $('#editReturnForm').addEventListener('submit', handleEditReturnSubmit);
-    $('#er_photo').addEventListener('change', (e) => {
+    $('#er_photo').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) { editReturnSelectedPhotoFile = null; $('#er_photoPreviewWrap').style.display = 'none'; return; }
       if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
-      if (file.size > 5 * 1024 * 1024) { alert('Please choose an image smaller than 5 MB.'); e.target.value = ''; return; }
-      editReturnSelectedPhotoFile = file;
+      
       const reader = new FileReader();
       reader.onload = () => { $('#er_photoPreview').src = reader.result; $('#er_photoPreviewWrap').style.display = 'block'; };
       reader.readAsDataURL(file);
+
+      editReturnSelectedPhotoFile = await compressImage(file);
     });
     $('#er_photoClear').addEventListener('click', () => {
       editReturnSelectedPhotoFile = null;
@@ -1643,15 +1688,16 @@ function wireViewEvents(viewId) {
   
   if (viewId === 'edit-issue') {
     $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit);
-    $('#ei_photo').addEventListener('change', (e) => {
+    $('#ei_photo').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) { editIssueSelectedPhotoFile = null; $('#ei_photoPreviewWrap').style.display = 'none'; return; }
       if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
-      if (file.size > 5 * 1024 * 1024) { alert('Please choose an image smaller than 5 MB.'); e.target.value = ''; return; }
-      editIssueSelectedPhotoFile = file;
+      
       const reader = new FileReader();
       reader.onload = () => { $('#ei_photoPreview').src = reader.result; $('#ei_photoPreviewWrap').style.display = 'block'; };
       reader.readAsDataURL(file);
+
+      editIssueSelectedPhotoFile = await compressImage(file);
     });
     $('#ei_photoClear').addEventListener('click', () => {
       editIssueSelectedPhotoFile = null;
@@ -1681,15 +1727,16 @@ let returnSelectedPhotoFile = null;
 let editReturnSelectedPhotoFile = null;
 let editIssueSelectedPhotoFile = null;
 
-function handlePhotoSelected(e) {
+async function handlePhotoSelected(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) { clearSelectedPhoto(); return; }
   if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
-  if (file.size > 5 * 1024 * 1024) { alert('Please choose an image smaller than 5 MB.'); e.target.value = ''; return; }
-  selectedPhotoFile = file;
+  
   const reader = new FileReader();
   reader.onload = () => { $('#f_photoPreview').src = reader.result; $('#f_photoPreviewWrap').style.display = 'block'; };
   reader.readAsDataURL(file);
+  
+  selectedPhotoFile = await compressImage(file);
 }
 
 function clearSelectedPhoto() {
@@ -1725,35 +1772,35 @@ async function handleIssueSubmit(e) {
     return render();
   }
 
-  // Capture the file now, before any DB write. The set() below writes to 'issues',
-  // which fires the realtime onValue('issues') listener -> render() -> which clears
-  // selectedPhotoFile. Without this local copy, the photo check further down would
-  // silently see null and skip the upload with no error at all.
   const photoToUpload = selectedPhotoFile;
-
   const btn = $('#issueSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   
   setSyncingState(true, 'Saving record...');
   try {
     const newRef = push(ref(db, 'issues'));
-    await set(newRef, {
-      materialName, qtyIssued: qty, vendor, area, empCode: empCode || null,
-      issueDate, supervisorName, supervisorContact, returnDate: null, qtyReturned: 0, conditionOnReturn: null,
-      issuedBy: currentUser.username, issuedByName: currentUser.fullName, receivedBy: null, receivedByName: null,
-      remarks: remarks || null, photoUrl: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
+    let uploadedPhotoUrl = null;
+    let uploadedPhotoPath = null;
 
     if (photoToUpload && storage) {
       try {
         const ext = (photoToUpload.name.split('.').pop() || 'jpg').slice(0, 8);
-        const path = `issue-photos/${newRef.key}.${ext}`;
-        const url = await uploadWithProgress(path, photoToUpload, btn);
-        await update(newRef, { photoUrl: url, photoPath: path });
+        uploadedPhotoPath = `issue-photos/${newRef.key}.${ext}`;
+        uploadedPhotoUrl = await uploadWithProgress(uploadedPhotoPath, photoToUpload, btn);
       } catch (photoErr) {
-        alert('The issue was saved, but the photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
+        alert('The issue will be saved, but the photo could not be uploaded: ' + (photoErr.message || 'unknown error'));
       }
     }
+
+    await set(newRef, {
+      materialName, qtyIssued: qty, vendor, area, empCode: empCode || null,
+      issueDate, supervisorName, supervisorContact, returnDate: null, qtyReturned: 0, conditionOnReturn: null,
+      issuedBy: currentUser.username, issuedByName: currentUser.fullName, receivedBy: null, receivedByName: null,
+      remarks: remarks || null, 
+      photoUrl: uploadedPhotoUrl, 
+      photoPath: uploadedPhotoPath, 
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
 
     clearSelectedPhoto();
     navigateTo('register');
