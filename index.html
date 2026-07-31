@@ -19,6 +19,8 @@
 
 </head>
 <body>
+  <!-- 3D Background Canvas -->
+  <canvas id="bgCanvas"></canvas>
 
 <div id="cloudFailSafe" role="alertdialog" aria-modal="true" aria-labelledby="cloudFailTitle" aria-describedby="cloudFailMessage">
   <div class="cloud-fail-card">
@@ -76,7 +78,46 @@
     <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
     <span class="theme-toggle-knob" aria-hidden="true"></span>
   </button>
-  <div class="auth-card">
+  
+  <div class="auth-left">
+    <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
+    <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
+    
+    <div class="auth-features-layout">
+      <div class="auth-features">
+        <div class="auth-feature-card">
+          <span class="feature-icon" aria-hidden="true">⚡</span>
+          <div class="feature-text">Real-time Tracking</div>
+        </div>
+        <div class="auth-feature-card float-delay-1">
+          <span class="feature-icon" aria-hidden="true">☁</span>
+          <div class="feature-text">Cloud Sync Enabled</div>
+        </div>
+        <div class="auth-feature-card float-delay-2">
+          <span class="feature-icon" aria-hidden="true">🔒</span>
+          <div class="feature-text">Role-based Access</div>
+        </div>
+      </div>
+      
+      <div class="login-kpi-grid auth-features" id="loginKpiGrid" style="display: none; opacity: 0; transition: opacity 0.5s ease;">
+        <div class="auth-feature-card float-delay-1" style="pointer-events: none; cursor: default;">
+          <span class="feature-icon" aria-hidden="true">📊</span>
+          <div class="feature-text">Total Entries: <strong id="loginKpiTotal" style="margin-left: 4px; font-weight: 700;">-</strong></div>
+        </div>
+        <div class="auth-feature-card float-delay-2" style="pointer-events: none; cursor: default;">
+          <span class="feature-icon" aria-hidden="true">⏳</span>
+          <div class="feature-text">Pending Return: <strong id="loginKpiPending" style="margin-left: 4px; font-weight: 700; color: var(--warn);">-</strong></div>
+        </div>
+        <div class="auth-feature-card float-delay-0" style="pointer-events: none; cursor: default;">
+          <span class="feature-icon" aria-hidden="true">✅</span>
+          <div class="feature-text">Returned: <strong id="loginKpiReturned" style="margin-left: 4px; font-weight: 700; color: var(--good);">-</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
     <div class="brand">
       <span class="brand-mark">⚙</span>
       <span class="brand-text">CMM SMS <strong>STORE</strong></span>
@@ -135,6 +176,7 @@
       <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
     </div>
   </div>
+  </div>
 </div>
 
 <div id="appScreen" class="hidden">
@@ -142,7 +184,8 @@
     <span class="pull-refresh-icon">↻</span>
     <span id="pullRefreshText">Pull to refresh</span>
   </div>
-  <header class="topbar">
+  <div class="app-layout">
+    <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
         <span class="brand-mark">⚙</span>
@@ -190,6 +233,7 @@
     </div>
   </header>
   <main class="app-main" id="appMain"></main>
+  </div>
   <button type="button" class="mobile-fab" data-nav="issue-new" aria-label="Log New Issue">
     <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
   </button>

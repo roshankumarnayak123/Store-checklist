@@ -769,9 +769,9 @@ function clearSession() {
 // topbar nav itself and by the "startup page" preference below, so both stay
 // in sync automatically if a view is ever added/removed/relabelled.
 function navLinksForRole(role) {
-  return role === 'admin'
-    ? [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['users-admin', 'Users'], ['settings-admin', 'Settings']]
-    : [['dashboard', 'Dashboard'], ['register', 'Register'], ['profile', 'My Profile']];
+  if (role === 'admin') return [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
+  if (role === 'viewer') return [['register', 'Register'], ['profile', 'My Profile']];
+  return [['dashboard', 'Dashboard'], ['register', 'Register'], ['profile', 'My Profile']];
 }
 
 // Per-user "startup page" preference: which view opens right after login or
@@ -858,11 +858,11 @@ $('#loginForm').addEventListener('submit', async (e) => {
     currentUser = { 
       username, 
       fullName: record.fullName || username, 
-      role: 'user',
+      role: record.role || 'storekeeper',
       profilePhotoUrl: record.profilePhotoUrl || null
     };
     window.currentUser = currentUser;
-    
+    document.body.dataset.role = currentUser.role;
     saveSession(currentUser);
     initTopbar();
     listenToCollections();
@@ -1087,6 +1087,8 @@ function render() {
   
   const storekeeperOnlyViews = ['dashboard', 'profile']; 
   if (currentUser.role === 'admin' && storekeeperOnlyViews.includes(currentView)) currentView = 'admin-dashboard';
+
+  if (currentUser.role === 'viewer' && currentView !== 'register' && currentView !== 'profile') currentView = 'register';
 
   window.currentView = currentView;
   window.currentUser = currentUser;
@@ -1465,7 +1467,7 @@ function renderRegister() {
       <div class="table-wrap">
         ${rows.length === 0 ? (
           issuesLoaded
-            ? `<div class="empty-state"><div class="display">${activeFilterCount ? 'No matching records' : 'No register records yet'}</div><p>${activeFilterCount ? 'No records match the selected filters.' : 'No material movements have been recorded.'}</p><button type="button" class="btn btn-ghost register-empty-action" ${activeFilterCount ? 'id="emptyClearFilters"' : 'data-nav="issue-new"'}>${activeFilterCount ? 'Clear Filters' : 'Log New Issue'}</button></div>`
+            ? `<div class="empty-state"><div class="display">${activeFilterCount ? 'No matching records' : 'No register records yet'}</div><p>${activeFilterCount ? 'No records match the selected filters.' : 'No material movements have been recorded.'}</p>${activeFilterCount || currentUser.role !== 'viewer' ? `<button type="button" class="btn btn-ghost register-empty-action" ${activeFilterCount ? 'id="emptyClearFilters"' : 'data-nav="issue-new"'}>${activeFilterCount ? 'Clear Filters' : 'Log New Issue'}</button>` : ''}</div>`
             : `<div class="skeleton-register" aria-label="Loading records"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`
         ) : `
         <table class="reg">
@@ -1527,9 +1529,9 @@ function renderRegister() {
                   ${r.status === 'Returned' ? '<span class="badge good">Returned</span>' : r.status === 'Partially Returned' ? '<span class="badge" style="background:#dbeafe;color:#1d4ed8">Partially Returned</span>' : '<span class="badge warn">Issued</span>'}
                 </td>
                 <td data-label="Action" class="register-actions">
-                  ${r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
+                  ${currentUser.role !== 'viewer' && r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
                   
-                  ${r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
+                  ${currentUser.role !== 'viewer' && r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
                   
                   ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>` : ''}
                   ${r.returnHistory&&Object.keys(r.returnHistory).length?`<button class="btn btn-ghost btn-sm return-history-btn" data-return-history="${r.id}">Return History · ${Object.keys(r.returnHistory).length}</button>`:''}
@@ -1562,7 +1564,7 @@ function renderIssueForm() {
     <div class="panel panel-pad" style="max-width:760px;">
       <form id="issueForm">
         <div class="form-grid">
-          <div class="field full">
+          <div class="field">
             <label for="f_material">Material</label>
             <input type="text" id="f_material" list="qf_materials" placeholder="Enter material name..." required />
           </div>
@@ -1574,7 +1576,7 @@ function renderIssueForm() {
             <label for="f_vendor">Vendor</label>
             <input type="text" id="f_vendor" list="qf_vendors" autocomplete="off" required />
           </div>
-          <div class="field full">
+          <div class="field">
             <label for="f_area">Area</label>
             <input type="text" id="f_area" list="qf_areas" autocomplete="off" required />
           </div>
@@ -1632,7 +1634,7 @@ function renderEditIssueForm() {
     <div class="panel panel-pad" style="max-width:760px;">
       <form id="editIssueForm">
         <div class="form-grid">
-          <div class="field full">
+          <div class="field">
             <label for="ei_material">Material</label>
             <input type="text" id="ei_material" value="${escapeHtml(issue.materialName)}" required />
           </div>
@@ -1644,7 +1646,7 @@ function renderEditIssueForm() {
             <label for="ei_vendor">Vendor</label>
             <input type="text" id="ei_vendor" value="${escapeHtml(issue.vendor || '')}" required />
           </div>
-          <div class="field full">
+          <div class="field">
             <label for="ei_area">Area</label>
             <input type="text" id="ei_area" value="${escapeHtml(issue.area || '')}" required />
           </div>
@@ -1848,6 +1850,13 @@ function renderUsersAdmin() {
             <label for="nu_fullname">Full Name</label>
             <input type="text" id="nu_fullname" required />
           </div>
+          <div class="field">
+            <label for="nu_role">Role</label>
+            <select id="nu_role">
+              <option value="storekeeper">Storekeeper</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
           <div class="field full">
             <label for="nu_password">Password</label>
             <div class="password-field-wrap">
@@ -1856,7 +1865,7 @@ function renderUsersAdmin() {
             </div>
           </div>
         </div>
-        <div class="actions-row"><button type="submit" class="btn btn-primary" id="newUserSubmitBtn">Create Storekeeper Account</button></div>
+        <div class="actions-row"><button type="submit" class="btn btn-primary" id="newUserSubmitBtn">Create Account</button></div>
       </form>
     </div>`;
 }
@@ -2875,17 +2884,42 @@ async function loadUsersTable() {
       <div class="table-wrap">
         ${users.length === 0 ? `<div class="empty-state"><div class="display">No staff accounts yet</div><p>Add one using the form below.</p></div>` : `
         <table class="users-admin-table">
-          <thead><tr><th>Username</th><th>Full Name</th><th>Action</th></tr></thead>
+          <thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Action</th></tr></thead>
           <tbody>
-            ${users.map((u) => `
+            ${users.map((u) => {
+              const uRole = u.role || 'storekeeper';
+              return `
               <tr>
                 <td class="mono" data-label="Username">${escapeHtml(u.id)}</td>
                 <td data-label="Full Name">${escapeHtml(u.fullName)}</td>
+                <td data-label="Role">
+                  <select class="user-role-select" data-user-id="${escapeHtml(u.id)}">
+                    <option value="storekeeper" ${uRole === 'storekeeper' ? 'selected' : ''}>Storekeeper</option>
+                    <option value="viewer" ${uRole === 'viewer' ? 'selected' : ''}>Viewer</option>
+                  </select>
+                </td>
                 <td data-label="Action"><button class="btn btn-danger btn-sm" data-remove-user="${escapeHtml(u.id)}"><span aria-hidden="true">🗑</span><span>Delete</span></button></td>
-              </tr>`).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>`}
       </div>`;
+
+    holder.querySelectorAll('.user-role-select').forEach((sel) => {
+      sel.addEventListener('change', async (e) => {
+        const uid = e.target.dataset.userId;
+        const newRole = e.target.value;
+        setSyncingState(true, 'Updating role...');
+        try {
+          await update(ref(db, 'users/' + uid), { role: newRole });
+        } catch (err) {
+          alert('Could not update role: ' + (err.message || 'unknown error'));
+          loadUsersTable();
+        } finally {
+          setSyncingState(false);
+        }
+      });
+    });
 
     holder.querySelectorAll('[data-remove-user]').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -2916,6 +2950,7 @@ async function handleNewUserSubmit(e) {
   const username = $('#nu_username').value.trim();
   const fullName = $('#nu_fullname').value.trim();
   const password = $('#nu_password').value;
+  const role = $('#nu_role').value;
 
   if (!username || !fullName || !password) { userFormError = 'Please fill in username, full name, and password.'; showInlineError('userFormAlert', userFormError); return; }
   if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; showInlineError('userFormAlert', userFormError); return; }
@@ -2927,13 +2962,13 @@ async function handleNewUserSubmit(e) {
   try {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { userFormError = 'That username already exists.'; showInlineError('userFormAlert', userFormError); return; }
-    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp(), });
+    await set(ref(db, 'users/' + username), { fullName, password, role, createdAt: serverTimestamp(), });
     navigateTo('users-admin');
   } catch (err) { 
     userFormError = 'Could not create this account: ' + (err.message || 'unknown error'); 
     showInlineError('userFormAlert', userFormError);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Create Storekeeper Account'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
     setSyncingState(false);
   }
 }
@@ -2946,3 +2981,37 @@ window.cloudSyncBridge = Object.freeze({
 window.dispatchEvent(new CustomEvent('cloud-sync-bridge-ready', {
   detail: { connected: cloudConnected === true }
 }));
+
+// --- Login Screen KPI Setup ---
+function setupLoginKPIs() {
+  const kpiGrid = document.getElementById('loginKpiGrid');
+  if (!kpiGrid) return;
+  const totEl = document.getElementById('loginKpiTotal');
+  const penEl = document.getElementById('loginKpiPending');
+  const retEl = document.getElementById('loginKpiReturned');
+  
+  try {
+    if (typeof db !== 'undefined' && db) {
+      onValue(ref(db, 'issues'), (snap) => {
+        if (!snap.exists()) return;
+        const records = [];
+        snap.forEach(child => { records.push(child.val()); });
+        const total = records.length;
+        const returned = records.filter(r => (typeof statusOf === 'function' ? statusOf(r) : r.status) === 'Returned').length;
+        const pending = total - returned;
+        
+        if (totEl) totEl.innerHTML = total;
+        if (penEl) penEl.innerHTML = pending;
+        if (retEl) retEl.innerHTML = returned;
+        
+        kpiGrid.style.display = 'flex';
+        setTimeout(() => { kpiGrid.style.opacity = '1'; }, 50);
+      }, (error) => {
+        console.warn('Login KPIs read error:', error);
+      });
+    }
+  } catch (e) {
+    console.warn('Login KPIs setup failed:', e);
+  }
+}
+setTimeout(setupLoginKPIs, 1000);
