@@ -24,9 +24,11 @@ const firebaseConfig = {
 /* =========================================================================
    STATE
    ========================================================================= */
-let currentUser = null; 
+let currentUser = null;
 let issuesCache = [];
+let toolsCache = [];
 let unsubIssues = null;
+let unsubTools = null;
 let unsubRequests = null;
 let currentView = 'dashboard';
 
@@ -162,15 +164,17 @@ async function refreshFromCloudDatabase() {
     if (!db) attemptFirebaseInit();
     if (!db) throw new Error('Cloud service is not initialized');
     const snap = await get(ref(db, 'issues'));
-    issuesCache = snapshotToArray(snap).sort((a,b)=>(b.issueDate||'').localeCompare(a.issueDate||''));
+    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     issuesLoaded = true;
+    const snapTools = await get(ref(db, 'tools'));
+    toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     cloudConnected = true;
     lastSyncedAt = new Date();
     updateLoginSyncIndicator(true);
     if (!FORM_VIEWS.has(currentView)) render();
     setCloudSyncProgress(100);
     $('#appSyncLabel').textContent = 'Cloud Sync refreshed';
-    setTimeout(() => { setCloudSyncProgress(null); if ($('#appSyncLabel')) $('#appSyncLabel').textContent='Cloud Sync'; }, 900);
+    setTimeout(() => { setCloudSyncProgress(null); if ($('#appSyncLabel')) $('#appSyncLabel').textContent = 'Cloud Sync'; }, 900);
   } catch (error) {
     cloudConnected = false;
     updateLoginSyncIndicator(false);
@@ -305,7 +309,7 @@ async function uploadWithProgress(path, file, btnEl) {
       stallTimer = setTimeout(() => {
         if (settled) return;
         settled = true;
-        try { uploadTask.cancel(); } catch (_) {}
+        try { uploadTask.cancel(); } catch (_) { }
         finish();
         showCloudSyncRetry('Cloud Sync upload failed');
         reject(new Error('Upload stalled with no progress for 30 seconds. Check your connection, or ask an admin.'));
@@ -314,18 +318,18 @@ async function uploadWithProgress(path, file, btnEl) {
 
     armStallTimer();
 
-    uploadTask.on('state_changed', 
+    uploadTask.on('state_changed',
       (snapshot) => {
         if (snapshot.bytesTransferred > lastBytes) {
           lastBytes = snapshot.bytesTransferred;
-          armStallTimer(); 
+          armStallTimer();
         }
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         const pct = Math.round(progress);
         if (btnEl) btnEl.innerHTML = `<span class="spinner"></span> Uploading... ${pct}%`;
         setSyncingState(true, `Cloud Sync ${pct}%`);
         setCloudSyncProgress(pct);
-      }, 
+      },
       (error) => {
         if (settled) return;
         settled = true;
@@ -333,7 +337,7 @@ async function uploadWithProgress(path, file, btnEl) {
         console.error("Upload error:", error);
         showCloudSyncRetry(error && error.code === 'storage/canceled' ? 'Cloud Sync canceled' : 'Cloud Sync upload failed');
         reject(error && error.code === 'storage/canceled' ? new Error('Upload canceled.') : error);
-      }, 
+      },
       async () => {
         if (settled) return;
         settled = true;
@@ -350,50 +354,50 @@ async function uploadWithProgress(path, file, btnEl) {
 }
 
 // Multiple-photo helpers
-async function cleanupUploadedPaths(paths=[]) {
+async function cleanupUploadedPaths(paths = []) {
   if (!storage || !paths.length) return;
   await Promise.allSettled(paths.filter(Boolean).map((path) => deleteObject(storageRef(storage, path))));
 }
-async function uploadMultiplePhotos(folder,id,files,btn){
-  const urls=[],paths=[];
+async function uploadMultiplePhotos(folder, id, files, btn) {
+  const urls = [], paths = [];
   try {
-    for(let i=0;i<files.length;i++){
-      const ext=(files[i].name.split('.').pop()||'jpg').slice(0,8);
-      const path=`${folder}/${id}_${Date.now()}_${i+1}.${ext}`;
-      if(btn)btn.innerHTML=`<span class="spinner"></span> Uploading photo ${i+1} of ${files.length}...`;
-      const url=await uploadWithProgress(path,files[i],btn);
-      urls.push(url);paths.push(path);
+    for (let i = 0; i < files.length; i++) {
+      const ext = (files[i].name.split('.').pop() || 'jpg').slice(0, 8);
+      const path = `${folder}/${id}_${Date.now()}_${i + 1}.${ext}`;
+      if (btn) btn.innerHTML = `<span class="spinner"></span> Uploading photo ${i + 1} of ${files.length}...`;
+      const url = await uploadWithProgress(path, files[i], btn);
+      urls.push(url); paths.push(path);
     }
-    return{urls,paths};
-  } catch(error) {
+    return { urls, paths };
+  } catch (error) {
     await cleanupUploadedPaths(paths);
     throw error;
   }
 }
 const MAX_PHOTOS_PER_ENTRY = 5;
 let photoGalleryUrls = [];
-function normalizePhotoUrls(value) { return (Array.isArray(value)?value:[value]).filter(Boolean); }
-function renderPhotoThumbs(value,label){
-  const urls=normalizePhotoUrls(value);
-  if(!urls.length)return '<span class="muted">—</span>';
-  const visible=urls.slice(0,3),remaining=urls.length-visible.length;
-  const galleryId='gallery_'+Math.random().toString(36).slice(2,10);
-  window.__photoGalleries=window.__photoGalleries||{};
-  window.__photoGalleries[galleryId]={urls,label};
-  return `<div class="photo-thumb-strip">${visible.map((url,i)=>`<a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="Open ${escapeHtml(label)} ${i+1}"><img src="${escapeHtml(url)}" alt="${escapeHtml(label)} ${i+1}" /></a>`).join('')}${remaining>0?`<button type="button" class="photo-more" data-photo-gallery="${galleryId}" title="View all ${urls.length} photos" aria-label="View ${remaining} more ${escapeHtml(label)} photos">+${remaining}</button>`:''}</div>`;
+function normalizePhotoUrls(value) { return (Array.isArray(value) ? value : [value]).filter(Boolean); }
+function renderPhotoThumbs(value, label) {
+  const urls = normalizePhotoUrls(value);
+  if (!urls.length) return '<span class="muted">—</span>';
+  const visible = urls.slice(0, 3), remaining = urls.length - visible.length;
+  const galleryId = 'gallery_' + Math.random().toString(36).slice(2, 10);
+  window.__photoGalleries = window.__photoGalleries || {};
+  window.__photoGalleries[galleryId] = { urls, label };
+  return `<div class="photo-thumb-strip">${visible.map((url, i) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="Open ${escapeHtml(label)} ${i + 1}"><img src="${escapeHtml(url)}" alt="${escapeHtml(label)} ${i + 1}" /></a>`).join('')}${remaining > 0 ? `<button type="button" class="photo-more" data-photo-gallery="${galleryId}" title="View all ${urls.length} photos" aria-label="View ${remaining} more ${escapeHtml(label)} photos">+${remaining}</button>` : ''}</div>`;
 }
-function updatePhotoGallery(){const url=photoGalleryUrls[photoGalleryIndex];if(!url)return;$('#photoGalleryMain').src=url;$('#photoGalleryMain').alt=`Photo ${photoGalleryIndex+1} of ${photoGalleryUrls.length}`;$('#photoGalleryCounter').textContent=`${photoGalleryIndex+1} of ${photoGalleryUrls.length}`;$('#photoGalleryPrev').disabled=photoGalleryUrls.length<2;$('#photoGalleryNext').disabled=photoGalleryUrls.length<2;$$('#photoGalleryGrid .photo-gallery-item').forEach((a,i)=>a.classList.toggle('is-active',i===photoGalleryIndex));}
-function openPhotoGallery(galleryId,startIndex=0) {
-  const gallery=window.__photoGalleries?.[galleryId];if(!gallery)return;photoGalleryUrls=gallery.urls;photoGalleryIndex=Math.max(0,Math.min(startIndex,photoGalleryUrls.length-1));$('#photoGalleryTitle').textContent=`${gallery.label}s (${gallery.urls.length})`;$('#photoGalleryGrid').innerHTML=gallery.urls.map((url,index)=>`<button type="button" class="photo-gallery-item" data-gallery-index="${index}" title="View photo ${index+1}"><img src="${escapeHtml(url)}" alt="${escapeHtml(gallery.label)} ${index+1}" loading="lazy" /></button>`).join('');$('#photoGalleryDialog').classList.remove('hidden');$$('[data-gallery-index]').forEach(btn=>btn.addEventListener('click',()=>{photoGalleryIndex=Number(btn.dataset.galleryIndex);updatePhotoGallery();}));updatePhotoGallery();$('#photoGalleryCloseBtn').focus();
+function updatePhotoGallery() { const url = photoGalleryUrls[photoGalleryIndex]; if (!url) return; $('#photoGalleryMain').src = url; $('#photoGalleryMain').alt = `Photo ${photoGalleryIndex + 1} of ${photoGalleryUrls.length}`; $('#photoGalleryCounter').textContent = `${photoGalleryIndex + 1} of ${photoGalleryUrls.length}`; $('#photoGalleryPrev').disabled = photoGalleryUrls.length < 2; $('#photoGalleryNext').disabled = photoGalleryUrls.length < 2; $$('#photoGalleryGrid .photo-gallery-item').forEach((a, i) => a.classList.toggle('is-active', i === photoGalleryIndex)); }
+function openPhotoGallery(galleryId, startIndex = 0) {
+  const gallery = window.__photoGalleries?.[galleryId]; if (!gallery) return; photoGalleryUrls = gallery.urls; photoGalleryIndex = Math.max(0, Math.min(startIndex, photoGalleryUrls.length - 1)); $('#photoGalleryTitle').textContent = `${gallery.label}s (${gallery.urls.length})`; $('#photoGalleryGrid').innerHTML = gallery.urls.map((url, index) => `<button type="button" class="photo-gallery-item" data-gallery-index="${index}" title="View photo ${index + 1}"><img src="${escapeHtml(url)}" alt="${escapeHtml(gallery.label)} ${index + 1}" loading="lazy" /></button>`).join(''); $('#photoGalleryDialog').classList.remove('hidden'); $$('[data-gallery-index]').forEach(btn => btn.addEventListener('click', () => { photoGalleryIndex = Number(btn.dataset.galleryIndex); updatePhotoGallery(); })); updatePhotoGallery(); $('#photoGalleryCloseBtn').focus();
 }
-function closePhotoGallery(){ $('#photoGalleryDialog').classList.add('hidden'); $('#photoGalleryGrid').innerHTML=''; photoGalleryUrls=[]; }
-function limitPhotoFiles(files, existingCount=0) {
-  const available=Math.max(0,MAX_PHOTOS_PER_ENTRY-existingCount);
-  if(available===0){void appAlert(`Maximum ${MAX_PHOTOS_PER_ENTRY} photos are already attached to this entry.`,{title:'Photo Limit Reached',type:'danger'});return [];}
-  if(files.length>available){void appAlert(`Only ${available} more photo${available===1?'':'s'} can be added. Maximum ${MAX_PHOTOS_PER_ENTRY} photos are allowed per entry.`,{title:'Photo Limit',type:'danger'});}
-  return files.slice(0,available);
+function closePhotoGallery() { $('#photoGalleryDialog').classList.add('hidden'); $('#photoGalleryGrid').innerHTML = ''; photoGalleryUrls = []; }
+function limitPhotoFiles(files, existingCount = 0) {
+  const available = Math.max(0, MAX_PHOTOS_PER_ENTRY - existingCount);
+  if (available === 0) { void appAlert(`Maximum ${MAX_PHOTOS_PER_ENTRY} photos are already attached to this entry.`, { title: 'Photo Limit Reached', type: 'danger' }); return []; }
+  if (files.length > available) { void appAlert(`Only ${available} more photo${available === 1 ? '' : 's'} can be added. Maximum ${MAX_PHOTOS_PER_ENTRY} photos are allowed per entry.`, { title: 'Photo Limit', type: 'danger' }); }
+  return files.slice(0, available);
 }
-function previewSelectedImages(files,selector){const h=$(selector);if(!h)return;h.innerHTML='';files.forEach((f,i)=>{const item=document.createElement('div');item.className='photo-preview-item';const img=document.createElement('img');img.alt=`Selected photo ${i+1}`;img.style.cssText='width:110px;height:90px;object-fit:cover;border-radius:12px;display:block;';const r=new FileReader();r.onload=()=>img.src=r.result;r.readAsDataURL(f);const rm=document.createElement('button');rm.type='button';rm.className='photo-preview-remove';rm.setAttribute('aria-label',`Remove photo ${i+1}`);rm.title='Remove photo';rm.textContent='\u00d7';rm.addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();files.splice(i,1);previewSelectedImages(files,selector);});item.appendChild(img);item.appendChild(rm);h.appendChild(item);});h.parentElement.style.display=files.length?'block':'none';}
+function previewSelectedImages(files, selector) { const h = $(selector); if (!h) return; h.innerHTML = ''; files.forEach((f, i) => { const item = document.createElement('div'); item.className = 'photo-preview-item'; const img = document.createElement('img'); img.alt = `Selected photo ${i + 1}`; img.style.cssText = 'width:110px;height:90px;object-fit:cover;border-radius:12px;display:block;'; const r = new FileReader(); r.onload = () => img.src = r.result; r.readAsDataURL(f); const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'photo-preview-remove'; rm.setAttribute('aria-label', `Remove photo ${i + 1}`); rm.title = 'Remove photo'; rm.textContent = '\u00d7'; rm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); files.splice(i, 1); previewSelectedImages(files, selector); }); item.appendChild(img); item.appendChild(rm); h.appendChild(item); }); h.parentElement.style.display = files.length ? 'block' : 'none'; }
 function uniqueRecentValues(field, limit = 12) {
   const seen = new Set(), values = [];
   for (const item of issuesCache) {
@@ -405,16 +409,16 @@ function uniqueRecentValues(field, limit = 12) {
   return values;
 }
 function quickFillDatalist(id, values) {
-  return `<datalist id="${id}">${values.map(value=>`<option value="${escapeHtml(value)}"></option>`).join('')}</datalist>`;
+  return `<datalist id="${id}">${values.map(value => `<option value="${escapeHtml(value)}"></option>`).join('')}</datalist>`;
 }
 async function appendCameraPhoto(input, targetArrayName, previewSelector) {
   const file = input.files?.[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) { alert('Please take an image only.'); input.value=''; return; }
-  const issue=targetArrayName==='edit-issue'?issuesCache.find(i=>i.id===editIssueTargetId):targetArrayName==='edit-return'?issuesCache.find(i=>i.id===editReturnTargetId):targetArrayName==='return'?issuesCache.find(i=>i.id===returnFormTargetId):null;
-  const existingCount=targetArrayName==='edit-issue'?normalizePhotoUrls(issue?.photoUrls||issue?.photoUrl).length:0;
-  const selectedCount=targetArrayName==='issue'?selectedPhotoFiles.length:targetArrayName==='return'?returnSelectedPhotoFiles.length:targetArrayName==='edit-issue'?editIssueSelectedPhotoFiles.length:editReturnSelectedPhotoFiles.length;
-  if(existingCount+selectedCount>=MAX_PHOTOS_PER_ENTRY){input.value='';await appAlert(`Maximum ${MAX_PHOTOS_PER_ENTRY} photos are allowed per entry.`,{title:'Photo Limit Reached',type:'danger'});return;}
+  if (!file.type.startsWith('image/')) { alert('Please take an image only.'); input.value = ''; return; }
+  const issue = targetArrayName === 'edit-issue' ? issuesCache.find(i => i.id === editIssueTargetId) : targetArrayName === 'edit-return' ? issuesCache.find(i => i.id === editReturnTargetId) : targetArrayName === 'return' ? issuesCache.find(i => i.id === returnFormTargetId) : null;
+  const existingCount = targetArrayName === 'edit-issue' ? normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length : 0;
+  const selectedCount = targetArrayName === 'issue' ? selectedPhotoFiles.length : targetArrayName === 'return' ? returnSelectedPhotoFiles.length : targetArrayName === 'edit-issue' ? editIssueSelectedPhotoFiles.length : editReturnSelectedPhotoFiles.length;
+  if (existingCount + selectedCount >= MAX_PHOTOS_PER_ENTRY) { input.value = ''; await appAlert(`Maximum ${MAX_PHOTOS_PER_ENTRY} photos are allowed per entry.`, { title: 'Photo Limit Reached', type: 'danger' }); return; }
   const compressed = await compressImage(file);
   if (targetArrayName === 'issue') selectedPhotoFiles.push(compressed);
   if (targetArrayName === 'return') returnSelectedPhotoFiles.push(compressed);
@@ -422,7 +426,7 @@ async function appendCameraPhoto(input, targetArrayName, previewSelector) {
   if (targetArrayName === 'edit-return') editReturnSelectedPhotoFiles.push(compressed);
   const selected = targetArrayName === 'issue' ? selectedPhotoFiles : targetArrayName === 'return' ? returnSelectedPhotoFiles : targetArrayName === 'edit-issue' ? editIssueSelectedPhotoFiles : editReturnSelectedPhotoFiles;
   previewSelectedImages(selected, previewSelector);
-  input.value='';
+  input.value = '';
 }
 
 // Client-Side Image Compressor (Optimized with createImageBitmap)
@@ -460,7 +464,7 @@ async function compressImage(file, maxWidth = 1280, quality = 0.7) {
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      
+
       // JPEG has no alpha channel. Without this fill, any transparent
       // areas in the source image (e.g. a PNG logo/screenshot) render as
       // solid black once converted, silently corrupting the photo.
@@ -492,13 +496,13 @@ let excelDateFrom = '';
 let excelDateTo = '';
 let registerFiltersOpen = false;
 let registerViewExpanded = false;
-const registerExpandedRows=new Set();
-let registerStickyObserver=null;
-let registerMoreFiltersOpen=false;
-let registerDraftFilters=null;
-let formDirty=false;
-let photoGalleryIndex=0;
-const REGISTER_PREFS_KEY='cmm_register_preferences';
+const registerExpandedRows = new Set();
+let registerStickyObserver = null;
+let registerMoreFiltersOpen = false;
+let registerDraftFilters = null;
+let formDirty = false;
+let photoGalleryIndex = 0;
+const REGISTER_PREFS_KEY = 'cmm_register_preferences';
 let regSearchDebounceTimer = null;
 const REG_PAGE_SIZE = 10;
 let issuesLoaded = false;
@@ -542,7 +546,6 @@ let cloudConnected = false;
 let clockInterval = null;
 let sessionTimerStarted = false;
 let sessionTimerInterval = null;
-
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin321';
 const SESSION_KEY = 'mechtools_session';
@@ -555,7 +558,7 @@ function preferredTheme() {
   try {
     const saved = localStorage.getItem(THEME_KEY);
     if (saved === 'dark' || saved === 'light') return saved;
-  } catch (_) {}
+  } catch (_) { }
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 function applyTheme(theme, persist = false) {
@@ -570,7 +573,7 @@ function applyTheme(theme, persist = false) {
     toggle.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
   });
   if (persist) {
-    try { localStorage.setItem(THEME_KEY, resolved); } catch (_) {}
+    try { localStorage.setItem(THEME_KEY, resolved); } catch (_) { }
   }
 }
 function toggleTheme() {
@@ -757,47 +760,63 @@ function loadSession() {
     }
     if (!raw) return null;
     const user = JSON.parse(raw);
-    if (!user || typeof user.username !== 'string' || !['admin', 'user', 'storekeeper'].includes(user.role)) {
+    if (!user || typeof user.username !== 'string') return null;
+    user.roles = Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : ['storekeeper']);
+    if (user.roles.includes('storekeeper')) user.roles[user.roles.indexOf('storekeeper')] = 'user'; // legacy fix
+    if (!user.roles.some(r => ['admin', 'user', 'viewer', 'tools_admin', 'tools_viewer'].includes(r))) {
       localStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(SESSION_KEY);
       return null;
     }
-    // Older saved sessions may use "storekeeper"; the current app uses "user".
-    if (user.role === 'storekeeper') {
-      user.role = 'user';
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    }
+    // (Legacy migration handled above)
     return user;
   } catch (e) {
     console.warn('Stored session was corrupted and has been cleared:', e);
-    try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+    try { localStorage.removeItem(SESSION_KEY); } catch (_) { }
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) { }
     return null;
   }
 }
 function clearSession() {
-  try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
-  try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) { }
+  try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
 }
 
 // Which nav destinations exist for each role, in display order. Shared by the
 // topbar nav itself and by the "startup page" preference below, so both stay
 // in sync automatically if a view is ever added/removed/relabelled.
-function navLinksForRole(role) {
-  if (role === 'admin') return [['admin-dashboard', 'Dashboard'], ['register', 'Register'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
-  if (role === 'viewer') return [['register', 'Register'], ['profile', 'My Profile']];
-  return [['dashboard', 'Dashboard'], ['register', 'Register'], ['profile', 'My Profile']];
+function navLinksForRoles(roles) {
+  if (!roles) return [];
+  if (roles.includes('admin')) return [['admin-dashboard', 'Dashboard'], ['register', 'Issue/Return'], ['tools-dashboard', 'Tools List'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
+  
+  let links = [];
+  if (roles.includes('tools_admin') || roles.includes('tools_viewer')) {
+    links.push(['tools-dashboard', 'Tools Master List']);
+  }
+  if (roles.includes('user') || roles.includes('storekeeper')) {
+    links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
+  } else if (roles.includes('viewer')) {
+    links.push(['register', 'Register']);
+  }
+  
+  links.push(['profile', 'My Profile']);
+  return links;
 }
 
 // Per-user "startup page" preference: which view opens right after login or
 // on a returning session, instead of always the role's default dashboard.
 const HOME_VIEW_KEY = 'cmm_sms_home_view';
 function getHomeView(user) {
-  const fallback = user?.role === 'admin' ? 'admin-dashboard' : 'dashboard';
+  let fallback = 'dashboard';
+  const roles = user?.roles || [];
+  if (roles.includes('admin')) fallback = 'admin-dashboard';
+  else if (roles.includes('tools_admin') || roles.includes('tools_viewer')) fallback = 'tools-dashboard';
+  else if (roles.includes('viewer')) fallback = 'register';
+  
   if (!user) return fallback;
   try {
     const saved = JSON.parse(localStorage.getItem(HOME_VIEW_KEY) || '{}')[user.username];
-    const isValid = navLinksForRole(user.role).some(([id]) => id === saved);
+    const isValid = navLinksForRoles(roles).some(([id]) => id === saved);
     return isValid ? saved : fallback;
   } catch (_) { return fallback; }
 }
@@ -807,10 +826,10 @@ function setHomeView(user, viewId) {
     const map = JSON.parse(localStorage.getItem(HOME_VIEW_KEY) || '{}');
     map[user.username] = viewId;
     localStorage.setItem(HOME_VIEW_KEY, JSON.stringify(map));
-  } catch (_) {}
+  } catch (_) { }
 }
 function homeViewSelectHtml() {
-  return navLinksForRole(currentUser.role).map(([id, label]) =>
+  return navLinksForRoles(currentUser.roles).map(([id, label]) =>
     `<option value="${id}"${getHomeView(currentUser) === id ? ' selected' : ''}>${escapeHtml(label)}</option>`
   ).join('');
 }
@@ -856,9 +875,9 @@ $('#loginForm').addEventListener('submit', async (e) => {
 
   try {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', role: 'admin', profilePhotoUrl: null };
+      currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
       window.currentUser = currentUser;
-      document.body.dataset.role = currentUser.role;
+      document.body.dataset.role = currentUser.roles.join(',');
       saveSession(currentUser);
       initTopbar();
       listenToCollections();
@@ -870,15 +889,15 @@ $('#loginForm').addEventListener('submit', async (e) => {
     const snap = await get(ref(db, 'users/' + username));
     if (!snap.exists() || snap.val().password !== password) { showAuthError('Incorrect username or password.'); return; }
     const record = snap.val();
-    
-    currentUser = { 
-      username, 
-      fullName: record.fullName || username, 
-      role: record.role || 'storekeeper',
+
+    currentUser = {
+      username,
+      fullName: record.fullName || username,
+      roles: Array.isArray(record.roles) ? record.roles : (record.role ? [record.role] : ['storekeeper']),
       profilePhotoUrl: record.profilePhotoUrl || null
     };
     window.currentUser = currentUser;
-    document.body.dataset.role = currentUser.role;
+    document.body.dataset.role = currentUser.roles.join(',');
     saveSession(currentUser);
     initTopbar();
     listenToCollections();
@@ -894,17 +913,18 @@ $('#loginForm').addEventListener('submit', async (e) => {
 
 $('#logoutBtn').addEventListener('click', () => {
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  if (unsubTools) { unsubTools(); unsubTools = null; }
   if (unsubRequests) { unsubRequests(); unsubRequests = null; }
-  
-  if (clockInterval) { 
-    clearInterval(clockInterval); 
-    clockStarted = false; 
+
+  if (clockInterval) {
+    clearInterval(clockInterval);
+    clockStarted = false;
   }
   if (sessionTimerInterval) {
     clearInterval(sessionTimerInterval);
     sessionTimerStarted = false;
   }
-  
+
   currentUser = null;
   window.currentUser = null;
   window.currentView = null;
@@ -943,7 +963,7 @@ $('#requestForm').addEventListener('submit', async (e) => {
     const existingReq = await get(ref(db, 'accessRequests/' + username));
     if (existingReq.exists()) { showAuthError('A request for that username is already pending approval.'); return; }
     await set(ref(db, 'accessRequests/' + username), { fullName, password, requestedAt: serverTimestamp() });
-    
+
     $('#requestForm').classList.add('hidden'); $('#showLoginForm').classList.add('hidden');
     $('#showRequestForm').classList.remove('hidden');
     showAuthInfo('Request submitted. An Admin needs to approve it before you can log in — check back soon.');
@@ -978,9 +998,9 @@ startApp();
    ========================================================================= */
 function initTopbar() {
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
-  $('#whoRole').textContent = currentUser.role;
-  $('#whoRole').className = 'who-role role-' + currentUser.role;
-  
+  $('#whoRole').textContent = currentUser.roles.join(', ');
+  $('#whoRole').className = 'who-role role-' + currentUser.roles[0];
+
   if (currentUser.profilePhotoUrl) {
     $('#topbarAvatar').src = currentUser.profilePhotoUrl;
     $('#topbarAvatar').classList.remove('hidden');
@@ -993,14 +1013,14 @@ function initTopbar() {
   if (!sessionTimerStarted) { startSessionTimer(); sessionTimerStarted = true; }
 
   const nav = $('#navLinks');
-  const links = navLinksForRole(currentUser.role);
+  const links = navLinksForRoles(currentUser.roles);
 
   nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
   nav.querySelectorAll('.navlink').forEach((btn) => {
     btn.addEventListener('click', () => navigateTo(btn.dataset.view));
   });
 
-  if (currentUser.role === 'admin') {
+  if (currentUser.roles.includes('admin')) {
     if (unsubRequests) { unsubRequests(); unsubRequests = null; }
     unsubRequests = onValue(ref(db, 'accessRequests'), (snap) => {
       const count = snap.exists() ? Object.keys(snap.val()).length : 0;
@@ -1023,8 +1043,8 @@ function renderTransition() {
 }
 
 async function navigateTo(viewId) {
-  if(viewId!==currentView&&formDirty){const leave=await appConfirm('You have unsaved changes. Leave this page and discard them?',{title:'Unsaved Changes',confirmText:'Leave Page',cancelText:'Stay'});if(!leave)return;formDirty=false;}
-  if(currentView==='register'&&viewId!=='register'){registerStickyObserver?.disconnect();registerStickyObserver=null;}
+  if (viewId !== currentView && formDirty) { const leave = await appConfirm('You have unsaved changes. Leave this page and discard them?', { title: 'Unsaved Changes', confirmText: 'Leave Page', cancelText: 'Stay' }); if (!leave) return; formDirty = false; }
+  if (currentView === 'register' && viewId !== 'register') { registerStickyObserver?.disconnect(); registerStickyObserver = null; }
   if (viewId !== currentView) {
     // Only clear pending photo selections when actually leaving this view for
     // another one — not on every re-render, so an in-progress selection isn't
@@ -1050,41 +1070,47 @@ function snapshotToArray(snap) {
   if (!val) return [];
   return Object.keys(val).map((key) => ({ id: key, ...val[key] }));
 }
-async function writeAudit(action,issueId,details={}){
-  if(!db||!currentUser)return false;
+async function writeAudit(action, issueId, details = {}) {
+  if (!db || !currentUser) return false;
   try {
-    await set(push(ref(db,'auditLog')),{action,issueId:issueId||null,details,actorUsername:currentUser.username,actorName:currentUser.fullName||currentUser.username,actorRole:currentUser.role,createdAt:serverTimestamp()});
+    await set(push(ref(db, 'auditLog')), { action, issueId: issueId || null, details, actorUsername: currentUser.username, actorName: currentUser.fullName || currentUser.username, actorRole: currentUser.roles.join(','), createdAt: serverTimestamp() });
     return true;
-  } catch(error) {
+  } catch (error) {
     console.warn('Audit log was not saved; primary activity remains valid:', error);
     return false;
   }
 }
-function friendlySaveError(error, activity='save this activity') {
-  const code=String(error?.code||'').toLowerCase();
-  const message=String(error?.message||'');
-  if(code.includes('permission')||message.toLowerCase().includes('permission_denied')||message.toLowerCase().includes('permission denied')) return `Firebase permission denied. The application is not allowed to ${activity}. Firebase rules must permit the issue fields and returnHistory path in the same atomic update. No partial record was saved.`;
-  if(code.includes('network')||message.toLowerCase().includes('network')) return `Network connection failed while trying to ${activity}. Check the internet connection and retry.`;
-  return `Could not ${activity}: ${message||'unknown error'}`;
+function friendlySaveError(error, activity = 'save this activity') {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '');
+  if (code.includes('permission') || message.toLowerCase().includes('permission_denied') || message.toLowerCase().includes('permission denied')) return `Firebase permission denied. The application is not allowed to ${activity}. Firebase rules must permit the issue fields and returnHistory path in the same atomic update. No partial record was saved.`;
+  if (code.includes('network') || message.toLowerCase().includes('network')) return `Network connection failed while trying to ${activity}. Check the internet connection and retry.`;
+  return `Could not ${activity}: ${message || 'unknown error'}`;
 }
 
 
 // Views with a live <form> the user could be mid-typing in. A background data
 // sync shouldn't blow these away — issuesCache still updates immediately, the
 // visible DOM just isn't force-refreshed until the user navigates away.
-const FORM_VIEWS = new Set(['issue-new', 'return-record', 'edit-issue', 'edit-return', 'profile', 'users-admin']);
+const FORM_VIEWS = new Set(['issue-new', 'return-record', 'edit-issue', 'edit-return', 'profile', 'users-admin', 'add-tool', 'edit-tool']);
 
 function listenToCollections() {
   if (unsubIssues) unsubIssues();
-  
+  if (unsubTools) unsubTools();
+
   unsubIssues = onValue(ref(db, 'issues'), (snap) => {
     issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     issuesLoaded = true;
     if (!FORM_VIEWS.has(currentView)) render();
   });
+  
+  unsubTools = onValue(ref(db, 'tools'), (snap) => {
+    toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+    if (!FORM_VIEWS.has(currentView)) render();
+  });
 }
 
-function statusOf(issue){const returned=issue.qtyReturned||0;if(returned>=issue.qtyIssued)return 'Returned';if(returned>0)return 'Partially Returned';return 'Issued';}
+function statusOf(issue) { const returned = issue.qtyReturned || 0; if (returned >= issue.qtyIssued) return 'Returned'; if (returned > 0) return 'Partially Returned'; return 'Issued'; }
 
 function enrichedIssues() {
   return issuesCache.map((i) => {
@@ -1098,13 +1124,24 @@ function render() {
 
   const main = $('#appMain');
   const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
-  
-  if (currentUser.role !== 'admin' && adminOnlyViews.includes(currentView)) currentView = 'dashboard';
-  
-  const storekeeperOnlyViews = ['dashboard', 'profile']; 
-  if (currentUser.role === 'admin' && storekeeperOnlyViews.includes(currentView)) currentView = 'admin-dashboard';
 
-  if (currentUser.role === 'viewer' && currentView !== 'register' && currentView !== 'profile') currentView = 'register';
+  let validViews = ['profile'];
+  if (currentUser.roles.includes('admin')) {
+    validViews.push('admin-dashboard', 'users-admin', 'settings-admin', 'edit-return', 'register', 'tools-dashboard', 'add-tool', 'edit-tool', 'dashboard');
+  }
+  if (currentUser.roles.includes('user') || currentUser.roles.includes('storekeeper')) {
+    validViews.push('dashboard', 'register', 'issue-new', 'return-record', 'edit-issue', 'edit-return');
+  } else if (currentUser.roles.includes('viewer')) {
+    validViews.push('register');
+  }
+  if (currentUser.roles.includes('tools_admin')) {
+    validViews.push('tools-dashboard', 'add-tool', 'edit-tool');
+  } else if (currentUser.roles.includes('tools_viewer')) {
+    validViews.push('tools-dashboard');
+  }
+  if (!validViews.includes(currentView)) {
+    currentView = getHomeView(currentUser);
+  }
 
   window.currentView = currentView;
   window.currentUser = currentUser;
@@ -1119,10 +1156,13 @@ function render() {
     'settings-admin': renderSettingsAdmin,
     'return-record': renderReturnForm,
     'edit-return': renderEditReturnForm,
-    'edit-issue': renderEditIssueForm, 
+    'edit-issue': renderEditIssueForm,
+    'tools-dashboard': renderToolsDashboard,
+    'add-tool': renderAddToolForm,
+    'edit-tool': renderEditToolForm,
   };
-  
-  const fn = views[currentView] || (currentUser.role === 'admin' ? renderAdminDashboard : renderUserDashboard);
+
+  const fn = views[currentView] || (currentUser.roles.includes('admin') ? renderAdminDashboard : renderUserDashboard);
   if (document.startViewTransition) {
     document.startViewTransition(() => {
       main.innerHTML = fn();
@@ -1171,6 +1211,7 @@ function renderUserDashboard() {
       <div class="actions-row">
         <button class="btn btn-dark" data-nav="issue-new">Log a New Issue</button>
         <button class="btn btn-ghost" data-nav="register">View Full Register</button>
+        ${(currentUser.roles.includes('tools_admin') || currentUser.roles.includes('admin')) ? `<button class="btn btn-dark" data-nav="add-tool">Enter New Tool Details</button>` : ''}
       </div>
     </div>`;
 }
@@ -1278,8 +1319,8 @@ function renderAdminDashboard() {
 }
 
 function formatTimestamp(ms) {
-  if (!ms || typeof ms !== 'number') return 'Syncing...'; 
-  
+  if (!ms || typeof ms !== 'number') return 'Syncing...';
+
   const d = new Date(ms);
   return d.toLocaleString(undefined, {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -1287,80 +1328,80 @@ function formatTimestamp(ms) {
   });
 }
 
-function saveRegisterPreferences(){try{localStorage.setItem(REGISTER_PREFS_KEY,JSON.stringify({filters:registerFilterState,expanded:registerViewExpanded,more:registerMoreFiltersOpen,filtersOpen:registerFiltersOpen}));}catch(_){}}
-function loadRegisterPreferences(){try{const p=JSON.parse(localStorage.getItem(REGISTER_PREFS_KEY)||'null');if(p?.filters)registerFilterState={...registerFilterState,...p.filters,page:1};if(typeof p?.expanded==='boolean')registerViewExpanded=p.expanded;if(typeof p?.more==='boolean')registerMoreFiltersOpen=p.more;if(typeof p?.filtersOpen==='boolean')registerFiltersOpen=p.filtersOpen;}catch(_){}}
-function resetRegisterPreferences(){try{localStorage.removeItem(REGISTER_PREFS_KEY);}catch(_){}resetRegisterFilters();registerViewExpanded=false;registerMoreFiltersOpen=false;registerFiltersOpen=false;registerExpandedRows.clear();}
-function showToast(message,{title='Done',type='success',duration=3600,actionText='',onAction=null}={}){
-  const region=$('#toastRegion');if(!region)return;
-  const icons={success:'✓',danger:'!',info:'i',warning:'!'};
-  const el=document.createElement('section');
-  el.className='toast';el.dataset.type=type;el.setAttribute('role',type==='danger'?'alert':'status');el.style.setProperty('--toast-duration',`${duration}ms`);
-  el.innerHTML=`<span class="toast-icon" aria-hidden="true">${icons[type]||'✓'}</span><div class="toast-copy"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionText?`<div class="toast-actions"><button type="button" class="toast-action">${escapeHtml(actionText)}</button></div>`:''}</div><button type="button" class="toast-close" aria-label="Dismiss notification">×</button><span class="toast-progress" aria-hidden="true"><span class="toast-progress-fill"></span></span>`;
-  let timer=null,remaining=duration,started=0,paused=false,hovered=false,focused=false;
-  const close=()=>{if(!el.isConnected||el.classList.contains('is-leaving'))return;clearTimeout(timer);el.classList.add('is-leaving');setTimeout(()=>el.remove(),250)};
-  const startTimer=()=>{if(paused||!el.isConnected)return;clearTimeout(timer);started=Date.now();timer=setTimeout(close,remaining)};
-  const pauseTimer=()=>{if(paused)return;paused=true;clearTimeout(timer);remaining=Math.max(250,remaining-(Date.now()-started))};
-  const resumeIfReady=()=>{if(hovered||focused)return;paused=false;startTimer()};
-  el.querySelector('.toast-close').addEventListener('click',close);
-  el.querySelector('.toast-action')?.addEventListener('click',()=>{try{onAction?.()}finally{close()}});
-  el.addEventListener('mouseenter',()=>{hovered=true;pauseTimer()});
-  el.addEventListener('mouseleave',()=>{hovered=false;resumeIfReady()});
-  el.addEventListener('focusin',()=>{focused=true;pauseTimer()});
-  el.addEventListener('focusout',(event)=>{if(el.contains(event.relatedTarget))return;focused=false;resumeIfReady()});
+function saveRegisterPreferences() { try { localStorage.setItem(REGISTER_PREFS_KEY, JSON.stringify({ filters: registerFilterState, expanded: registerViewExpanded, more: registerMoreFiltersOpen, filtersOpen: registerFiltersOpen })); } catch (_) { } }
+function loadRegisterPreferences() { try { const p = JSON.parse(localStorage.getItem(REGISTER_PREFS_KEY) || 'null'); if (p?.filters) registerFilterState = { ...registerFilterState, ...p.filters, page: 1 }; if (typeof p?.expanded === 'boolean') registerViewExpanded = p.expanded; if (typeof p?.more === 'boolean') registerMoreFiltersOpen = p.more; if (typeof p?.filtersOpen === 'boolean') registerFiltersOpen = p.filtersOpen; } catch (_) { } }
+function resetRegisterPreferences() { try { localStorage.removeItem(REGISTER_PREFS_KEY); } catch (_) { } resetRegisterFilters(); registerViewExpanded = false; registerMoreFiltersOpen = false; registerFiltersOpen = false; registerExpandedRows.clear(); }
+function showToast(message, { title = 'Done', type = 'success', duration = 3600, actionText = '', onAction = null } = {}) {
+  const region = $('#toastRegion'); if (!region) return;
+  const icons = { success: '✓', danger: '!', info: 'i', warning: '!' };
+  const el = document.createElement('section');
+  el.className = 'toast'; el.dataset.type = type; el.setAttribute('role', type === 'danger' ? 'alert' : 'status'); el.style.setProperty('--toast-duration', `${duration}ms`);
+  el.innerHTML = `<span class="toast-icon" aria-hidden="true">${icons[type] || '✓'}</span><div class="toast-copy"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionText ? `<div class="toast-actions"><button type="button" class="toast-action">${escapeHtml(actionText)}</button></div>` : ''}</div><button type="button" class="toast-close" aria-label="Dismiss notification">×</button><span class="toast-progress" aria-hidden="true"><span class="toast-progress-fill"></span></span>`;
+  let timer = null, remaining = duration, started = 0, paused = false, hovered = false, focused = false;
+  const close = () => { if (!el.isConnected || el.classList.contains('is-leaving')) return; clearTimeout(timer); el.classList.add('is-leaving'); setTimeout(() => el.remove(), 250) };
+  const startTimer = () => { if (paused || !el.isConnected) return; clearTimeout(timer); started = Date.now(); timer = setTimeout(close, remaining) };
+  const pauseTimer = () => { if (paused) return; paused = true; clearTimeout(timer); remaining = Math.max(250, remaining - (Date.now() - started)) };
+  const resumeIfReady = () => { if (hovered || focused) return; paused = false; startTimer() };
+  el.querySelector('.toast-close').addEventListener('click', close);
+  el.querySelector('.toast-action')?.addEventListener('click', () => { try { onAction?.() } finally { close() } });
+  el.addEventListener('mouseenter', () => { hovered = true; pauseTimer() });
+  el.addEventListener('mouseleave', () => { hovered = false; resumeIfReady() });
+  el.addEventListener('focusin', () => { focused = true; pauseTimer() });
+  el.addEventListener('focusout', (event) => { if (el.contains(event.relatedTarget)) return; focused = false; resumeIfReady() });
   region.appendChild(el);
-  while(region.children.length>4){const oldest=region.firstElementChild;if(oldest&&oldest!==el)oldest.remove();else break;}
+  while (region.children.length > 4) { const oldest = region.firstElementChild; if (oldest && oldest !== el) oldest.remove(); else break; }
   startTimer();
 }
-function setFormDirty(value=true){formDirty=value;document.querySelector('.page-head h1')?.classList.toggle('has-unsaved',value);}
-function isRegisterRowExpanded(id){const overridden=registerExpandedRows.has(String(id));return overridden?!registerViewExpanded:registerViewExpanded;}
-function syncRegisterStickyOffset(){const t=$('#registerViewToolbar'),h=document.querySelector('.topbar');if(!t||!h)return;const apply=()=>document.documentElement.style.setProperty('--register-sticky-top',`${Math.ceil(h.getBoundingClientRect().height)+6}px`);apply();registerStickyObserver?.disconnect();if('ResizeObserver'in window){registerStickyObserver=new ResizeObserver(apply);registerStickyObserver.observe(h);}}
-function activeFilterChips(){
-  const c=[];
-  if(registerFilterState.q)c.push(['q',`Search: ${registerFilterState.q}`]);
-  if(registerFilterState.status!=='all')c.push(['status',`Status: ${registerFilterState.status}`]);
-  if(registerFilterState.year!=='all')c.push(['year',`Year: ${registerFilterState.year}`]);
-  if(registerFilterState.month!=='all')c.push(['month',`Month: ${registerFilterState.month}`]);
-  if(registerFilterState.vendor!=='all')c.push(['vendor',`Vendor: ${registerFilterState.vendor}`]);
-  if(registerFilterState.area!=='all')c.push(['area',`Area: ${registerFilterState.area}`]);
-  if(registerFilterState.supervisor!=='all')c.push(['supervisor',`Supervisor: ${registerFilterState.supervisor}`]);
-  if(registerFilterState.issuedBy!=='all')c.push(['issuedBy',`Issued by: ${registerFilterState.issuedBy}`]);
-  if(registerFilterState.dateFrom)c.push(['dateFrom',`From: ${registerFilterState.dateFrom}`]);
-  if(registerFilterState.dateTo)c.push(['dateTo',`To: ${registerFilterState.dateTo}`]);
+function setFormDirty(value = true) { formDirty = value; document.querySelector('.page-head h1')?.classList.toggle('has-unsaved', value); }
+function isRegisterRowExpanded(id) { const overridden = registerExpandedRows.has(String(id)); return overridden ? !registerViewExpanded : registerViewExpanded; }
+function syncRegisterStickyOffset() { const t = $('#registerViewToolbar'), h = document.querySelector('.topbar'); if (!t || !h) return; const apply = () => document.documentElement.style.setProperty('--register-sticky-top', `${Math.ceil(h.getBoundingClientRect().height) + 6}px`); apply(); registerStickyObserver?.disconnect(); if ('ResizeObserver' in window) { registerStickyObserver = new ResizeObserver(apply); registerStickyObserver.observe(h); } }
+function activeFilterChips() {
+  const c = [];
+  if (registerFilterState.q) c.push(['q', `Search: ${registerFilterState.q}`]);
+  if (registerFilterState.status !== 'all') c.push(['status', `Status: ${registerFilterState.status}`]);
+  if (registerFilterState.year !== 'all') c.push(['year', `Year: ${registerFilterState.year}`]);
+  if (registerFilterState.month !== 'all') c.push(['month', `Month: ${registerFilterState.month}`]);
+  if (registerFilterState.vendor !== 'all') c.push(['vendor', `Vendor: ${registerFilterState.vendor}`]);
+  if (registerFilterState.area !== 'all') c.push(['area', `Area: ${registerFilterState.area}`]);
+  if (registerFilterState.supervisor !== 'all') c.push(['supervisor', `Supervisor: ${registerFilterState.supervisor}`]);
+  if (registerFilterState.issuedBy !== 'all') c.push(['issuedBy', `Issued by: ${registerFilterState.issuedBy}`]);
+  if (registerFilterState.dateFrom) c.push(['dateFrom', `From: ${registerFilterState.dateFrom}`]);
+  if (registerFilterState.dateTo) c.push(['dateTo', `To: ${registerFilterState.dateTo}`]);
   return c;
 }
-function resetRegisterFilters(){registerFilterState={q:'',status:'all',month:'all',year:'all',vendor:'all',area:'all',supervisor:'all',issuedBy:'all',dateFrom:'',dateTo:'',page:1};}
-function registerFilterOptions(field){return Array.from(new Set(issuesCache.map(item=>String(item?.[field]||'').trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b));}
-function countRegisterMatches(filters){
-  return enrichedIssues().filter(r=>{
-    if(filters.q){const q=filters.q.toLowerCase();if(![r.materialName,r.vendor,r.area,r.supervisorName,r.empCode,r.issueDate,r.returnDate,r.status].join(' ').toLowerCase().includes(q))return false;}
-    if(filters.status!=='all'&&(filters.status==='pending'?r.status==='Returned':r.status.replace(/\s/g,'').toLowerCase()!==filters.status))return false;
-    if(filters.year!=='all'&&(!r.issueDate||!r.issueDate.startsWith(filters.year)))return false;
-    if(filters.month!=='all'&&(!r.issueDate||r.issueDate.split('-')[1]!==filters.month))return false;
-    if(filters.vendor!=='all'&&String(r.vendor||'')!==filters.vendor)return false;
-    if(filters.area!=='all'&&String(r.area||'')!==filters.area)return false;
-    if(filters.supervisor!=='all'&&String(r.supervisorName||'')!==filters.supervisor)return false;
-    if(filters.issuedBy!=='all'&&String(r.issuedByName||r.issuedBy||'')!==filters.issuedBy)return false;
-    if(filters.dateFrom&&(!r.issueDate||r.issueDate<filters.dateFrom))return false;
-    if(filters.dateTo&&(!r.issueDate||r.issueDate>filters.dateTo))return false;
+function resetRegisterFilters() { registerFilterState = { q: '', status: 'all', month: 'all', year: 'all', vendor: 'all', area: 'all', supervisor: 'all', issuedBy: 'all', dateFrom: '', dateTo: '', page: 1 }; }
+function registerFilterOptions(field) { return Array.from(new Set(issuesCache.map(item => String(item?.[field] || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)); }
+function countRegisterMatches(filters) {
+  return enrichedIssues().filter(r => {
+    if (filters.q) { const q = filters.q.toLowerCase(); if (![r.materialName, r.vendor, r.area, r.supervisorName, r.empCode, r.issueDate, r.returnDate, r.status].join(' ').toLowerCase().includes(q)) return false; }
+    if (filters.status !== 'all' && (filters.status === 'pending' ? r.status === 'Returned' : r.status.replace(/\s/g, '').toLowerCase() !== filters.status)) return false;
+    if (filters.year !== 'all' && (!r.issueDate || !r.issueDate.startsWith(filters.year))) return false;
+    if (filters.month !== 'all' && (!r.issueDate || r.issueDate.split('-')[1] !== filters.month)) return false;
+    if (filters.vendor !== 'all' && String(r.vendor || '') !== filters.vendor) return false;
+    if (filters.area !== 'all' && String(r.area || '') !== filters.area) return false;
+    if (filters.supervisor !== 'all' && String(r.supervisorName || '') !== filters.supervisor) return false;
+    if (filters.issuedBy !== 'all' && String(r.issuedByName || r.issuedBy || '') !== filters.issuedBy) return false;
+    if (filters.dateFrom && (!r.issueDate || r.issueDate < filters.dateFrom)) return false;
+    if (filters.dateTo && (!r.issueDate || r.issueDate > filters.dateTo)) return false;
     return true;
   }).length;
 }
 function renderRegister() {
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser.roles.includes('admin');
   let rows = enrichedIssues();
 
   if (registerFilterState.q) {
     const needle = registerFilterState.q.toLowerCase();
     rows = rows.filter((r) => {
       const rowText = [
-        r.materialName, r.vendor, r.area, r.supervisorName, 
+        r.materialName, r.vendor, r.area, r.supervisorName,
         r.empCode, r.issueDate, r.returnDate, r.status
       ].join(' ').toLowerCase();
-      
+
       return rowText.includes(needle);
     });
   }
-  
+
   if (registerFilterState.status !== 'all') {
     rows = rows.filter((r) => registerFilterState.status === 'pending'
       ? r.status !== 'Returned'
@@ -1370,20 +1411,20 @@ function renderRegister() {
   if (registerFilterState.year !== 'all') {
     rows = rows.filter(r => r.issueDate && r.issueDate.startsWith(registerFilterState.year));
   }
-  
+
   if (registerFilterState.month !== 'all') {
     rows = rows.filter(r => {
       if (!r.issueDate) return false;
-      const parts = r.issueDate.split('-'); 
+      const parts = r.issueDate.split('-');
       return parts[1] === registerFilterState.month;
     });
   }
-  if(registerFilterState.vendor!=='all')rows=rows.filter(r=>String(r.vendor||'')===registerFilterState.vendor);
-  if(registerFilterState.area!=='all')rows=rows.filter(r=>String(r.area||'')===registerFilterState.area);
-  if(registerFilterState.supervisor!=='all')rows=rows.filter(r=>String(r.supervisorName||'')===registerFilterState.supervisor);
-  if(registerFilterState.issuedBy!=='all')rows=rows.filter(r=>String(r.issuedByName||r.issuedBy||'')===registerFilterState.issuedBy);
-  if(registerFilterState.dateFrom)rows=rows.filter(r=>r.issueDate&&r.issueDate>=registerFilterState.dateFrom);
-  if(registerFilterState.dateTo)rows=rows.filter(r=>r.issueDate&&r.issueDate<=registerFilterState.dateTo);
+  if (registerFilterState.vendor !== 'all') rows = rows.filter(r => String(r.vendor || '') === registerFilterState.vendor);
+  if (registerFilterState.area !== 'all') rows = rows.filter(r => String(r.area || '') === registerFilterState.area);
+  if (registerFilterState.supervisor !== 'all') rows = rows.filter(r => String(r.supervisorName || '') === registerFilterState.supervisor);
+  if (registerFilterState.issuedBy !== 'all') rows = rows.filter(r => String(r.issuedByName || r.issuedBy || '') === registerFilterState.issuedBy);
+  if (registerFilterState.dateFrom) rows = rows.filter(r => r.issueDate && r.issueDate >= registerFilterState.dateFrom);
+  if (registerFilterState.dateTo) rows = rows.filter(r => r.issueDate && r.issueDate <= registerFilterState.dateTo);
 
   const activeFilterCount = [
     !!registerFilterState.q,
@@ -1409,10 +1450,10 @@ function renderRegister() {
     String(new Date().getFullYear()),
     ...issuesCache.map((r) => r.issueDate ? r.issueDate.slice(0, 4) : null).filter(Boolean),
   ])).sort((a, b) => b.localeCompare(a));
-  const vendorOptions=registerFilterOptions('vendor');
-  const areaOptions=registerFilterOptions('area');
-  const supervisorOptions=registerFilterOptions('supervisorName');
-  const issuedByOptions=Array.from(new Set(issuesCache.map(r=>String(r.issuedByName||r.issuedBy||'').trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+  const vendorOptions = registerFilterOptions('vendor');
+  const areaOptions = registerFilterOptions('area');
+  const supervisorOptions = registerFilterOptions('supervisorName');
+  const issuedByOptions = Array.from(new Set(issuesCache.map(r => String(r.issuedByName || r.issuedBy || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
   return `
     <div class="page-head">
@@ -1420,12 +1461,12 @@ function renderRegister() {
         <span class="eyebrow">Records</span>
         <h1>${isAdmin ? 'Full Register' : 'Issue & Return Register'}</h1>
         <div class="page-sub">${isAdmin ? 'Every record. Admins can remove entries here.' : 'All material movements logged by the store.'}</div>
-        <div class="register-summary-meta"><span><strong>${totalRows}</strong> shown</span><span>${issuesCache.length} total</span><span>${enrichedIssues().filter(i=>i.status!=='Returned').length} pending</span><span>${enrichedIssues().filter(i=>i.status==='Returned').length} returned</span></div>
+        <div class="register-summary-meta"><span><strong>${totalRows}</strong> shown</span><span>${issuesCache.length} total</span><span>${enrichedIssues().filter(i => i.status !== 'Returned').length} pending</span><span>${enrichedIssues().filter(i => i.status === 'Returned').length} returned</span></div>
       </div>
     </div>
 
     <div class="status-filter-chips" aria-label="Quick status filters">
-      ${[['all','All',issuesCache.length],['pending','Pending',enrichedIssues().filter(i=>i.status!=='Returned').length],['issued','Issued',enrichedIssues().filter(i=>i.status==='Issued').length],['partiallyreturned','Partial',enrichedIssues().filter(i=>i.status==='Partially Returned').length],['returned','Returned',enrichedIssues().filter(i=>i.status==='Returned').length]].map(([value,label,count])=>`<button type="button" class="status-filter-chip ${registerFilterState.status===value?'is-active':''}" data-status-chip="${value}">${label} · ${count}</button>`).join('')}
+      ${[['all', 'All', issuesCache.length], ['pending', 'Pending', enrichedIssues().filter(i => i.status !== 'Returned').length], ['issued', 'Issued', enrichedIssues().filter(i => i.status === 'Issued').length], ['partiallyreturned', 'Partial', enrichedIssues().filter(i => i.status === 'Partially Returned').length], ['returned', 'Returned', enrichedIssues().filter(i => i.status === 'Returned').length]].map(([value, label, count]) => `<button type="button" class="status-filter-chip ${registerFilterState.status === value ? 'is-active' : ''}" data-status-chip="${value}">${label} · ${count}</button>`).join('')}
     </div>
     <button type="button" class="btn btn-ghost filter-toggle" id="filterToggleBtn" aria-expanded="${registerFiltersOpen ? 'true' : 'false'}" aria-controls="regFilterBar">
       <span>Filters${activeFilterCount ? `<span class="count-badge">${activeFilterCount}</span>` : ''}</span>
@@ -1435,11 +1476,11 @@ function renderRegister() {
     <div class="filter-bar register-toolbar${registerFiltersOpen ? ' open' : ''}" id="regFilterBar">
       <div style="display: flex; gap: 10px; width: 100%; align-items: center; flex-wrap: wrap;">
         <input type="text" id="regSearch" placeholder="Search material, vendor, area, supervisor…" value="${escapeHtml(registerFilterState.q)}" aria-label="Search register" style="flex: 1; min-width: 200px;" />
-        <button type="button" class="btn btn-ghost btn-sm more-filters-toggle" id="moreFiltersToggle">More Filters${activeFilterChips().filter(([k])=>['vendor','area','supervisor','issuedBy','year','month','status'].includes(k)).length?` · ${activeFilterChips().filter(([k])=>['vendor','area','supervisor','issuedBy','year','month','status'].includes(k)).length}`:''}</button>
+        <button type="button" class="btn btn-ghost btn-sm more-filters-toggle" id="moreFiltersToggle">More Filters${activeFilterChips().filter(([k]) => ['vendor', 'area', 'supervisor', 'issuedBy', 'year', 'month', 'status'].includes(k)).length ? ` · ${activeFilterChips().filter(([k]) => ['vendor', 'area', 'supervisor', 'issuedBy', 'year', 'month', 'status'].includes(k)).length}` : ''}</button>
         <button type="button" class="btn btn-ghost btn-sm clear-filter-btn" id="clearRegisterFilters" ${activeFilterCount ? '' : 'disabled'}>Clear Filters</button>
         <button type="button" class="btn btn-ghost btn-sm" id="resetRegisterView">Reset View</button>
       </div>
-      <div class="register-advanced-filters ${registerMoreFiltersOpen?'':'is-collapsed'}">
+      <div class="register-advanced-filters ${registerMoreFiltersOpen ? '' : 'is-collapsed'}">
         <div class="register-filter-field"><label for="regStatus">Status</label><select id="regStatus" aria-label="Filter by status">
           <option value="all" ${registerFilterState.status === 'all' ? 'selected' : ''}>All statuses</option>
           <option value="pending" ${registerFilterState.status === 'pending' ? 'selected' : ''}>Pending Return</option>
@@ -1466,16 +1507,16 @@ function renderRegister() {
           <option value="11" ${registerFilterState.month === '11' ? 'selected' : ''}>Nov</option>
           <option value="12" ${registerFilterState.month === '12' ? 'selected' : ''}>Dec</option>
         </select></div>
-        <div class="register-filter-field"><label for="regVendor">Vendor</label><select id="regVendor"><option value="all">All vendors</option>${vendorOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.vendor===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
-        <div class="register-filter-field"><label for="regArea">Area</label><select id="regArea"><option value="all">All areas</option>${areaOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.area===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
-        <div class="register-filter-field"><label for="regSupervisor">Supervisor</label><select id="regSupervisor"><option value="all">All supervisors</option>${supervisorOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.supervisor===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
-        <div class="register-filter-field"><label for="regIssuedBy">Issued By</label><select id="regIssuedBy"><option value="all">All issuers</option>${issuedByOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.issuedBy===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
-        <div class="register-filter-field"><label for="regDateFrom">Issue Date From</label><input type="date" id="regDateFrom" value="${escapeHtml(registerFilterState.dateFrom)}" max="${escapeHtml(registerFilterState.dateTo||todayStr())}" /></div>
+        <div class="register-filter-field"><label for="regVendor">Vendor</label><select id="regVendor"><option value="all">All vendors</option>${vendorOptions.map(v => `<option value="${escapeHtml(v)}" ${registerFilterState.vendor === v ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select></div>
+        <div class="register-filter-field"><label for="regArea">Area</label><select id="regArea"><option value="all">All areas</option>${areaOptions.map(v => `<option value="${escapeHtml(v)}" ${registerFilterState.area === v ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select></div>
+        <div class="register-filter-field"><label for="regSupervisor">Supervisor</label><select id="regSupervisor"><option value="all">All supervisors</option>${supervisorOptions.map(v => `<option value="${escapeHtml(v)}" ${registerFilterState.supervisor === v ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select></div>
+        <div class="register-filter-field"><label for="regIssuedBy">Issued By</label><select id="regIssuedBy"><option value="all">All issuers</option>${issuedByOptions.map(v => `<option value="${escapeHtml(v)}" ${registerFilterState.issuedBy === v ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select></div>
+        <div class="register-filter-field"><label for="regDateFrom">Issue Date From</label><input type="date" id="regDateFrom" value="${escapeHtml(registerFilterState.dateFrom)}" max="${escapeHtml(registerFilterState.dateTo || todayStr())}" /></div>
         <div class="register-filter-field"><label for="regDateTo">Issue Date To</label><input type="date" id="regDateTo" value="${escapeHtml(registerFilterState.dateTo)}" min="${escapeHtml(registerFilterState.dateFrom)}" max="${todayStr()}" /></div>
         <div class="register-filter-actions" style="grid-column: 1 / -1;"><button type="button" class="btn btn-primary btn-sm apply-filter-btn" id="applyRegisterFilters" style="display: inline-flex;">Apply Filters</button></div>
       </div>
     </div>
-    ${activeFilterCount ? `<div class="filter-chips">${activeFilterChips().map(([key,label])=>`<span class="filter-chip">${escapeHtml(label)}<button type="button" data-clear-filter="${key}" aria-label="Remove ${escapeHtml(label)}">×</button></span>`).join('')}</div>` : ''}
+    ${activeFilterCount ? `<div class="filter-chips">${activeFilterChips().map(([key, label]) => `<span class="filter-chip">${escapeHtml(label)}<button type="button" data-clear-filter="${key}" aria-label="Remove ${escapeHtml(label)}">×</button></span>`).join('')}</div>` : ''}
 
     <div class="register-view-toolbar" id="registerViewToolbar">
       <button type="button" class="register-view-toggle" id="registerViewToggle" aria-pressed="${registerViewExpanded}" title="Switch Register view">
@@ -1486,10 +1527,10 @@ function renderRegister() {
     <div class="panel">
       <div class="table-wrap">
         ${rows.length === 0 ? (
-          issuesLoaded
-            ? `<div class="empty-state"><div class="display">${activeFilterCount ? 'No matching records' : 'No register records yet'}</div><p>${activeFilterCount ? 'No records match the selected filters.' : 'No material movements have been recorded.'}</p>${activeFilterCount || currentUser.role !== 'viewer' ? `<button type="button" class="btn btn-ghost register-empty-action" ${activeFilterCount ? 'id="emptyClearFilters"' : 'data-nav="issue-new"'}>${activeFilterCount ? 'Clear Filters' : 'Log New Issue'}</button>` : ''}</div>`
-            : `<div class="skeleton-register" aria-label="Loading records"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`
-        ) : `
+      issuesLoaded
+        ? `<div class="empty-state"><div class="display">${activeFilterCount ? 'No matching records' : 'No register records yet'}</div><p>${activeFilterCount ? 'No records match the selected filters.' : 'No material movements have been recorded.'}</p>${activeFilterCount || !currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') ? `<button type="button" class="btn btn-ghost register-empty-action" ${activeFilterCount ? 'id="emptyClearFilters"' : 'data-nav="issue-new"'}>${activeFilterCount ? 'Clear Filters' : 'Log New Issue'}</button>` : ''}</div>`
+        : `<div class="skeleton-register" aria-label="Loading records"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`
+    ) : `
         <table class="reg">
           <thead>
             <tr>
@@ -1501,9 +1542,9 @@ function renderRegister() {
           </thead>
           <tbody>
             ${pageRows.map((r) => {
-              const qtyReturned = r.qtyReturned || 0;
-              const qtyRemaining = r.qtyIssued - qtyReturned;
-              return `
+      const qtyReturned = r.qtyReturned || 0;
+      const qtyRemaining = r.qtyIssued - qtyReturned;
+      return `
               <tr data-register-id="${r.id}" class="status-${r.status === 'Returned' ? 'returned' : r.status === 'Partially Returned' ? 'partial' : 'issued'} ${isRegisterRowExpanded(r.id) ? 'mobile-expanded' : ''}">
                 <td class="mobile-register-summary" colspan="18">
                   <div class="mobile-register-item">
@@ -1549,16 +1590,16 @@ function renderRegister() {
                   ${r.status === 'Returned' ? '<span class="badge good">Returned</span>' : r.status === 'Partially Returned' ? '<span class="badge" style="background:#dbeafe;color:#1d4ed8">Partially Returned</span>' : '<span class="badge warn">Issued</span>'}
                 </td>
                 <td data-label="Action" class="register-actions">
-                  ${currentUser.role !== 'viewer' && r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
+                  ${(!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('admin')) && r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
                   
-                  ${currentUser.role !== 'viewer' && r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
+                  ${(!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('admin')) && r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
                   
                   ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>` : ''}
-                  ${r.returnHistory&&Object.keys(r.returnHistory).length?`<button class="btn btn-ghost btn-sm return-history-btn" data-return-history="${r.id}">Return History · ${Object.keys(r.returnHistory).length}</button>`:''}
+                  ${r.returnHistory && Object.keys(r.returnHistory).length ? `<button class="btn btn-ghost btn-sm return-history-btn" data-return-history="${r.id}">Return History · ${Object.keys(r.returnHistory).length}</button>` : ''}
                   ${isAdmin ? `<button class="btn btn-danger btn-sm" data-delete-issue="${r.id}"><span aria-hidden="true">🗑</span><span>Delete</span></button>` : ''}
                 </td>
               </tr>`;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
         <div class="reg-pagination">
@@ -1804,9 +1845,9 @@ function renderEditReturnForm() {
           <div class="field">
             <label for="er_condition">Condition on Return</label>
             <select id="er_condition">
-              ${['Good','Worn','Needs Repair','Damaged','Lost'].map((c) =>
-                `<option ${issue.conditionOnReturn === c ? 'selected' : ''}>${c}</option>`
-              ).join('')}
+              ${['Good', 'Worn', 'Needs Repair', 'Damaged', 'Lost'].map((c) =>
+    `<option ${issue.conditionOnReturn === c ? 'selected' : ''}>${c}</option>`
+  ).join('')}
             </select>
           </div>
           <div class="field full">
@@ -1871,11 +1912,19 @@ function renderUsersAdmin() {
             <input type="text" id="nu_fullname" required />
           </div>
           <div class="field">
-            <label for="nu_role">Role</label>
-            <select id="nu_role">
-              <option value="storekeeper">Storekeeper</option>
-              <option value="viewer">Viewer</option>
-            </select>
+            <label>Roles (Max 2)</label>
+            <div class="custom-multi-select" style="position:relative; max-width: 250px;">
+              <div class="multi-select-header" tabindex="0" style="border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; cursor: pointer; background: var(--surface); display:flex; justify-content:space-between; align-items:center;">
+                <span class="ms-label">1 Role Selected</span>
+                <span style="font-size:10px;">▼</span>
+              </div>
+              <div id="nu_role_group" class="role-checkbox-group multi-select-options hidden" style="position:absolute; top:100%; left:0; right:0; background:var(--input-bg, var(--surface)); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border); z-index:10; padding: 10px; border-radius: 4px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="storekeeper" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" checked> Storekeeper</label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Viewer</label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="tools_admin" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Tools Admin</label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="tools_viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Tools Viewer</label>
+              </div>
+            </div>
           </div>
           <div class="field full">
             <label for="nu_password">Password</label>
@@ -1890,52 +1939,52 @@ function renderUsersAdmin() {
     </div>`;
 }
 
-const EXCEL_STATUS_MAP={issued:'Issued',partial:'Partially Returned',returned:'Returned'};
-function excelRegisterRows(fromDate,toDate,statusFilter='all'){
-  const wantStatus=EXCEL_STATUS_MAP[statusFilter]||null;
-  return enrichedIssues().filter(r=>r.issueDate&&r.issueDate>=fromDate&&r.issueDate<=toDate&&(!wantStatus||r.status===wantStatus)).sort((a,b)=>(a.issueDate||'').localeCompare(b.issueDate||'')).map((r,index)=>({
-    'Sl No.':index+1,'Material':r.materialName||'','Quantity Issued':Number(r.qtyIssued)||0,'Vendor':r.vendor||'','Area':r.area||'',
-    'Issue Date':r.issueDate||'','Issued At':r.createdAt?new Date(r.createdAt):'','Supervisor':r.supervisorName||'','Supervisor Contact':r.supervisorContact||'',
-    'Employee Code / Department':r.empCode||'','Issued By':r.issuedByName||r.issuedBy||'','Return Date':r.returnDate||'',
-    'Returned At':r.returnedAt?new Date(r.returnedAt):'','Received By':r.receivedByName||r.receivedBy||'','Quantity Returned':Number(r.qtyReturned)||0,
-    'Quantity Remaining':Math.max(0,(Number(r.qtyIssued)||0)-(Number(r.qtyReturned)||0)),'Condition on Return':r.conditionOnReturn||'',
-    'Status':r.status||statusOf(r),'Remarks':r.remarks||''
+const EXCEL_STATUS_MAP = { issued: 'Issued', partial: 'Partially Returned', returned: 'Returned' };
+function excelRegisterRows(fromDate, toDate, statusFilter = 'all') {
+  const wantStatus = EXCEL_STATUS_MAP[statusFilter] || null;
+  return enrichedIssues().filter(r => r.issueDate && r.issueDate >= fromDate && r.issueDate <= toDate && (!wantStatus || r.status === wantStatus)).sort((a, b) => (a.issueDate || '').localeCompare(b.issueDate || '')).map((r, index) => ({
+    'Sl No.': index + 1, 'Material': r.materialName || '', 'Quantity Issued': Number(r.qtyIssued) || 0, 'Vendor': r.vendor || '', 'Area': r.area || '',
+    'Issue Date': r.issueDate || '', 'Issued At': r.createdAt ? new Date(r.createdAt) : '', 'Supervisor': r.supervisorName || '', 'Supervisor Contact': r.supervisorContact || '',
+    'Employee Code / Department': r.empCode || '', 'Issued By': r.issuedByName || r.issuedBy || '', 'Return Date': r.returnDate || '',
+    'Returned At': r.returnedAt ? new Date(r.returnedAt) : '', 'Received By': r.receivedByName || r.receivedBy || '', 'Quantity Returned': Number(r.qtyReturned) || 0,
+    'Quantity Remaining': Math.max(0, (Number(r.qtyIssued) || 0) - (Number(r.qtyReturned) || 0)), 'Condition on Return': r.conditionOnReturn || '',
+    'Status': r.status || statusOf(r), 'Remarks': r.remarks || ''
   }));
 }
-function updateExcelExportSummary(){
-  const from=$('#excelDateFrom')?.value||'',to=$('#excelDateTo')?.value||'',summary=$('#excelExportSummary'),button=$('#downloadRegisterExcelBtn');
-  if(!summary||!button)return;
-  const invalid=!from||!to||from>to||to>todayStr();
-  const count=invalid?0:excelRegisterRows(from,to,excelStatusFilter).length;
-  const statusNote=excelStatusFilter!=='all'?` (${EXCEL_STATUS_MAP[excelStatusFilter]} only)`:'';
-  summary.textContent=!from||!to?'Choose both dates to prepare the register download.':from>to?'Start date cannot be after end date.':to>todayStr()?'End date cannot be in the future.':`${count} record${count===1?'':'s'}${statusNote} will be exported. Photos are excluded.`;
-  button.disabled=invalid||count===0||!window.XLSX;
+function updateExcelExportSummary() {
+  const from = $('#excelDateFrom')?.value || '', to = $('#excelDateTo')?.value || '', summary = $('#excelExportSummary'), button = $('#downloadRegisterExcelBtn');
+  if (!summary || !button) return;
+  const invalid = !from || !to || from > to || to > todayStr();
+  const count = invalid ? 0 : excelRegisterRows(from, to, excelStatusFilter).length;
+  const statusNote = excelStatusFilter !== 'all' ? ` (${EXCEL_STATUS_MAP[excelStatusFilter]} only)` : '';
+  summary.textContent = !from || !to ? 'Choose both dates to prepare the register download.' : from > to ? 'Start date cannot be after end date.' : to > todayStr() ? 'End date cannot be in the future.' : `${count} record${count === 1 ? '' : 's'}${statusNote} will be exported. Photos are excluded.`;
+  button.disabled = invalid || count === 0 || !window.XLSX;
 }
-function excelPresetRange(preset){const now=new Date(),local=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};let from,to=local(now);if(preset==='this-month')from=local(new Date(now.getFullYear(),now.getMonth(),1));else if(preset==='last-month'){from=local(new Date(now.getFullYear(),now.getMonth()-1,1));to=local(new Date(now.getFullYear(),now.getMonth(),0));}else if(preset==='30-days'){const d=new Date(now);d.setDate(d.getDate()-29);from=local(d);}else if(preset==='this-year')from=`${now.getFullYear()}-01-01`;else{const dates=issuesCache.map(r=>r.issueDate).filter(Boolean).sort();from=dates[0]||todayStr();to=dates[dates.length-1]||todayStr();}return{from,to};}
-function updateExcelModuleReadiness(){const el=$('#excelReadiness'),retry=$('#retryExcelModuleBtn');if(!el)return;const ready=!!window.XLSX;el.classList.toggle('is-ready',ready);el.querySelector('span:last-child').textContent=ready?'Excel module ready':'Excel module unavailable';retry?.classList.toggle('hidden',ready);updateExcelExportSummary();}
-async function downloadRegisterExcel(){
-  if(currentUser?.role!=='admin'){await appAlert('Only the administrator can download the Excel register.',{title:'Admin Access Required',type:'danger'});return;}
-  const from=$('#excelDateFrom')?.value||'',to=$('#excelDateTo')?.value||'';
-  if(!from||!to||from>to||to>todayStr()){await appAlert('Select a valid issue-date range up to today.',{title:'Invalid Date Range',type:'danger'});return;}
-  const statusFilter=excelStatusFilter,statusLabel=EXCEL_STATUS_MAP[statusFilter]||'';
-  const rows=excelRegisterRows(from,to,statusFilter);
-  if(!rows.length){await appAlert(statusFilter==='all'?'No register records were found in the selected date range.':`No register records with status "${statusLabel}" were found in the selected date range.`,{title:'Nothing to Export',type:'info'});return;}
-  if(!window.XLSX){await appAlert('The Excel export library could not be loaded. Check the internet connection and try again.',{title:'Excel Export Unavailable',type:'danger'});return;}
-  const ws=window.XLSX.utils.json_to_sheet(rows,{cellDates:true});
-  ws['!autofilter']={ref:ws['!ref']};
-  ws['!freeze']={xSplit:0,ySplit:1};
-  ws['!cols']=[{wch:8},{wch:30},{wch:16},{wch:22},{wch:18},{wch:13},{wch:21},{wch:24},{wch:20},{wch:25},{wch:24},{wch:13},{wch:21},{wch:24},{wch:18},{wch:18},{wch:22},{wch:20},{wch:35}];
-  const wb=window.XLSX.utils.book_new();
-  window.XLSX.utils.book_append_sheet(wb,ws,'Register');
-  wb.Props={Title:`CMM SMS Register ${from} to ${to}${statusFilter==='all'?'':' - '+statusLabel}`,Subject:'Issue and Return Register',Author:currentUser.fullName||currentUser.username,CreatedDate:new Date()};
-  const downloadBtn=$('#downloadRegisterExcelBtn');if(downloadBtn){downloadBtn.disabled=true;downloadBtn.innerHTML='<span class="spinner"></span> Preparing Excel…';}
-  const statusSuffix=statusFilter==='all'?'':`_${statusLabel.replace(/\s+/g,'')}`;
-  const fileName=`CMM_SMS_Register_${from}_to_${to}${statusSuffix}.xlsx`;
-  window.XLSX.writeFile(wb,fileName,{compression:true,cellDates:true});
-  await writeAudit('register-exported',null,{fromDate:from,toDate:to,statusFilter,recordCount:rows.length,fileName});
-  showToast(`${rows.length} records exported as ${fileName}`,{title:'Excel Downloaded'});
-  if(downloadBtn){downloadBtn.disabled=false;downloadBtn.textContent='Download Excel Register';}
-  await appAlert(`${rows.length} register record${rows.length===1?'':'s'} exported successfully. Photos were excluded.`,{title:'Excel Download Ready',type:'success'});
+function excelPresetRange(preset) { const now = new Date(), local = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10) }; let from, to = local(now); if (preset === 'this-month') from = local(new Date(now.getFullYear(), now.getMonth(), 1)); else if (preset === 'last-month') { from = local(new Date(now.getFullYear(), now.getMonth() - 1, 1)); to = local(new Date(now.getFullYear(), now.getMonth(), 0)); } else if (preset === '30-days') { const d = new Date(now); d.setDate(d.getDate() - 29); from = local(d); } else if (preset === 'this-year') from = `${now.getFullYear()}-01-01`; else { const dates = issuesCache.map(r => r.issueDate).filter(Boolean).sort(); from = dates[0] || todayStr(); to = dates[dates.length - 1] || todayStr(); } return { from, to }; }
+function updateExcelModuleReadiness() { const el = $('#excelReadiness'), retry = $('#retryExcelModuleBtn'); if (!el) return; const ready = !!window.XLSX; el.classList.toggle('is-ready', ready); el.querySelector('span:last-child').textContent = ready ? 'Excel module ready' : 'Excel module unavailable'; retry?.classList.toggle('hidden', ready); updateExcelExportSummary(); }
+async function downloadRegisterExcel() {
+  if (!currentUser?.roles.includes('admin')) { await appAlert('Only the administrator can download the Excel register.', { title: 'Admin Access Required', type: 'danger' }); return; }
+  const from = $('#excelDateFrom')?.value || '', to = $('#excelDateTo')?.value || '';
+  if (!from || !to || from > to || to > todayStr()) { await appAlert('Select a valid issue-date range up to today.', { title: 'Invalid Date Range', type: 'danger' }); return; }
+  const statusFilter = excelStatusFilter, statusLabel = EXCEL_STATUS_MAP[statusFilter] || '';
+  const rows = excelRegisterRows(from, to, statusFilter);
+  if (!rows.length) { await appAlert(statusFilter === 'all' ? 'No register records were found in the selected date range.' : `No register records with status "${statusLabel}" were found in the selected date range.`, { title: 'Nothing to Export', type: 'info' }); return; }
+  if (!window.XLSX) { await appAlert('The Excel export library could not be loaded. Check the internet connection and try again.', { title: 'Excel Export Unavailable', type: 'danger' }); return; }
+  const ws = window.XLSX.utils.json_to_sheet(rows, { cellDates: true });
+  ws['!autofilter'] = { ref: ws['!ref'] };
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  ws['!cols'] = [{ wch: 8 }, { wch: 30 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 13 }, { wch: 21 }, { wch: 24 }, { wch: 20 }, { wch: 25 }, { wch: 24 }, { wch: 13 }, { wch: 21 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 35 }];
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, ws, 'Register');
+  wb.Props = { Title: `CMM SMS Register ${from} to ${to}${statusFilter === 'all' ? '' : ' - ' + statusLabel}`, Subject: 'Issue and Return Register', Author: currentUser.fullName || currentUser.username, CreatedDate: new Date() };
+  const downloadBtn = $('#downloadRegisterExcelBtn'); if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.innerHTML = '<span class="spinner"></span> Preparing Excel…'; }
+  const statusSuffix = statusFilter === 'all' ? '' : `_${statusLabel.replace(/\s+/g, '')}`;
+  const fileName = `CMM_SMS_Register_${from}_to_${to}${statusSuffix}.xlsx`;
+  window.XLSX.writeFile(wb, fileName, { compression: true, cellDates: true });
+  await writeAudit('register-exported', null, { fromDate: from, toDate: to, statusFilter, recordCount: rows.length, fileName });
+  showToast(`${rows.length} records exported as ${fileName}`, { title: 'Excel Downloaded' });
+  if (downloadBtn) { downloadBtn.disabled = false; downloadBtn.textContent = 'Download Excel Register'; }
+  await appAlert(`${rows.length} register record${rows.length === 1 ? '' : 's'} exported successfully. Photos were excluded.`, { title: 'Excel Download Ready', type: 'success' });
 }
 function renderSettingsAdmin() {
   const dbUrl = firebaseConfig.databaseURL || '(not set)';
@@ -1999,15 +2048,15 @@ function renderSettingsAdmin() {
         <div class="excel-export-grid">
           <div class="excel-presets"><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="this-month">This Month</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="last-month">Last Month</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="30-days">Last 30 Days</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="this-year">This Year</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="all">All Records</button></div>
           <p class="excel-export-note">Select an inclusive <strong>Issue Date</strong> range. The Excel workbook includes register details and return information, but deliberately excludes all issue/return photos, photo URLs and storage paths.</p>
-          <div class="field"><label for="excelDateFrom">Issue Date From</label><input type="date" id="excelDateFrom" max="${excelDateTo||todayStr()}" value="${excelDateFrom}" /></div>
+          <div class="field"><label for="excelDateFrom">Issue Date From</label><input type="date" id="excelDateFrom" max="${excelDateTo || todayStr()}" value="${excelDateFrom}" /></div>
           <div class="field"><label for="excelDateTo">Issue Date To</label><input type="date" id="excelDateTo" min="${excelDateFrom}" max="${todayStr()}" value="${excelDateTo}" /></div>
           <div class="field excel-status-filter">
             <label id="excelStatusLabel">Status</label>
             <div class="status-filter-chips excel-status-chips" role="group" aria-labelledby="excelStatusLabel">
-              <button type="button" class="status-filter-chip ${excelStatusFilter==='all'?'is-active':''}" data-excel-status="all">All</button>
-              <button type="button" class="status-filter-chip ${excelStatusFilter==='issued'?'is-active':''}" data-excel-status="issued">Issued</button>
-              <button type="button" class="status-filter-chip ${excelStatusFilter==='partial'?'is-active':''}" data-excel-status="partial">Partial</button>
-              <button type="button" class="status-filter-chip ${excelStatusFilter==='returned'?'is-active':''}" data-excel-status="returned">Returned</button>
+              <button type="button" class="status-filter-chip ${excelStatusFilter === 'all' ? 'is-active' : ''}" data-excel-status="all">All</button>
+              <button type="button" class="status-filter-chip ${excelStatusFilter === 'issued' ? 'is-active' : ''}" data-excel-status="issued">Issued</button>
+              <button type="button" class="status-filter-chip ${excelStatusFilter === 'partial' ? 'is-active' : ''}" data-excel-status="partial">Partial</button>
+              <button type="button" class="status-filter-chip ${excelStatusFilter === 'returned' ? 'is-active' : ''}" data-excel-status="returned">Returned</button>
             </div>
           </div>
           <div class="excel-export-summary" id="excelExportSummary">Choose both dates to prepare the register download.</div><div id="excelReadiness" class="export-readiness"><span class="export-readiness-dot"></span><span>Checking Excel module…</span></div><button type="button" class="btn btn-ghost btn-sm hidden" id="retryExcelModuleBtn">Retry Excel Module</button>
@@ -2046,7 +2095,7 @@ function renderStorageUsage() {
   const holder = $('#storageUsageHolder');
   if (!holder) return;
 
-  const LIMIT_KB = 1024 * 1024; 
+  const LIMIT_KB = 1024 * 1024;
 
   const sections = [
     { label: 'Issues', data: issuesCache, color: '#3b82f6' },
@@ -2118,15 +2167,15 @@ function wireViewEvents(viewId) {
       }, 300);
     });
 
-    registerDraftFilters={...registerFilterState};
-    [['regStatus','status'],['regYear','year'],['regMonth','month'],['regVendor','vendor'],['regArea','area'],['regSupervisor','supervisor'],['regIssuedBy','issuedBy'],['regDateFrom','dateFrom'],['regDateTo','dateTo']].forEach(([id,key])=>$('#'+id)?.addEventListener('change',e=>{
-      registerDraftFilters[key]=e.target.value;
-      if(!window.matchMedia('(max-width:768px)').matches){registerFilterState={...registerDraftFilters,page:1};saveRegisterPreferences();render();}
+    registerDraftFilters = { ...registerFilterState };
+    [['regStatus', 'status'], ['regYear', 'year'], ['regMonth', 'month'], ['regVendor', 'vendor'], ['regArea', 'area'], ['regSupervisor', 'supervisor'], ['regIssuedBy', 'issuedBy'], ['regDateFrom', 'dateFrom'], ['regDateTo', 'dateTo']].forEach(([id, key]) => $('#' + id)?.addEventListener('change', e => {
+      registerDraftFilters[key] = e.target.value;
+      if (!window.matchMedia('(max-width:768px)').matches) { registerFilterState = { ...registerDraftFilters, page: 1 }; saveRegisterPreferences(); render(); }
     }));
-    $('#moreFiltersToggle')?.addEventListener('click',()=>{registerMoreFiltersOpen=!registerMoreFiltersOpen;saveRegisterPreferences();render();});
-    $('#applyRegisterFilters')?.addEventListener('click',()=>{const count=countRegisterMatches(registerDraftFilters);registerFilterState={...registerDraftFilters,page:1};saveRegisterPreferences();render();showToast(`${count} matching record${count===1?'':'s'}`,{title:'Filters Applied',type:'info'});});
-    $('#resetRegisterView')?.addEventListener('click',()=>{resetRegisterPreferences();render();showToast('Register preferences and filters reset.',{title:'Register Reset',type:'info'});});
-    $$('[data-status-chip]').forEach(btn=>btn.addEventListener('click',()=>{registerFilterState.status=btn.dataset.statusChip;registerFilterState.page=1;saveRegisterPreferences();render();}));
+    $('#moreFiltersToggle')?.addEventListener('click', () => { registerMoreFiltersOpen = !registerMoreFiltersOpen; saveRegisterPreferences(); render(); });
+    $('#applyRegisterFilters')?.addEventListener('click', () => { const count = countRegisterMatches(registerDraftFilters); registerFilterState = { ...registerDraftFilters, page: 1 }; saveRegisterPreferences(); render(); showToast(`${count} matching record${count === 1 ? '' : 's'}`, { title: 'Filters Applied', type: 'info' }); });
+    $('#resetRegisterView')?.addEventListener('click', () => { resetRegisterPreferences(); render(); showToast('Register preferences and filters reset.', { title: 'Register Reset', type: 'info' }); });
+    $$('[data-status-chip]').forEach(btn => btn.addEventListener('click', () => { registerFilterState.status = btn.dataset.statusChip; registerFilterState.page = 1; saveRegisterPreferences(); render(); }));
 
     $('#filterToggleBtn')?.addEventListener('click', () => {
       registerFiltersOpen = !registerFiltersOpen;
@@ -2141,17 +2190,17 @@ function wireViewEvents(viewId) {
       render();
     });
     syncRegisterStickyOffset();
-    $('#clearRegisterFilters')?.addEventListener('click',()=>{resetRegisterFilters();saveRegisterPreferences();render();});
-    $('#emptyClearFilters')?.addEventListener('click',()=>{resetRegisterFilters();saveRegisterPreferences();render();});
-    $$('[data-clear-filter]').forEach(btn=>btn.addEventListener('click',()=>{const key=btn.dataset.clearFilter;registerFilterState[key]=(key==='q'||key==='dateFrom'||key==='dateTo')?'':'all';registerFilterState.page=1;saveRegisterPreferences();render();}));
-    
+    $('#clearRegisterFilters')?.addEventListener('click', () => { resetRegisterFilters(); saveRegisterPreferences(); render(); });
+    $('#emptyClearFilters')?.addEventListener('click', () => { resetRegisterFilters(); saveRegisterPreferences(); render(); });
+    $$('[data-clear-filter]').forEach(btn => btn.addEventListener('click', () => { const key = btn.dataset.clearFilter; registerFilterState[key] = (key === 'q' || key === 'dateFrom' || key === 'dateTo') ? '' : 'all'; registerFilterState.page = 1; saveRegisterPreferences(); render(); }));
+
     $('#registerViewToggle')?.addEventListener('click', (event) => {
-      const toggle=event.currentTarget;
-      if(toggle.classList.contains('is-switching'))return;
+      const toggle = event.currentTarget;
+      if (toggle.classList.contains('is-switching')) return;
       toggle.classList.add('is-switching');
-      window.setTimeout(()=>{registerViewExpanded=!registerViewExpanded;registerExpandedRows.clear();saveRegisterPreferences();render();},180);
+      window.setTimeout(() => { registerViewExpanded = !registerViewExpanded; registerExpandedRows.clear(); saveRegisterPreferences(); render(); }, 180);
     });
-    $$('.mobile-register-summary').forEach(summary=>summary.addEventListener('click',(event)=>{if(event.target.closest('button,a'))return;summary.querySelector('[data-mobile-register-view]')?.click();}));
+    $$('.mobile-register-summary').forEach(summary => summary.addEventListener('click', (event) => { if (event.target.closest('button,a')) return; summary.querySelector('[data-mobile-register-view]')?.click(); }));
     $$('[data-mobile-register-view]').forEach((button) => button.addEventListener('click', () => {
       const row = button.closest('tr') || document.querySelector(`tr[data-register-id="${CSS.escape(button.dataset.registerId || '')}"]`);
       if (!row || button.classList.contains('is-loading')) return;
@@ -2160,8 +2209,8 @@ function wireViewEvents(viewId) {
       button.disabled = true;
       button.setAttribute('aria-busy', 'true');
       window.setTimeout(() => {
-        const rowId=String(row.dataset.registerId||'');
-        if(rowId){if(window.matchMedia('(max-width:768px)').matches&&willExpand){registerExpandedRows.clear();$$('table.reg tr.mobile-expanded').forEach(other=>{if(other!==row)other.classList.remove('mobile-expanded');});}if(willExpand===registerViewExpanded)registerExpandedRows.delete(rowId);else registerExpandedRows.add(rowId);saveRegisterPreferences();}
+        const rowId = String(row.dataset.registerId || '');
+        if (rowId) { if (window.matchMedia('(max-width:768px)').matches && willExpand) { registerExpandedRows.clear(); $$('table.reg tr.mobile-expanded').forEach(other => { if (other !== row) other.classList.remove('mobile-expanded'); }); } if (willExpand === registerViewExpanded) registerExpandedRows.delete(rowId); else registerExpandedRows.add(rowId); saveRegisterPreferences(); }
         row.classList.toggle('mobile-expanded', willExpand);
         button.classList.remove('is-loading');
         button.disabled = false;
@@ -2172,16 +2221,16 @@ function wireViewEvents(viewId) {
         if (willExpand) window.setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 180);
       }, 280);
     }));
-    $$('[data-return-history]').forEach(btn=>btn.addEventListener('click',async()=>{
-      const issue=issuesCache.find(i=>i.id===btn.dataset.returnHistory);
-      const entries=issue?.returnHistory?(Array.isArray(issue.returnHistory)?issue.returnHistory.slice():Object.values(issue.returnHistory)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)):[];
-      if(!entries.length){await appAlert('No return history is available.',{title:'Return History',type:'info'});return;}
-      const text=entries.map((e,i)=>{
-        const parts=[`${i+1}. ${e.createdAt ? formatTimestamp(e.createdAt) : (e.returnDate||'No date')} — Qty ${e.qtyReturnedNow||0}`,`Condition: ${e.conditionOnReturn||'—'}`,`Received by: ${e.receivedByName||e.receivedBy||'—'}`,`Photos: ${normalizePhotoUrls(e.returnPhotoUrls||e.returnPhotoUrl).length}`];
-        if(e.remarks)parts.push(`Remarks: ${e.remarks}`);
+    $$('[data-return-history]').forEach(btn => btn.addEventListener('click', async () => {
+      const issue = issuesCache.find(i => i.id === btn.dataset.returnHistory);
+      const entries = issue?.returnHistory ? (Array.isArray(issue.returnHistory) ? issue.returnHistory.slice() : Object.values(issue.returnHistory)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : [];
+      if (!entries.length) { await appAlert('No return history is available.', { title: 'Return History', type: 'info' }); return; }
+      const text = entries.map((e, i) => {
+        const parts = [`${i + 1}. ${e.createdAt ? formatTimestamp(e.createdAt) : (e.returnDate || 'No date')} — Qty ${e.qtyReturnedNow || 0}`, `Condition: ${e.conditionOnReturn || '—'}`, `Received by: ${e.receivedByName || e.receivedBy || '—'}`, `Photos: ${normalizePhotoUrls(e.returnPhotoUrls || e.returnPhotoUrl).length}`];
+        if (e.remarks) parts.push(`Remarks: ${e.remarks}`);
         return parts.join('\n');
       }).join('\n\n');
-      await appAlert(text,{title:`Return History · ${entries.length}`,type:'info'});
+      await appAlert(text, { title: `Return History · ${entries.length}`, type: 'info' });
     }));
     $$('[data-return]').forEach((btn) => btn.addEventListener('click', () => {
       returnFormTargetId = btn.dataset.return;
@@ -2209,15 +2258,15 @@ function wireViewEvents(viewId) {
       const file = e.target.files && e.target.files[0];
       if (!file) { profileSelectedPhotoFile = null; return; }
       if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
-      
+
       const reader = new FileReader();
       reader.onload = () => { $('#p_avatarPreview').src = reader.result; };
       reader.readAsDataURL(file);
-      
+
       // Compress the profile photo to max width 400px, 80% quality
       profileSelectedPhotoFile = await compressImage(file, 400, 0.8);
     });
-    $('#profileChoosePhotoBtn')?.addEventListener('click',()=>$('#p_photo')?.click());
+    $('#profileChoosePhotoBtn')?.addEventListener('click', () => $('#p_photo')?.click());
     $('#profileForm').addEventListener('submit', handleProfileSubmit);
     $('#profilePasswordForm').addEventListener('submit', handleProfilePasswordSubmit);
   }
@@ -2226,37 +2275,37 @@ function wireViewEvents(viewId) {
     $('#issueForm').addEventListener('submit', handleIssueSubmit);
     $('#f_photo').addEventListener('change', handlePhotoSelected);
     $('#f_photoClear').addEventListener('click', clearSelectedPhoto);
-    $('#f_supervisorName').addEventListener('change',e=>{const match=issuesCache.find(i=>String(i.supervisorName||'').toLowerCase()===e.target.value.trim().toLowerCase());if(match?.supervisorContact&&!$('#f_supervisorContact').value)$('#f_supervisorContact').value=match.supervisorContact;});
-    $('#f_supervisorContact').addEventListener('change',e=>{const match=issuesCache.find(i=>String(i.supervisorContact||'')===e.target.value.trim());if(match?.supervisorName&&!$('#f_supervisorName').value)$('#f_supervisorName').value=match.supervisorName;});
-    $('#f_choosePhotoBtn').addEventListener('click',()=>$('#f_photo').click());
-    $('#f_cameraBtn').addEventListener('click',()=>$('#f_camera').click());
-    $('#f_camera').addEventListener('change',e=>appendCameraPhoto(e.target,'issue','#f_photoPreview'));
+    $('#f_supervisorName').addEventListener('change', e => { const match = issuesCache.find(i => String(i.supervisorName || '').toLowerCase() === e.target.value.trim().toLowerCase()); if (match?.supervisorContact && !$('#f_supervisorContact').value) $('#f_supervisorContact').value = match.supervisorContact; });
+    $('#f_supervisorContact').addEventListener('change', e => { const match = issuesCache.find(i => String(i.supervisorContact || '') === e.target.value.trim()); if (match?.supervisorName && !$('#f_supervisorName').value) $('#f_supervisorName').value = match.supervisorName; });
+    $('#f_choosePhotoBtn').addEventListener('click', () => $('#f_photo').click());
+    $('#f_cameraBtn').addEventListener('click', () => $('#f_camera').click());
+    $('#f_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'issue', '#f_photoPreview'));
   }
 
   if (viewId === 'return-record') {
     $('#returnForm').addEventListener('submit', handleReturnSubmit);
-    $('#r_choosePhotoBtn').addEventListener('click',()=>$('#r_photo').click());
-    $('#r_cameraBtn').addEventListener('click',()=>$('#r_camera').click());
-    $('#r_camera').addEventListener('change',e=>appendCameraPhoto(e.target,'return','#r_photoPreview'));
-    $('#r_photo').addEventListener('change',async(e)=>{let files=Array.from(e.target.files||[]);if(!files.length){returnSelectedPhotoFiles=[];$('#r_photoPreviewWrap').style.display='none';$('#r_photoPreview').innerHTML='';return;}if(files.some(f=>!f.type.startsWith('image/'))){returnSelectedPhotoFiles=[];e.target.value='';$('#r_photoPreviewWrap').style.display='none';$('#r_photoPreview').innerHTML='';await appAlert('Please choose image files only.',{title:'Invalid Photo',type:'danger'});return;}files=limitPhotoFiles(files,0);returnSelectedPhotoFiles=await Promise.all(files.map(f=>compressImage(f)));previewSelectedImages(returnSelectedPhotoFiles,'#r_photoPreview');});
-    $('#r_photoClear').addEventListener('click',()=>{returnSelectedPhotoFiles=[];const i=$('#r_photo');if(i)i.value='';$('#r_photoPreviewWrap').style.display='none';$('#r_photoPreview').innerHTML='';});
+    $('#r_choosePhotoBtn').addEventListener('click', () => $('#r_photo').click());
+    $('#r_cameraBtn').addEventListener('click', () => $('#r_camera').click());
+    $('#r_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'return', '#r_photoPreview'));
+    $('#r_photo').addEventListener('change', async (e) => { let files = Array.from(e.target.files || []); if (!files.length) { returnSelectedPhotoFiles = []; $('#r_photoPreviewWrap').style.display = 'none'; $('#r_photoPreview').innerHTML = ''; return; } if (files.some(f => !f.type.startsWith('image/'))) { returnSelectedPhotoFiles = []; e.target.value = ''; $('#r_photoPreviewWrap').style.display = 'none'; $('#r_photoPreview').innerHTML = ''; await appAlert('Please choose image files only.', { title: 'Invalid Photo', type: 'danger' }); return; } files = limitPhotoFiles(files, 0); returnSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(returnSelectedPhotoFiles, '#r_photoPreview'); });
+    $('#r_photoClear').addEventListener('click', () => { returnSelectedPhotoFiles = []; const i = $('#r_photo'); if (i) i.value = ''; $('#r_photoPreviewWrap').style.display = 'none'; $('#r_photoPreview').innerHTML = ''; });
   }
 
   if (viewId === 'edit-return') {
     $('#editReturnForm').addEventListener('submit', handleEditReturnSubmit);
-    $('#er_choosePhotoBtn').addEventListener('click',()=>$('#er_photo').click());
-    $('#er_cameraBtn').addEventListener('click',()=>$('#er_camera').click());
-    $('#er_camera').addEventListener('change',e=>appendCameraPhoto(e.target,'edit-return','#er_photoPreview'));
-    $('#er_photo').addEventListener('change', async e => { let files=Array.from(e.target.files||[]);if(!files.length){editReturnSelectedPhotoFiles=[];$('#er_photoPreviewWrap').style.display='none';$('#er_photoPreview').innerHTML='';return;}if(files.some(f=>!f.type.startsWith('image/'))){editReturnSelectedPhotoFiles=[];e.target.value='';$('#er_photoPreviewWrap').style.display='none';$('#er_photoPreview').innerHTML='';await appAlert('Please choose image files only.',{title:'Invalid Photo',type:'danger'});return;}files=limitPhotoFiles(files,0);editReturnSelectedPhotoFiles=await Promise.all(files.map(f=>compressImage(f)));previewSelectedImages(editReturnSelectedPhotoFiles,'#er_photoPreview'); });
-    $('#er_photoClear').addEventListener('click',()=>{editReturnSelectedPhotoFiles=[];$('#er_photo').value='';$('#er_photoPreviewWrap').style.display='none';$('#er_photoPreview').innerHTML='';});
+    $('#er_choosePhotoBtn').addEventListener('click', () => $('#er_photo').click());
+    $('#er_cameraBtn').addEventListener('click', () => $('#er_camera').click());
+    $('#er_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'edit-return', '#er_photoPreview'));
+    $('#er_photo').addEventListener('change', async e => { let files = Array.from(e.target.files || []); if (!files.length) { editReturnSelectedPhotoFiles = []; $('#er_photoPreviewWrap').style.display = 'none'; $('#er_photoPreview').innerHTML = ''; return; } if (files.some(f => !f.type.startsWith('image/'))) { editReturnSelectedPhotoFiles = []; e.target.value = ''; $('#er_photoPreviewWrap').style.display = 'none'; $('#er_photoPreview').innerHTML = ''; await appAlert('Please choose image files only.', { title: 'Invalid Photo', type: 'danger' }); return; } files = limitPhotoFiles(files, 0); editReturnSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(editReturnSelectedPhotoFiles, '#er_photoPreview'); });
+    $('#er_photoClear').addEventListener('click', () => { editReturnSelectedPhotoFiles = []; $('#er_photo').value = ''; $('#er_photoPreviewWrap').style.display = 'none'; $('#er_photoPreview').innerHTML = ''; });
   }
   if (viewId === 'edit-issue') {
     $('#editIssueForm').addEventListener('submit', handleEditIssueSubmit);
-    $('#ei_choosePhotoBtn').addEventListener('click',()=>$('#ei_photo').click());
-    $('#ei_cameraBtn').addEventListener('click',()=>$('#ei_camera').click());
-    $('#ei_camera').addEventListener('change',e=>appendCameraPhoto(e.target,'edit-issue','#ei_photoPreview'));
-    $('#ei_photo').addEventListener('change', async e => { let files=Array.from(e.target.files||[]); if(files.some(f=>!f.type.startsWith('image/'))){alert('Please choose image files only.');e.target.value='';return;} const issue=issuesCache.find(i=>i.id===editIssueTargetId);files=limitPhotoFiles(files,normalizePhotoUrls(issue?.photoUrls||issue?.photoUrl).length);editIssueSelectedPhotoFiles=await Promise.all(files.map(f=>compressImage(f)));previewSelectedImages(editIssueSelectedPhotoFiles,'#ei_photoPreview'); });
-    $('#ei_photoClear').addEventListener('click',()=>{editIssueSelectedPhotoFiles=[];$('#ei_photo').value='';$('#ei_photoPreviewWrap').style.display='none';$('#ei_photoPreview').innerHTML='';});
+    $('#ei_choosePhotoBtn').addEventListener('click', () => $('#ei_photo').click());
+    $('#ei_cameraBtn').addEventListener('click', () => $('#ei_camera').click());
+    $('#ei_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'edit-issue', '#ei_photoPreview'));
+    $('#ei_photo').addEventListener('change', async e => { let files = Array.from(e.target.files || []); if (files.some(f => !f.type.startsWith('image/'))) { alert('Please choose image files only.'); e.target.value = ''; return; } const issue = issuesCache.find(i => i.id === editIssueTargetId); files = limitPhotoFiles(files, normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length); editIssueSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(editIssueSelectedPhotoFiles, '#ei_photoPreview'); });
+    $('#ei_photoClear').addEventListener('click', () => { editIssueSelectedPhotoFiles = []; $('#ei_photo').value = ''; $('#ei_photoPreviewWrap').style.display = 'none'; $('#ei_photoPreview').innerHTML = ''; });
   }
   if (viewId === 'users-admin') {
     $('#newUserForm').addEventListener('submit', handleNewUserSubmit);
@@ -2270,24 +2319,24 @@ function wireViewEvents(viewId) {
     $('#refreshSyncStatusBtn')?.addEventListener('click', () => render());
     $('#cleanupOldRecordsBtn')?.addEventListener('click', handleCleanupOldRecords);
     $('#clearAllStoreDataBtn')?.addEventListener('click', handleClearAllStoreData);
-    $('#excelDateFrom')?.addEventListener('change',()=>{const from=$('#excelDateFrom').value;excelDateFrom=from;if($('#excelDateTo'))$('#excelDateTo').min=from;updateExcelExportSummary();});
-    $('#excelDateTo')?.addEventListener('change',()=>{const to=$('#excelDateTo').value;excelDateTo=to;if($('#excelDateFrom'))$('#excelDateFrom').max=to||todayStr();updateExcelExportSummary();});
-    $('#downloadRegisterExcelBtn')?.addEventListener('click',downloadRegisterExcel);
-    $$('[data-excel-preset]').forEach(btn=>btn.addEventListener('click',()=>{const range=excelPresetRange(btn.dataset.excelPreset);excelDateFrom=range.from;excelDateTo=range.to;$('#excelDateFrom').value=range.from;$('#excelDateTo').value=range.to;updateExcelExportSummary();}));
-    $$('[data-excel-status]').forEach(btn=>btn.addEventListener('click',()=>{
-      excelStatusFilter=btn.dataset.excelStatus;
-      $$('[data-excel-status]').forEach(b=>b.classList.toggle('is-active',b.dataset.excelStatus===excelStatusFilter));
+    $('#excelDateFrom')?.addEventListener('change', () => { const from = $('#excelDateFrom').value; excelDateFrom = from; if ($('#excelDateTo')) $('#excelDateTo').min = from; updateExcelExportSummary(); });
+    $('#excelDateTo')?.addEventListener('change', () => { const to = $('#excelDateTo').value; excelDateTo = to; if ($('#excelDateFrom')) $('#excelDateFrom').max = to || todayStr(); updateExcelExportSummary(); });
+    $('#downloadRegisterExcelBtn')?.addEventListener('click', downloadRegisterExcel);
+    $$('[data-excel-preset]').forEach(btn => btn.addEventListener('click', () => { const range = excelPresetRange(btn.dataset.excelPreset); excelDateFrom = range.from; excelDateTo = range.to; $('#excelDateFrom').value = range.from; $('#excelDateTo').value = range.to; updateExcelExportSummary(); }));
+    $$('[data-excel-status]').forEach(btn => btn.addEventListener('click', () => {
+      excelStatusFilter = btn.dataset.excelStatus;
+      $$('[data-excel-status]').forEach(b => b.classList.toggle('is-active', b.dataset.excelStatus === excelStatusFilter));
       updateExcelExportSummary();
     }));
-    $('#retryExcelModuleBtn')?.addEventListener('click',()=>{
-      const retry=$('#retryExcelModuleBtn');if(retry){retry.disabled=true;retry.innerHTML='<span class="spinner"></span> Retrying…';}
-      const oldScript=document.querySelector('script[data-excel-retry]');oldScript?.remove();
-      const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';script.dataset.excelRetry='true';
-      script.onload=()=>{updateExcelModuleReadiness();showToast('Excel module is ready.',{title:'Export Restored'});};
-      script.onerror=()=>{if(retry){retry.disabled=false;retry.textContent='Retry Excel Module';}updateExcelModuleReadiness();showToast('Excel module is still unavailable. Check the network and retry.',{title:'Export Unavailable',type:'danger'});};
+    $('#retryExcelModuleBtn')?.addEventListener('click', () => {
+      const retry = $('#retryExcelModuleBtn'); if (retry) { retry.disabled = true; retry.innerHTML = '<span class="spinner"></span> Retrying…'; }
+      const oldScript = document.querySelector('script[data-excel-retry]'); oldScript?.remove();
+      const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; script.dataset.excelRetry = 'true';
+      script.onload = () => { updateExcelModuleReadiness(); showToast('Excel module is ready.', { title: 'Export Restored' }); };
+      script.onerror = () => { if (retry) { retry.disabled = false; retry.textContent = 'Retry Excel Module'; } updateExcelModuleReadiness(); showToast('Excel module is still unavailable. Check the network and retry.', { title: 'Export Unavailable', type: 'danger' }); };
       document.head.appendChild(script);
     });
-    $$('[data-settings-section]').forEach(btn=>btn.addEventListener('click',()=>{const key=btn.dataset.settingsSection,body=$(`[data-settings-body="${key}"]`),open=btn.getAttribute('aria-expanded')==='true';btn.setAttribute('aria-expanded',String(!open));body?.classList.toggle('is-collapsed',open);}));
+    $$('[data-settings-section]').forEach(btn => btn.addEventListener('click', () => { const key = btn.dataset.settingsSection, body = $(`[data-settings-body="${key}"]`), open = btn.getAttribute('aria-expanded') === 'true'; btn.setAttribute('aria-expanded', String(!open)); body?.classList.toggle('is-collapsed', open); }));
     updateExcelModuleReadiness();
     updateExcelExportSummary();
   }
@@ -2299,27 +2348,27 @@ function wireViewEvents(viewId) {
 async function handleProfileSubmit(e) {
   e.preventDefault();
   if (!profileSelectedPhotoFile) { alert('No new photo selected.'); return; }
-  
+
   const btn = $('#profileSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
   setSyncingState(true, 'Uploading profile photo...');
-  
+
   try {
     const ext = (profileSelectedPhotoFile.name.split('.').pop() || 'jpg').slice(0, 8);
     const path = `profile-photos/${currentUser.username}.${ext}`;
     const url = await uploadWithProgress(path, profileSelectedPhotoFile, btn);
-    
+
     await update(ref(db, 'users/' + currentUser.username), { profilePhotoUrl: url, profilePhotoPath: path });
-    
+
     currentUser.profilePhotoUrl = url;
     saveSession(currentUser);
-    
+
     $('#topbarAvatar').src = url;
     $('#topbarAvatar').classList.remove('hidden');
-    
-    showToast('Profile photo updated successfully.',{title:'Profile Updated'});
+
+    showToast('Profile photo updated successfully.', { title: 'Profile Updated' });
     profileSelectedPhotoFile = null;
-    formDirty=false;
+    formDirty = false;
     render();
   } catch (err) {
     alert('Could not upload photo: ' + (err.message || 'unknown error'));
@@ -2381,8 +2430,8 @@ async function handleProfilePasswordSubmit(e) {
   }
 }
 
-async function handlePhotoSelected(e){let files=Array.from(e.target.files||[]);if(!files.length){clearSelectedPhoto();return;}if(files.some(f=>!f.type.startsWith('image/'))){alert('Please choose image files only.');e.target.value='';return;}files=limitPhotoFiles(files,0);selectedPhotoFiles=await Promise.all(files.map(f=>compressImage(f)));previewSelectedImages(selectedPhotoFiles,'#f_photoPreview');}
-function clearSelectedPhoto(){selectedPhotoFiles=[];const i=$('#f_photo');if(i)i.value='';const w=$('#f_photoPreviewWrap');if(w)w.style.display='none';const p=$('#f_photoPreview');if(p)p.innerHTML='';}
+async function handlePhotoSelected(e) { let files = Array.from(e.target.files || []); if (!files.length) { clearSelectedPhoto(); return; } if (files.some(f => !f.type.startsWith('image/'))) { alert('Please choose image files only.'); e.target.value = ''; return; } files = limitPhotoFiles(files, 0); selectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(selectedPhotoFiles, '#f_photoPreview'); }
+function clearSelectedPhoto() { selectedPhotoFiles = []; const i = $('#f_photo'); if (i) i.value = ''; const w = $('#f_photoPreviewWrap'); if (w) w.style.display = 'none'; const p = $('#f_photoPreview'); if (p) p.innerHTML = ''; }
 async function handleIssueSubmit(e) {
   e.preventDefault();
   issueFormError = '';
@@ -2408,13 +2457,13 @@ async function handleIssueSubmit(e) {
   const btn = $('#issueSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
   setSyncingState(true, 'Saving record...');
-  let uploadedPhotoPaths=[];
+  let uploadedPhotoPaths = [];
   try {
     const newRef = push(ref(db, 'issues'));
-    let uploadedPhotoUrls=[],photoUploadFailed=false;
-    if(photosToUpload.length&&storage){
-      try{const u=await uploadMultiplePhotos('issue-photos',newRef.key,photosToUpload,btn);uploadedPhotoUrls=u.urls;uploadedPhotoPaths=u.paths;}
-      catch(error){photoUploadFailed=true;console.warn('Issue photo upload failed:',error);}
+    let uploadedPhotoUrls = [], photoUploadFailed = false;
+    if (photosToUpload.length && storage) {
+      try { const u = await uploadMultiplePhotos('issue-photos', newRef.key, photosToUpload, btn); uploadedPhotoUrls = u.urls; uploadedPhotoPaths = u.paths; }
+      catch (error) { photoUploadFailed = true; console.warn('Issue photo upload failed:', error); }
     }
     try {
       await set(newRef, {
@@ -2424,16 +2473,16 @@ async function handleIssueSubmit(e) {
         remarks: remarks || null, photoUrls: uploadedPhotoUrls, photoPaths: uploadedPhotoPaths,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
-    } catch(databaseError) {
+    } catch (databaseError) {
       await cleanupUploadedPaths(uploadedPhotoPaths);
-      uploadedPhotoPaths=[];
+      uploadedPhotoPaths = [];
       throw databaseError;
     }
-    await writeAudit('issue-created',newRef.key,{materialName,qtyIssued:qty,vendor,area});
+    await writeAudit('issue-created', newRef.key, { materialName, qtyIssued: qty, vendor, area });
     clearSelectedPhoto();
-    const photoWarning=photoUploadFailed?' The issue was saved, but one or more selected photos could not be uploaded.':'';
-    showToast(`Issue recorded for ${materialName} — quantity ${qty}.${photoWarning}`,{title:'Issue Submitted'});
-    formDirty=false; navigateTo('register');
+    const photoWarning = photoUploadFailed ? ' The issue was saved, but one or more selected photos could not be uploaded.' : '';
+    showToast(`Issue recorded for ${materialName} — quantity ${qty}.${photoWarning}`, { title: 'Issue Submitted' });
+    formDirty = false; navigateTo('register');
   } catch (err) {
     issueFormError = friendlySaveError(err, 'save the issue record');
     showInlineError('issueFormAlert', issueFormError);
@@ -2463,7 +2512,7 @@ async function handleEditIssueSubmit(e) {
     showInlineError('editIssueFormAlert', editIssueError);
     return;
   }
-  
+
   if (!/^\d{10}$/.test(supervisorContact)) {
     editIssueError = 'Supervisor contact number must be exactly 10 digits.';
     showInlineError('editIssueFormAlert', editIssueError);
@@ -2474,7 +2523,7 @@ async function handleEditIssueSubmit(e) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
   setSyncingState(true, 'Updating record...');
-  let newlyUploadedPaths=[];
+  let newlyUploadedPaths = [];
   try {
     const updates = {
       materialName, qtyIssued, vendor, area, supervisorName, supervisorContact,
@@ -2482,13 +2531,13 @@ async function handleEditIssueSubmit(e) {
     };
 
     const newPhotos = editIssueSelectedPhotoFiles.slice(0, Math.max(0, MAX_PHOTOS_PER_ENTRY - normalizePhotoUrls(issue.photoUrls || issue.photoUrl).length));
-    let photoWarning='';
-    if(newPhotos.length){try{if(!storage)throw new Error('Cloud photo storage is unavailable.');const u=await uploadMultiplePhotos('issue-photos',issue.id,newPhotos,btn);updates.photoUrls=[...(issue.photoUrls||(issue.photoUrl?[issue.photoUrl]:[])),...u.urls];updates.photoPaths=[...(issue.photoPaths||(issue.photoPath?[issue.photoPath]:[])),...u.paths];newlyUploadedPaths=u.paths;}catch(error){photoWarning=' The changes were saved, but new photos could not be uploaded.';console.warn('Edit issue photo upload failed:',error);}}
-    try { await update(ref(db, 'issues/' + issue.id), updates); } catch(databaseError) { await cleanupUploadedPaths(newlyUploadedPaths); newlyUploadedPaths=[]; throw databaseError; }
-    await writeAudit('issue-edited',issue.id,{materialName,qtyIssued,vendor,area});
-    editIssueSelectedPhotoFiles=[];
+    let photoWarning = '';
+    if (newPhotos.length) { try { if (!storage) throw new Error('Cloud photo storage is unavailable.'); const u = await uploadMultiplePhotos('issue-photos', issue.id, newPhotos, btn); updates.photoUrls = [...(issue.photoUrls || (issue.photoUrl ? [issue.photoUrl] : [])), ...u.urls]; updates.photoPaths = [...(issue.photoPaths || (issue.photoPath ? [issue.photoPath] : [])), ...u.paths]; newlyUploadedPaths = u.paths; } catch (error) { photoWarning = ' The changes were saved, but new photos could not be uploaded.'; console.warn('Edit issue photo upload failed:', error); } }
+    try { await update(ref(db, 'issues/' + issue.id), updates); } catch (databaseError) { await cleanupUploadedPaths(newlyUploadedPaths); newlyUploadedPaths = []; throw databaseError; }
+    await writeAudit('issue-edited', issue.id, { materialName, qtyIssued, vendor, area });
+    editIssueSelectedPhotoFiles = [];
     await appAlert(`Issue record updated successfully for ${materialName}.${photoWarning}`, { title: 'Issue Updated', type: 'success' });
-    formDirty=false; navigateTo('register');
+    formDirty = false; navigateTo('register');
   } catch (err) {
     editIssueError = friendlySaveError(err, 'update the issue record');
     showInlineError('editIssueFormAlert', editIssueError);
@@ -2515,57 +2564,57 @@ async function handleReturnSubmit(e) {
     returnFormError = `Please enter a valid return date and quantity (max ${remaining} remaining).`;
     showInlineError('returnFormAlert', returnFormError); return;
   }
-  if(returnDate>todayStr()||(issue.issueDate&&returnDate<issue.issueDate)){
-    returnFormError=`Return date must be between ${issue.issueDate} and today.`;
-    showInlineError('returnFormAlert',returnFormError);return;
+  if (returnDate > todayStr() || (issue.issueDate && returnDate < issue.issueDate)) {
+    returnFormError = `Return date must be between ${issue.issueDate} and today.`;
+    showInlineError('returnFormAlert', returnFormError); return;
   }
   const submitBtn = document.querySelector('#returnForm button[type="submit"]');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spinner"></span> Saving…'; }
-  const existingReturnUrls=normalizePhotoUrls(issue.returnPhotoUrls||issue.returnPhotoUrl);
-  const existingReturnPaths=normalizePhotoUrls(issue.returnPhotoPaths||issue.returnPhotoPath);
+  const existingReturnUrls = normalizePhotoUrls(issue.returnPhotoUrls || issue.returnPhotoUrl);
+  const existingReturnPaths = normalizePhotoUrls(issue.returnPhotoPaths || issue.returnPhotoPath);
   const photosToUpload = returnSelectedPhotoFiles.slice(0, MAX_PHOTOS_PER_ENTRY);
   setSyncingState(true, 'Recording return...');
-  let newlyUploadedPaths=[];
+  let newlyUploadedPaths = [];
   try {
-    let newlyUploadedUrls=[];
-    if(photosToUpload.length){
-      if(!storage)throw new Error('Cloud photo storage is unavailable. The return was not submitted; selected photos are still available to retry.');
-      const u=await uploadMultiplePhotos('return-photos',issue.id,photosToUpload,submitBtn);
-      newlyUploadedUrls=u.urls;newlyUploadedPaths=u.paths;
-      if(newlyUploadedUrls.length!==photosToUpload.length)throw new Error('Not all selected return photos were uploaded. The return was not submitted.');
+    let newlyUploadedUrls = [];
+    if (photosToUpload.length) {
+      if (!storage) throw new Error('Cloud photo storage is unavailable. The return was not submitted; selected photos are still available to retry.');
+      const u = await uploadMultiplePhotos('return-photos', issue.id, photosToUpload, submitBtn);
+      newlyUploadedUrls = u.urls; newlyUploadedPaths = u.paths;
+      if (newlyUploadedUrls.length !== photosToUpload.length) throw new Error('Not all selected return photos were uploaded. The return was not submitted.');
     }
-    const historyKey=push(ref(db,`issues/${issue.id}/returnHistory`)).key;
-    const base=`issues/${issue.id}`;
-    const atomicUpdates={
-      [`${base}/returnDate`]:returnDate,
-      [`${base}/qtyReturned`]:increment(qty),
-      [`${base}/conditionOnReturn`]:condition,
-      [`${base}/receivedBy`]:currentUser.username,
-      [`${base}/receivedByName`]:currentUser.fullName,
-      [`${base}/remarks`]:remarks || issue.remarks || null,
-      [`${base}/updatedAt`]:serverTimestamp(),
-      [`${base}/returnedAt`]:serverTimestamp(),
-      [`${base}/returnHistory/${historyKey}`]:{
-        qtyReturnedNow:qty,returnDate,conditionOnReturn:condition,
-        receivedBy:currentUser.username,receivedByName:currentUser.fullName,
-        remarks:remarks||null,
-        returnPhotoUrls:newlyUploadedUrls,
-        returnPhotoPaths:newlyUploadedPaths,
-        photoCount:newlyUploadedUrls.length,
-        createdAt:serverTimestamp()
+    const historyKey = push(ref(db, `issues/${issue.id}/returnHistory`)).key;
+    const base = `issues/${issue.id}`;
+    const atomicUpdates = {
+      [`${base}/returnDate`]: returnDate,
+      [`${base}/qtyReturned`]: increment(qty),
+      [`${base}/conditionOnReturn`]: condition,
+      [`${base}/receivedBy`]: currentUser.username,
+      [`${base}/receivedByName`]: currentUser.fullName,
+      [`${base}/remarks`]: remarks || issue.remarks || null,
+      [`${base}/updatedAt`]: serverTimestamp(),
+      [`${base}/returnedAt`]: serverTimestamp(),
+      [`${base}/returnHistory/${historyKey}`]: {
+        qtyReturnedNow: qty, returnDate, conditionOnReturn: condition,
+        receivedBy: currentUser.username, receivedByName: currentUser.fullName,
+        remarks: remarks || null,
+        returnPhotoUrls: newlyUploadedUrls,
+        returnPhotoPaths: newlyUploadedPaths,
+        photoCount: newlyUploadedUrls.length,
+        createdAt: serverTimestamp()
       }
     };
-    if(newlyUploadedUrls.length){
-      atomicUpdates[`${base}/returnPhotoUrls`]=[...existingReturnUrls,...newlyUploadedUrls];
-      atomicUpdates[`${base}/returnPhotoPaths`]=[...existingReturnPaths,...newlyUploadedPaths];
+    if (newlyUploadedUrls.length) {
+      atomicUpdates[`${base}/returnPhotoUrls`] = [...existingReturnUrls, ...newlyUploadedUrls];
+      atomicUpdates[`${base}/returnPhotoPaths`] = [...existingReturnPaths, ...newlyUploadedPaths];
     }
     try { await update(ref(db), atomicUpdates); }
-    catch(databaseError){await cleanupUploadedPaths(newlyUploadedPaths);newlyUploadedPaths=[];throw databaseError;}
-    await writeAudit('return-recorded',issue.id,{qtyReturnedNow:qty,returnDate,condition});
+    catch (databaseError) { await cleanupUploadedPaths(newlyUploadedPaths); newlyUploadedPaths = []; throw databaseError; }
+    await writeAudit('return-recorded', issue.id, { qtyReturnedNow: qty, returnDate, condition });
     returnSelectedPhotoFiles = [];
-    const photoNote=newlyUploadedUrls.length?` ${newlyUploadedUrls.length} return photo${newlyUploadedUrls.length===1?'':'s'} uploaded.`:'';
-    showToast(`Return recorded for ${issue.materialName} — quantity ${qty}.${photoNote}`,{title:'Return Submitted'});
-    formDirty=false; navigateTo('register');
+    const photoNote = newlyUploadedUrls.length ? ` ${newlyUploadedUrls.length} return photo${newlyUploadedUrls.length === 1 ? '' : 's'} uploaded.` : '';
+    showToast(`Return recorded for ${issue.materialName} — quantity ${qty}.${photoNote}`, { title: 'Return Submitted' });
+    formDirty = false; navigateTo('register');
   } catch (err) {
     returnFormError = friendlySaveError(err, 'save the return record');
     showInlineError('returnFormAlert', returnFormError);
@@ -2591,33 +2640,33 @@ async function handleEditReturnSubmit(e) {
     showInlineError('editReturnFormAlert', editReturnError);
     return;
   }
-  if(qty>0&&(returnDate>todayStr()||(issue.issueDate&&returnDate<issue.issueDate))){editReturnError=`Return date must be between ${issue.issueDate} and today.`;showInlineError('editReturnFormAlert',editReturnError);return;}
+  if (qty > 0 && (returnDate > todayStr() || (issue.issueDate && returnDate < issue.issueDate))) { editReturnError = `Return date must be between ${issue.issueDate} and today.`; showInlineError('editReturnFormAlert', editReturnError); return; }
 
   const btn = $('#editReturnSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
 
   setSyncingState(true, 'Updating return...');
-  let newlyUploadedPaths=[];
+  let newlyUploadedPaths = [];
   try {
-    const oldPaths=issue.returnPhotoPaths||(issue.returnPhotoPath?[issue.returnPhotoPath]:[]);
-    const updates=qty===0?{returnDate:null,qtyReturned:0,conditionOnReturn:null,receivedBy:null,receivedByName:null,returnedAt:null,returnPhotoUrls:null,returnPhotoPaths:null,returnPhotoUrl:null,returnPhotoPath:null,returnHistory:null,updatedAt:serverTimestamp()}:{returnDate,qtyReturned:qty,conditionOnReturn:condition,remarks:remarks||issue.remarks||null,updatedAt:serverTimestamp()};
-    const newPhotos=editReturnSelectedPhotoFiles.slice(0,MAX_PHOTOS_PER_ENTRY);
-    let uploadedEditUrls=[];
-    if(qty>0&&newPhotos.length){
-      if(!storage)throw new Error('Cloud photo storage is unavailable. The return changes were not saved; selected photos are still available to retry.');
-      const u=await uploadMultiplePhotos('return-photos',issue.id,newPhotos,btn);
-      if(u.urls.length!==newPhotos.length)throw new Error('Not all selected return photos were uploaded. The return changes were not saved.');
-      uploadedEditUrls=u.urls;newlyUploadedPaths=u.paths;
-      updates.returnPhotoUrls=[...normalizePhotoUrls(issue.returnPhotoUrls||issue.returnPhotoUrl),...u.urls];
-      updates.returnPhotoPaths=[...oldPaths,...u.paths];
+    const oldPaths = issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []);
+    const updates = qty === 0 ? { returnDate: null, qtyReturned: 0, conditionOnReturn: null, receivedBy: null, receivedByName: null, returnedAt: null, returnPhotoUrls: null, returnPhotoPaths: null, returnPhotoUrl: null, returnPhotoPath: null, returnHistory: null, updatedAt: serverTimestamp() } : { returnDate, qtyReturned: qty, conditionOnReturn: condition, remarks: remarks || issue.remarks || null, updatedAt: serverTimestamp() };
+    const newPhotos = editReturnSelectedPhotoFiles.slice(0, MAX_PHOTOS_PER_ENTRY);
+    let uploadedEditUrls = [];
+    if (qty > 0 && newPhotos.length) {
+      if (!storage) throw new Error('Cloud photo storage is unavailable. The return changes were not saved; selected photos are still available to retry.');
+      const u = await uploadMultiplePhotos('return-photos', issue.id, newPhotos, btn);
+      if (u.urls.length !== newPhotos.length) throw new Error('Not all selected return photos were uploaded. The return changes were not saved.');
+      uploadedEditUrls = u.urls; newlyUploadedPaths = u.paths;
+      updates.returnPhotoUrls = [...normalizePhotoUrls(issue.returnPhotoUrls || issue.returnPhotoUrl), ...u.urls];
+      updates.returnPhotoPaths = [...oldPaths, ...u.paths];
     }
-    try { await update(ref(db,'issues/'+issue.id),updates); } catch(databaseError) { await cleanupUploadedPaths(newlyUploadedPaths); newlyUploadedPaths=[]; throw databaseError; }
-    if(qty===0&&storage)for(const p of oldPaths)try{await deleteObject(storageRef(storage,p));}catch(_){}
-    await writeAudit('return-edited',issue.id,{previousQtyReturned:issue.qtyReturned||0,newQtyReturned:qty,returnDate:qty===0?null:returnDate});
-    editReturnSelectedPhotoFiles=[];
-    const editPhotoNote=uploadedEditUrls.length?` ${uploadedEditUrls.length} return photo${uploadedEditUrls.length===1?'':'s'} uploaded.`:'';
+    try { await update(ref(db, 'issues/' + issue.id), updates); } catch (databaseError) { await cleanupUploadedPaths(newlyUploadedPaths); newlyUploadedPaths = []; throw databaseError; }
+    if (qty === 0 && storage) for (const p of oldPaths) try { await deleteObject(storageRef(storage, p)); } catch (_) { }
+    await writeAudit('return-edited', issue.id, { previousQtyReturned: issue.qtyReturned || 0, newQtyReturned: qty, returnDate: qty === 0 ? null : returnDate });
+    editReturnSelectedPhotoFiles = [];
+    const editPhotoNote = uploadedEditUrls.length ? ` ${uploadedEditUrls.length} return photo${uploadedEditUrls.length === 1 ? '' : 's'} uploaded.` : '';
     await appAlert(`Return record updated successfully for ${issue.materialName}.${editPhotoNote}`, { title: 'Return Updated', type: 'success' });
-    formDirty=false; navigateTo('register');
+    formDirty = false; navigateTo('register');
   } catch (err) {
     editReturnError = friendlySaveError(err, 'update the return record');
     showInlineError('editReturnFormAlert', editReturnError);
@@ -2633,13 +2682,13 @@ async function deleteIssue(id) {
   try {
     const issue = issuesCache.find((i) => i.id === id);
     if (!issue) return;
-    
-    await writeAudit('issue-deleted',id,{materialName:issue.materialName,qtyIssued:issue.qtyIssued});
+
+    await writeAudit('issue-deleted', id, { materialName: issue.materialName, qtyIssued: issue.qtyIssued });
     await remove(ref(db, 'issues/' + id));
-    
+
     if (storage && issue) {
-      for(const path of (issue.photoPaths||(issue.photoPath?[issue.photoPath]:[])))try{await deleteObject(storageRef(storage,path));}catch(_){}
-      for(const path of (issue.returnPhotoPaths||(issue.returnPhotoPath?[issue.returnPhotoPath]:[])))try{await deleteObject(storageRef(storage,path));}catch(_){}
+      for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
+      for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
     }
   } catch (err) { alert('Could not delete this record: ' + (err.message || 'unknown error')); }
   finally { setSyncingState(false); }
@@ -2684,7 +2733,7 @@ async function verifyClearDataPassword() {
   closeClearDataDialog(true);
 }
 async function handleClearAllStoreData() {
-  if (currentUser?.role !== 'admin') { await appAlert('Only the administrator can clear store data.', { title: 'Access denied', type: 'danger' }); return; }
+  if (!currentUser?.roles.includes('admin')) { await appAlert('Only the administrator can clear store data.', { title: 'Access denied', type: 'danger' }); return; }
   const accepted = await appConfirm(
     'This permanently deletes ALL issue and return records, linked photos, pending access requests, and audit history. User accounts are preserved. This action cannot be undone.',
     { title: 'Clear all store data?', type: 'danger', confirmText: 'Continue' }
@@ -2735,21 +2784,21 @@ $('#clearDataPassword').addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeClearDataDialog(false);
 });
 $('#clearDataDialog').addEventListener('click', (event) => { if (event.target.id === 'clearDataDialog') closeClearDataDialog(false); });
-document.addEventListener('click',(event)=>{const trigger=event.target.closest?.('[data-photo-gallery]');if(trigger){event.preventDefault();openPhotoGallery(trigger.dataset.photoGallery);}});
-$('#photoGalleryCloseBtn').addEventListener('click',closePhotoGallery);
-$('#photoGalleryPrev').addEventListener('click',()=>{if(photoGalleryUrls.length){photoGalleryIndex=(photoGalleryIndex-1+photoGalleryUrls.length)%photoGalleryUrls.length;updatePhotoGallery();}});
-$('#photoGalleryNext').addEventListener('click',()=>{if(photoGalleryUrls.length){photoGalleryIndex=(photoGalleryIndex+1)%photoGalleryUrls.length;updatePhotoGallery();}});
-$('#photoGalleryDialog').addEventListener('click',(event)=>{if(event.target.id==='photoGalleryDialog')closePhotoGallery();});
-document.addEventListener('keydown',(event)=>{if($('#photoGalleryDialog').classList.contains('hidden'))return;if(event.key==='Escape')closePhotoGallery();if(event.key==='ArrowLeft')$('#photoGalleryPrev').click();if(event.key==='ArrowRight')$('#photoGalleryNext').click();});
+document.addEventListener('click', (event) => { const trigger = event.target.closest?.('[data-photo-gallery]'); if (trigger) { event.preventDefault(); openPhotoGallery(trigger.dataset.photoGallery); } });
+$('#photoGalleryCloseBtn').addEventListener('click', closePhotoGallery);
+$('#photoGalleryPrev').addEventListener('click', () => { if (photoGalleryUrls.length) { photoGalleryIndex = (photoGalleryIndex - 1 + photoGalleryUrls.length) % photoGalleryUrls.length; updatePhotoGallery(); } });
+$('#photoGalleryNext').addEventListener('click', () => { if (photoGalleryUrls.length) { photoGalleryIndex = (photoGalleryIndex + 1) % photoGalleryUrls.length; updatePhotoGallery(); } });
+$('#photoGalleryDialog').addEventListener('click', (event) => { if (event.target.id === 'photoGalleryDialog') closePhotoGallery(); });
+document.addEventListener('keydown', (event) => { if ($('#photoGalleryDialog').classList.contains('hidden')) return; if (event.key === 'Escape') closePhotoGallery(); if (event.key === 'ArrowLeft') $('#photoGalleryPrev').click(); if (event.key === 'ArrowRight') $('#photoGalleryNext').click(); });
 
 async function handleCleanupOldRecords() {
   const cutoffDate = new Date();
   cutoffDate.setMonth(cutoffDate.getMonth() - 6);
 
   const toDelete = issuesCache.filter(issue => {
-    if(statusOf(issue)!=='Returned')return false;
-    const completed=issue.returnedAt?new Date(issue.returnedAt):(issue.returnDate?new Date(issue.returnDate+'T23:59:59'):null);
-    return completed&&!Number.isNaN(completed.getTime())&&completed<cutoffDate;
+    if (statusOf(issue) !== 'Returned') return false;
+    const completed = issue.returnedAt ? new Date(issue.returnedAt) : (issue.returnDate ? new Date(issue.returnDate + 'T23:59:59') : null);
+    return completed && !Number.isNaN(completed.getTime()) && completed < cutoffDate;
   });
 
   if (toDelete.length === 0) {
@@ -2770,12 +2819,12 @@ async function handleCleanupOldRecords() {
 
   for (const issue of toDelete) {
     try {
-      await writeAudit('issue-cleanup-deleted',issue.id,{materialName:issue.materialName,returnDate:issue.returnDate||null});
+      await writeAudit('issue-cleanup-deleted', issue.id, { materialName: issue.materialName, returnDate: issue.returnDate || null });
       await remove(ref(db, 'issues/' + issue.id));
-      
+
       if (storage) {
-        for(const path of (issue.photoPaths||(issue.photoPath?[issue.photoPath]:[])))try{await deleteObject(storageRef(storage,path));}catch(_){}
-        for(const path of (issue.returnPhotoPaths||(issue.returnPhotoPath?[issue.returnPhotoPath]:[])))try{await deleteObject(storageRef(storage,path));}catch(_){}
+        for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
+        for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
       }
       successCount++;
     } catch (e) {
@@ -2800,7 +2849,7 @@ async function loadRequestsTable() {
   const holder = $('#requestsHolder');
   if (!holder) return;
   const pad = holder.querySelector('.panel-pad');
-  
+
   setSyncingState(true, 'Loading requests...');
   try {
     const snap = await readAdminData('accessRequests');
@@ -2825,9 +2874,9 @@ async function loadRequestsTable() {
 
     pad.querySelectorAll('[data-approve-request]').forEach((btn) => { btn.addEventListener('click', () => handleApproveRequest(btn.dataset.approveRequest)); });
     pad.querySelectorAll('[data-reject-request]').forEach((btn) => { btn.addEventListener('click', () => handleRejectRequest(btn.dataset.rejectRequest)); });
-  } catch (err) { 
+  } catch (err) {
     pad.innerHTML = `<div class="alert alert-error" role="alert">Could not load requests: ${escapeHtml(err.message || 'unknown error')}</div><button type="button" class="btn btn-primary btn-sm" id="retryRequestsLoadBtn" style="margin-top:12px;">Retry loading requests</button>`;
-    $('#retryRequestsLoadBtn')?.addEventListener('click', loadRequestsTable); 
+    $('#retryRequestsLoadBtn')?.addEventListener('click', loadRequestsTable);
   } finally {
     setSyncingState(false);
   }
@@ -2845,8 +2894,8 @@ async function handleApproveRequest(username) {
     await remove(ref(db, 'accessRequests/' + username));
     loadRequestsTable();
     loadUsersTable();
-  } catch (err) { 
-    alert('Could not approve this request: ' + (err.message || 'unknown error')); 
+  } catch (err) {
+    alert('Could not approve this request: ' + (err.message || 'unknown error'));
   } finally {
     setSyncingState(false);
   }
@@ -2855,11 +2904,11 @@ async function handleApproveRequest(username) {
 async function handleRejectRequest(username) {
   if (!await appConfirm(`Reject the access request from "${username}"?`, { title: 'Reject access request', type: 'danger', confirmText: 'Reject' })) return;
   setSyncingState(true, 'Rejecting request...');
-  try { 
-    await remove(ref(db, 'accessRequests/' + username)); 
-    loadRequestsTable(); 
-  } catch (err) { 
-    alert('Could not reject this request: ' + (err.message || 'unknown error')); 
+  try {
+    await remove(ref(db, 'accessRequests/' + username));
+    loadRequestsTable();
+  } catch (err) {
+    alert('Could not reject this request: ' + (err.message || 'unknown error'));
   } finally {
     setSyncingState(false);
   }
@@ -2881,7 +2930,7 @@ function updatePendingRequestsNavBadge(count) {
 async function loadUsersTable() {
   const holder = $('#usersTableHolder');
   if (!holder) return;
-  
+
   setSyncingState(true, 'Loading users...');
   try {
     const snap = await readAdminData('users');
@@ -2894,31 +2943,55 @@ async function loadUsersTable() {
           <thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Action</th></tr></thead>
           <tbody>
             ${users.map((u) => {
-              const uRole = u.role || 'storekeeper';
-              return `
+      const uRoles = Array.isArray(u.roles) ? u.roles : (u.role ? [u.role] : ['storekeeper']);
+      return `
               <tr>
                 <td class="mono" data-label="Username">${escapeHtml(u.id)}</td>
                 <td data-label="Full Name">${escapeHtml(u.fullName)}</td>
                 <td data-label="Role">
-                  <select class="user-role-select" data-user-id="${escapeHtml(u.id)}">
-                    <option value="storekeeper" ${uRole === 'storekeeper' ? 'selected' : ''}>Storekeeper</option>
-                    <option value="viewer" ${uRole === 'viewer' ? 'selected' : ''}>Viewer</option>
-                  </select>
+                  <div class="custom-multi-select" style="position:relative; width: 160px;">
+                    <div class="multi-select-header" tabindex="0" style="border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; cursor: pointer; background: var(--surface); display:flex; justify-content:space-between; align-items:center;">
+                      <span class="ms-label">${uRoles.length} Role${uRoles.length > 1 ? 's' : ''} Selected</span>
+                      <span style="font-size:10px;">▼</span>
+                    </div>
+                    <div class="role-checkbox-group multi-select-options hidden" data-user-id="${escapeHtml(u.id)}" style="position:absolute; top:100%; left:0; right:0; background:var(--input-bg, var(--surface)); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border); z-index:10; padding: 10px; border-radius: 4px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:8px; margin-top:2px; text-align: left;">
+                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="storekeeper" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('storekeeper') ? 'checked' : ''}> Storekeeper</label>
+                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('viewer') ? 'checked' : ''}> Viewer</label>
+                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="tools_admin" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('tools_admin') ? 'checked' : ''}> Tools Admin</label>
+                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="tools_viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('tools_viewer') ? 'checked' : ''}> Tools Viewer</label>
+                    </div>
+                  </div>
                 </td>
                 <td data-label="Action"><button class="btn btn-danger btn-sm" data-remove-user="${escapeHtml(u.id)}"><span aria-hidden="true">🗑</span><span>Delete</span></button></td>
               </tr>`;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>`}
       </div>`;
 
-    holder.querySelectorAll('.user-role-select').forEach((sel) => {
-      sel.addEventListener('change', async (e) => {
-        const uid = e.target.dataset.userId;
-        const newRole = e.target.value;
-        setSyncingState(true, 'Updating role...');
+    holder.querySelectorAll('.role-checkbox-group input[type="checkbox"]').forEach((checkbox) => {
+      checkbox.addEventListener('change', async (e) => {
+        const group = e.target.closest('.role-checkbox-group');
+        const uid = group.dataset.userId;
+        const checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
+        if (checkedBoxes.length > 2) {
+          alert('A user can have a maximum of 2 roles.');
+          e.target.checked = false;
+          return;
+        }
+        if (checkedBoxes.length === 0) {
+          alert('A user must have at least 1 role.');
+          e.target.checked = true;
+          return;
+        }
+        const headerLabel = group.previousElementSibling?.querySelector('.ms-label');
+        if (headerLabel) headerLabel.textContent = `${checkedBoxes.length} Role${checkedBoxes.length > 1 ? 's' : ''} Selected`;
+
+        const newRoles = checkedBoxes.map(cb => cb.value);
+        
+        setSyncingState(true, 'Updating roles...');
         try {
-          await update(ref(db, 'users/' + uid), { role: newRole });
+          await update(ref(db, 'users/' + uid), { roles: newRoles });
         } catch (err) {
           alert('Could not update role: ' + (err.message || 'unknown error'));
           loadUsersTable();
@@ -2932,19 +3005,19 @@ async function loadUsersTable() {
       btn.addEventListener('click', async () => {
         if (!await appConfirm(`Delete the account "${btn.dataset.removeUser}"? They will no longer be able to log in.`, { title: 'Delete storekeeper account', type: 'danger', confirmText: 'Delete account' })) return;
         setSyncingState(true, 'Deleting user...');
-        try { 
-          await remove(ref(db, 'users/' + btn.dataset.removeUser)); 
-          loadUsersTable(); 
-        } catch (err) { 
-          alert('Could not delete this account: ' + (err.message || 'unknown error')); 
+        try {
+          await remove(ref(db, 'users/' + btn.dataset.removeUser));
+          loadUsersTable();
+        } catch (err) {
+          alert('Could not delete this account: ' + (err.message || 'unknown error'));
         } finally {
           setSyncingState(false);
         }
       });
     });
-  } catch (err) { 
+  } catch (err) {
     holder.innerHTML = `<div class="panel-head"><h2>Storekeeper Accounts</h2></div><div class="panel-pad"><div class="alert alert-error" role="alert">Could not load users: ${escapeHtml(err.message || 'unknown error')}</div><button type="button" class="btn btn-primary btn-sm" id="retryUsersLoadBtn" style="margin-top:12px;">Retry loading users</button></div>`;
-    $('#retryUsersLoadBtn')?.addEventListener('click', loadUsersTable); 
+    $('#retryUsersLoadBtn')?.addEventListener('click', loadUsersTable);
   } finally {
     setSyncingState(false);
   }
@@ -2957,7 +3030,19 @@ async function handleNewUserSubmit(e) {
   const username = $('#nu_username').value.trim();
   const fullName = $('#nu_fullname').value.trim();
   const password = $('#nu_password').value;
-  const role = $('#nu_role').value;
+  
+  const checkedBoxes = Array.from(document.querySelectorAll('#nu_role_group input:checked'));
+  if (checkedBoxes.length > 2) {
+    userFormError = 'A user can have a maximum of 2 roles.';
+    showInlineError('userFormAlert', userFormError);
+    return;
+  }
+  if (checkedBoxes.length === 0) {
+    userFormError = 'Please select at least 1 role.';
+    showInlineError('userFormAlert', userFormError);
+    return;
+  }
+  const roles = checkedBoxes.map(cb => cb.value);
 
   if (!username || !fullName || !password) { userFormError = 'Please fill in username, full name, and password.'; showInlineError('userFormAlert', userFormError); return; }
   if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; showInlineError('userFormAlert', userFormError); return; }
@@ -2969,10 +3054,10 @@ async function handleNewUserSubmit(e) {
   try {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { userFormError = 'That username already exists.'; showInlineError('userFormAlert', userFormError); return; }
-    await set(ref(db, 'users/' + username), { fullName, password, role, createdAt: serverTimestamp(), });
+    await set(ref(db, 'users/' + username), { fullName, password, roles, createdAt: serverTimestamp(), });
     navigateTo('users-admin');
-  } catch (err) { 
-    userFormError = 'Could not create this account: ' + (err.message || 'unknown error'); 
+  } catch (err) {
+    userFormError = 'Could not create this account: ' + (err.message || 'unknown error');
     showInlineError('userFormAlert', userFormError);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
@@ -2996,7 +3081,7 @@ function setupLoginKPIs() {
   const totEl = document.getElementById('loginKpiTotal');
   const penEl = document.getElementById('loginKpiPending');
   const retEl = document.getElementById('loginKpiReturned');
-  
+
   try {
     if (typeof db !== 'undefined' && db) {
       onValue(ref(db, 'issues'), (snap) => {
@@ -3006,11 +3091,11 @@ function setupLoginKPIs() {
         const total = records.length;
         const returned = records.filter(r => (typeof statusOf === 'function' ? statusOf(r) : r.status) === 'Returned').length;
         const pending = total - returned;
-        
+
         if (totEl) totEl.innerHTML = total;
         if (penEl) penEl.innerHTML = pending;
         if (retEl) retEl.innerHTML = returned;
-        
+
         kpiGrid.style.display = 'flex';
         setTimeout(() => { kpiGrid.style.opacity = '1'; }, 50);
       }, (error) => {
@@ -3026,10 +3111,29 @@ setTimeout(setupLoginKPIs, 1000);
 // =========================================================================
 // GLOBAL EVENT DELEGATION
 // =========================================================================
+document.addEventListener('change', (e) => {
+  if (e.target.closest('#nu_role_group')) {
+    const checkedBoxes = document.querySelectorAll('#nu_role_group input:checked');
+    const headerLabel = document.querySelector('#nu_role_group').previousElementSibling?.querySelector('.ms-label');
+    if (headerLabel) headerLabel.textContent = `${checkedBoxes.length} Role${checkedBoxes.length !== 1 ? 's' : ''} Selected`;
+  }
+});
 document.addEventListener('click', (e) => {
+  const msHeader = e.target.closest('.multi-select-header');
+  if (msHeader) {
+    const options = msHeader.nextElementSibling;
+    const isHidden = options.classList.contains('hidden');
+    document.querySelectorAll('.multi-select-options').forEach(el => el.classList.add('hidden'));
+    if (isHidden) options.classList.remove('hidden');
+    return;
+  }
+  if (!e.target.closest('.custom-multi-select')) {
+    document.querySelectorAll('.multi-select-options').forEach(el => el.classList.add('hidden'));
+  }
+
   const navBtn = e.target.closest('[data-nav]');
   if (navBtn) {
-    if (typeof activeUploadTask !== 'undefined' && activeUploadTask) { try { activeUploadTask.cancel(); } catch (_) {} }
+    if (typeof activeUploadTask !== 'undefined' && activeUploadTask) { try { activeUploadTask.cancel(); } catch (_) { } }
     navigateTo(navBtn.dataset.nav);
     return;
   }
@@ -3040,7 +3144,249 @@ document.addEventListener('click', (e) => {
     registerFilterState.month = 'all';
     registerFilterState.year = 'all';
     registerFilterState.page = 1;
-    formDirty=false; navigateTo('register');
+    formDirty = false; navigateTo('register');
     return;
   }
 });
+
+// =========================================================================
+// TOOLS MASTER LIST MODULE
+// =========================================================================
+function renderToolsDashboard() {
+  const main = $('#appMain');
+  const canEdit = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
+  
+  let html = `
+    <div class="panel">
+      <div class="panel-head" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0;">Tools Master List</h2>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <select id="toolsStatusFilter" class="input-select" style="padding: 6px 12px; height: auto; font-size: 14px; max-width: 200px;">
+            <option value="all">Master List (All)</option>
+            <option value="Available">Available</option>
+            <option value="In Use">In Use</option>
+            <option value="Damaged">Damage Declared</option>
+            <option value="In Maintenance">Under Maintenance</option>
+            <option value="Lost">Lost</option>
+          </select>
+          ${canEdit ? '<button class="btn btn-primary" data-nav="add-tool">Add New Tool</button>' : ''}
+        </div>
+      </div>
+      <div class="panel-pad">
+        <div class="table-responsive">
+          <table class="data-table reg">
+            <thead>
+              <tr>
+                <th>Tool ID</th>
+                <th>Tool Name</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Notes</th>
+                ${canEdit ? '<th>Actions</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+  `;
+  
+  let filteredTools = toolsCache;
+  if (window.toolsStatusFilter && window.toolsStatusFilter !== 'all') {
+    filteredTools = toolsCache.filter(t => (t.status || 'Available') === window.toolsStatusFilter);
+  }
+
+  if (filteredTools.length === 0) {
+    html += `<tr><td colspan="${canEdit ? 8 : 7}" class="text-center" style="padding: 30px;">${toolsCache.length === 0 ? 'No tools recorded yet.' : 'No tools match the selected status.'}</td></tr>`;
+  } else {
+    filteredTools.forEach(t => {
+      let badgeClass = 'good';
+      if (t.status === 'Lost' || t.status === 'Damaged') badgeClass = 'bad';
+      else if (t.status === 'In Use' || t.status === 'In Maintenance') badgeClass = 'warn';
+      
+      html += `
+        <tr>
+          <td data-label="Tool ID" class="mono">${escapeHtml(t.uniqueId || '-')}</td>
+          <td data-label="Tool Name"><strong>${escapeHtml(t.toolName)}</strong></td>
+          <td data-label="Category">${escapeHtml(t.category || '-')}</td>
+          <td data-label="Quantity">${escapeHtml(t.quantity || '0')}</td>
+          <td data-label="Location">${escapeHtml(t.location || '-')}</td>
+          <td data-label="Status"><span class="badge ${badgeClass}">${escapeHtml(t.status || 'Available')}</span></td>
+          <td data-label="Notes" class="mono">${escapeHtml(t.notes || '-')}</td>
+          ${canEdit ? `<td data-label="Actions">
+            <button class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}">Edit</button>
+            <button class="btn btn-danger btn-sm" data-delete-tool="${escapeHtml(t.id)}">Delete</button>
+          </td>` : ''}
+        </tr>
+      `;
+    });
+  }
+  
+  html += `</tbody></table></div></div></div>`;
+  main.innerHTML = html;
+  
+  const filterDropdown = main.querySelector('#toolsStatusFilter');
+  if (filterDropdown) {
+    if (window.toolsStatusFilter) {
+      filterDropdown.value = window.toolsStatusFilter;
+    }
+    filterDropdown.addEventListener('change', (e) => {
+      window.toolsStatusFilter = e.target.value;
+      renderToolsDashboard();
+    });
+  }
+
+  if (canEdit) {
+    main.querySelectorAll('[data-edit-tool]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.currentEditToolId = btn.dataset.editTool;
+        navigateTo('edit-tool');
+      });
+    });
+    main.querySelectorAll('[data-delete-tool]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.deleteTool;
+        if (await appConfirm('Are you sure you want to delete this tool?')) {
+          try {
+            setSyncingState(true, 'Deleting tool...');
+            await remove(ref(db, 'tools/' + id));
+            showToast('Tool deleted successfully.');
+          } catch (e) {
+            appAlert('Could not delete tool: ' + e.message, { type: 'danger' });
+          } finally {
+            setSyncingState(false);
+          }
+        }
+      });
+    });
+  }
+}
+
+function renderAddToolForm() {
+  renderToolForm('Add New Tool', {});
+}
+
+function renderEditToolForm() {
+  const tool = toolsCache.find(t => t.id === window.currentEditToolId);
+  if (!tool) { navigateTo('tools-dashboard'); return; }
+  renderToolForm('Edit Tool', tool);
+}
+
+function renderToolForm(title, tool) {
+  if (!currentUser.roles.includes('admin') && !currentUser.roles.includes('tools_admin')) {
+    appAlert('You do not have permission to modify tools.', { type: 'danger' });
+    navigateTo('tools-dashboard');
+    return;
+  }
+  
+  const main = $('#appMain');
+  const isEdit = !!tool.id;
+  
+  main.innerHTML = `
+    <div class="panel form-panel">
+      <div class="panel-head">
+        <h2>${title}</h2>
+        <button type="button" class="btn btn-ghost" data-nav="tools-dashboard">Cancel</button>
+      </div>
+      <div class="panel-pad">
+        <form id="toolForm">
+          <div class="form-grid">
+            ${isEdit ? `
+            <div class="field full">
+              <label>Tool ID</label>
+              <input type="text" value="${escapeHtml(tool.uniqueId || '')}" disabled style="background:var(--surface); cursor:not-allowed;" />
+            </div>` : ''}
+            <div class="field full">
+              <label for="t_name">Tool Name *</label>
+              <input type="text" id="t_name" value="${escapeHtml(tool.toolName || '')}" required />
+            </div>
+            <div class="field">
+              <label for="t_category">Category</label>
+              <input type="text" id="t_category" value="${escapeHtml(tool.category || '')}" />
+            </div>
+            <div class="field">
+              <label for="t_qty">Quantity *</label>
+              <input type="number" id="t_qty" min="0" value="${escapeHtml(tool.quantity || '1')}" required />
+            </div>
+            <div class="field">
+              <label for="t_loc">Location / Shelf</label>
+              <input type="text" id="t_loc" value="${escapeHtml(tool.location || '')}" />
+            </div>
+            <div class="field">
+              <label for="t_status">Status</label>
+              <select id="t_status">
+                <option value="Available" ${tool.status === 'Available' ? 'selected' : ''}>Available</option>
+                <option value="In Use" ${tool.status === 'In Use' ? 'selected' : ''}>In Use</option>
+                <option value="In Maintenance" ${tool.status === 'In Maintenance' ? 'selected' : ''}>In Maintenance</option>
+                <option value="Damaged" ${tool.status === 'Damaged' ? 'selected' : ''}>Damaged</option>
+                <option value="Lost" ${tool.status === 'Lost' ? 'selected' : ''}>Lost</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="t_notes">Notes</label>
+              <textarea id="t_notes" rows="3">${escapeHtml(tool.notes || '')}</textarea>
+            </div>
+          </div>
+          <div class="actions-row" style="margin-top:20px;">
+            <button type="submit" class="btn btn-primary btn-large" id="saveToolBtn">Save Tool</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  trackFormDirty('#toolForm');
+  
+  $('#toolForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#saveToolBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    
+    const toolName = $('#t_name').value.trim();
+    const toolData = {
+      toolName: toolName,
+      category: $('#t_category').value.trim(),
+      quantity: Number($('#t_qty').value) || 0,
+      location: $('#t_loc').value.trim(),
+      status: $('#t_status').value,
+      notes: $('#t_notes').value.trim(),
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.username
+    };
+    
+    try {
+      setSyncingState(true, 'Saving tool...');
+      if (isEdit) {
+        await update(ref(db, 'tools/' + tool.id), toolData);
+      } else {
+        const upperName = toolName.toUpperCase();
+        let maxSequence = 0;
+        
+        toolsCache.forEach(t => {
+          if (t.uniqueId && t.toolName && t.toolName.toUpperCase() === upperName) {
+            const match = t.uniqueId.match(/(\d+)$/);
+            if (match) {
+              const seq = parseInt(match[1], 10);
+              if (seq > maxSequence) maxSequence = seq;
+            }
+          }
+        });
+        
+        const nextSequence = String(maxSequence + 1).padStart(4, '0');
+        toolData.uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
+        
+        toolData.createdAt = serverTimestamp();
+        toolData.createdBy = currentUser.username;
+        await push(ref(db, 'tools'), toolData);
+      }
+      formDirty = false;
+      window.toolsStatusFilter = 'all';
+      showToast('Tool saved successfully.');
+      navigateTo('tools-dashboard');
+    } catch (err) {
+      appAlert('Error saving tool: ' + err.message, { type: 'danger' });
+      btn.disabled = false; btn.textContent = 'Save Tool';
+    } finally {
+      setSyncingState(false);
+    }
+  });
+}

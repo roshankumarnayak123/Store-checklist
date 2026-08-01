@@ -4103,3 +4103,28 @@ body[data-role="viewer"] [data-nav="issue-new"] {
 html[data-theme="light"] #bgCanvas {
   opacity: 0.8;
 }
+
+/* Custom Multi-Select Dropdown Fixes */
+.custom-multi-select input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 8px 0 0 !important;
+  padding: 0 !important;
+  border: 1px solid var(--border) !important;
+  cursor: pointer;
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+}
+
+.custom-multi-select label {
+  display: flex !important;
+  align-items: center !important;
+  font-size: 14px !important;
+  font-weight: normal !important;
+  cursor: pointer;
+  margin: 0 !important;
+  padding: 2px 0 !important;
+  white-space: nowrap;
+}

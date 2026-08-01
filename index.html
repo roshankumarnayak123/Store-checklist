@@ -1,14 +1,16 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CMM SMS Store</title>
-<!-- Refresh-session persistence fix applied: 2026-07-16 -->
-<!-- Register progress bar removed: 2026-07-16 -->
-<!-- Return History date and time stamp fix: 2026-07-16 -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CMM SMS Store</title>
+  <!-- Refresh-session persistence fix applied: 2026-07-16 -->
+  <!-- Register progress bar removed: 2026-07-16 -->
+  <!-- Return History date and time stamp fix: 2026-07-16 -->
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="style.css">
 
 
 
@@ -18,416 +20,459 @@
 
 
 </head>
+
 <body>
   <!-- 3D Background Canvas -->
   <canvas id="bgCanvas"></canvas>
 
-<div id="cloudFailSafe" role="alertdialog" aria-modal="true" aria-labelledby="cloudFailTitle" aria-describedby="cloudFailMessage">
-  <div class="cloud-fail-card">
-    <div class="cloud-fail-icon" aria-hidden="true">!</div>
-    <h2 id="cloudFailTitle">Failed Cloud Sync</h2>
-    <p id="cloudFailMessage">Cloud data could not be synchronized. All page functions are suspended to prevent missing or inconsistent data.</p>
-    <button type="button" id="cloudFailRetry">Retry Cloud Sync</button>
-  </div>
-</div>
-
-<div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
-
-<div id="clearDataDialog" class="clear-data-dialog-backdrop hidden" role="presentation">
-  <section class="clear-data-dialog" role="dialog" aria-modal="true" aria-labelledby="clearDataDialogTitle" aria-describedby="clearDataDialogHelp">
-    <h2 id="clearDataDialogTitle">Administrator verification</h2>
-    <p id="clearDataDialogHelp">Enter the cleanup password to permanently remove all register records and their linked photos. User accounts are preserved.</p>
-    <div class="field">
-      <label for="clearDataPassword">Cleanup Password</label>
-      <div class="password-field-wrap">
-        <input type="password" id="clearDataPassword" autocomplete="off" inputmode="numeric" aria-describedby="clearDataPasswordError" />
-        <button type="button" class="password-toggle-btn" data-password-target="clearDataPassword" aria-label="Show password" aria-pressed="false">Show</button>
-      </div>
-      <div id="clearDataPasswordError" class="alert alert-error hidden" role="alert" style="margin:8px 0 0;"></div>
-    </div>
-    <div class="actions-row">
-      <button type="button" class="btn btn-ghost" id="clearDataCancelBtn">Cancel</button>
-      <button type="button" class="btn btn-danger" id="clearDataVerifyBtn">Verify and Continue</button>
-    </div>
-  </section>
-</div>
-
-<div id="photoGalleryDialog" class="photo-gallery-backdrop hidden" role="presentation">
-  <section class="photo-gallery-dialog" role="dialog" aria-modal="true" aria-labelledby="photoGalleryTitle">
-    <div class="photo-gallery-head"><h2 id="photoGalleryTitle">Photos</h2><button type="button" class="btn btn-ghost btn-sm" id="photoGalleryCloseBtn">Close</button></div>
-    <div class="photo-gallery-stage"><button type="button" class="photo-gallery-nav" id="photoGalleryPrev" aria-label="Previous photo">‹</button><img id="photoGalleryMain" class="photo-gallery-main" alt="Selected gallery photo" /><button type="button" class="photo-gallery-nav" id="photoGalleryNext" aria-label="Next photo">›</button></div><div id="photoGalleryCounter" class="photo-gallery-counter"></div><div id="photoGalleryGrid" class="photo-gallery-grid"></div>
-  </section>
-</div>
-<div id="appDialog" class="app-dialog-backdrop hidden" role="presentation">
-  <section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage">
-    <div class="app-dialog-icon" id="appDialogIcon" aria-hidden="true">!</div>
-    <div class="app-dialog-content">
-      <h2 id="appDialogTitle">Confirmation</h2>
-      <p id="appDialogMessage"></p>
-    </div>
-    <div class="app-dialog-actions">
-      <button type="button" class="btn btn-ghost" id="appDialogCancel">Cancel</button>
-      <button type="button" class="btn btn-primary" id="appDialogConfirm">Confirm</button>
-    </div>
-  </section>
-</div>
-
-
-<div id="authScreen" class="auth-main">
-  <button type="button" id="authThemeToggle" class="theme-toggle auth-theme-toggle" role="switch" aria-checked="false" aria-label="Switch to dark theme" title="Switch theme">
-    <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
-    <span class="theme-toggle-knob" aria-hidden="true"></span>
-  </button>
-  
-  <div class="auth-left">
-    <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
-    <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
-    
-    <div class="auth-features-layout">
-      <div class="auth-features">
-        <div class="auth-feature-card">
-          <span class="feature-icon" aria-hidden="true">⚡</span>
-          <div class="feature-text">Real-time Tracking</div>
-        </div>
-        <div class="auth-feature-card float-delay-1">
-          <span class="feature-icon" aria-hidden="true">☁</span>
-          <div class="feature-text">Cloud Sync Enabled</div>
-        </div>
-        <div class="auth-feature-card float-delay-2">
-          <span class="feature-icon" aria-hidden="true">🔒</span>
-          <div class="feature-text">Role-based Access</div>
-        </div>
-      </div>
-      
-      <div class="login-kpi-grid auth-features" id="loginKpiGrid" style="display: none; opacity: 0; transition: opacity 0.5s ease;">
-        <div class="auth-feature-card float-delay-1" style="pointer-events: none; cursor: default;">
-          <span class="feature-icon" aria-hidden="true">📊</span>
-          <div class="feature-text">Total Entries: <strong id="loginKpiTotal" style="margin-left: 4px; font-weight: 700;">-</strong></div>
-        </div>
-        <div class="auth-feature-card float-delay-2" style="pointer-events: none; cursor: default;">
-          <span class="feature-icon" aria-hidden="true">⏳</span>
-          <div class="feature-text">Pending Return: <strong id="loginKpiPending" style="margin-left: 4px; font-weight: 700; color: var(--warn);">-</strong></div>
-        </div>
-        <div class="auth-feature-card float-delay-0" style="pointer-events: none; cursor: default;">
-          <span class="feature-icon" aria-hidden="true">✅</span>
-          <div class="feature-text">Returned: <strong id="loginKpiReturned" style="margin-left: 4px; font-weight: 700; color: var(--good);">-</strong></div>
-        </div>
-      </div>
+  <div id="cloudFailSafe" role="alertdialog" aria-modal="true" aria-labelledby="cloudFailTitle"
+    aria-describedby="cloudFailMessage">
+    <div class="cloud-fail-card">
+      <div class="cloud-fail-icon" aria-hidden="true">!</div>
+      <h2 id="cloudFailTitle">Failed Cloud Sync</h2>
+      <p id="cloudFailMessage">Cloud data could not be synchronized. All page functions are suspended to prevent missing
+        or inconsistent data.</p>
+      <button type="button" id="cloudFailRetry">Retry Cloud Sync</button>
     </div>
   </div>
 
-  <div class="auth-right">
-    <div class="auth-card">
-    <div class="brand">
-      <span class="brand-mark">⚙</span>
-      <span class="brand-text">CMM SMS <strong>STORE</strong></span>
-    </div>
-    <div class="auth-sub">Issue &amp; Return Register — Store Access</div>
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
 
-    <div id="loginSyncStatus" class="login-sync-row">
-      <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
-      <span id="loginSyncLabel">Checking cloud connection…</span>
-    </div>
-
-    <div id="authError" class="alert alert-error hidden" role="alert"></div>
-    <div id="authInfo" class="alert alert-info hidden"></div>
-
-    <form id="loginForm">
+  <div id="clearDataDialog" class="clear-data-dialog-backdrop hidden" role="presentation">
+    <section class="clear-data-dialog" role="dialog" aria-modal="true" aria-labelledby="clearDataDialogTitle"
+      aria-describedby="clearDataDialogHelp">
+      <h2 id="clearDataDialogTitle">Administrator verification</h2>
+      <p id="clearDataDialogHelp">Enter the cleanup password to permanently remove all register records and their linked
+        photos. User accounts are preserved.</p>
       <div class="field">
-        <label for="loginUsername">Username</label>
-        <input type="text" id="loginUsername" required autocomplete="username" autocapitalize="none" />
-      </div>
-      <div class="field">
-        <label for="loginPassword">Password</label>
+        <label for="clearDataPassword">Cleanup Password</label>
         <div class="password-field-wrap">
-          <input type="password" id="loginPassword" required autocomplete="current-password" />
-          <button type="button" class="password-toggle-btn" data-password-target="loginPassword" aria-label="Show password" aria-pressed="false">Show</button>
+          <input type="password" id="clearDataPassword" autocomplete="off" inputmode="numeric"
+            aria-describedby="clearDataPasswordError" />
+          <button type="button" class="password-toggle-btn" data-password-target="clearDataPassword"
+            aria-label="Show password" aria-pressed="false">Show</button>
+        </div>
+        <div id="clearDataPasswordError" class="alert alert-error hidden" role="alert" style="margin:8px 0 0;"></div>
+      </div>
+      <div class="actions-row">
+        <button type="button" class="btn btn-ghost" id="clearDataCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-danger" id="clearDataVerifyBtn">Verify and Continue</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="photoGalleryDialog" class="photo-gallery-backdrop hidden" role="presentation">
+    <section class="photo-gallery-dialog" role="dialog" aria-modal="true" aria-labelledby="photoGalleryTitle">
+      <div class="photo-gallery-head">
+        <h2 id="photoGalleryTitle">Photos</h2><button type="button" class="btn btn-ghost btn-sm"
+          id="photoGalleryCloseBtn">Close</button>
+      </div>
+      <div class="photo-gallery-stage"><button type="button" class="photo-gallery-nav" id="photoGalleryPrev"
+          aria-label="Previous photo">‹</button><img id="photoGalleryMain" class="photo-gallery-main"
+          alt="Selected gallery photo" /><button type="button" class="photo-gallery-nav" id="photoGalleryNext"
+          aria-label="Next photo">›</button></div>
+      <div id="photoGalleryCounter" class="photo-gallery-counter"></div>
+      <div id="photoGalleryGrid" class="photo-gallery-grid"></div>
+    </section>
+  </div>
+  <div id="appDialog" class="app-dialog-backdrop hidden" role="presentation">
+    <section class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle"
+      aria-describedby="appDialogMessage">
+      <div class="app-dialog-icon" id="appDialogIcon" aria-hidden="true">!</div>
+      <div class="app-dialog-content">
+        <h2 id="appDialogTitle">Confirmation</h2>
+        <p id="appDialogMessage"></p>
+      </div>
+      <div class="app-dialog-actions">
+        <button type="button" class="btn btn-ghost" id="appDialogCancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="appDialogConfirm">Confirm</button>
+      </div>
+    </section>
+  </div>
+
+
+  <div id="authScreen" class="auth-main">
+    <button type="button" id="authThemeToggle" class="theme-toggle auth-theme-toggle" role="switch" aria-checked="false"
+      aria-label="Switch to dark theme" title="Switch theme">
+      <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
+      <span class="theme-toggle-knob" aria-hidden="true"></span>
+    </button>
+
+    <div class="auth-left">
+      <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
+      <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
+
+      <div class="auth-features-layout">
+        <div class="auth-features">
+          <div class="auth-feature-card">
+            <span class="feature-icon" aria-hidden="true">⚡</span>
+            <div class="feature-text">Real-time Tracking</div>
+          </div>
+          <div class="auth-feature-card float-delay-1">
+            <span class="feature-icon" aria-hidden="true">☁</span>
+            <div class="feature-text">Cloud Sync Enabled</div>
+          </div>
+          <div class="auth-feature-card float-delay-2">
+            <span class="feature-icon" aria-hidden="true">🔒</span>
+            <div class="feature-text">Role-based Access</div>
+          </div>
+        </div>
+
+        <div class="login-kpi-grid auth-features" id="loginKpiGrid"
+          style="display: none; opacity: 0; transition: opacity 0.5s ease;">
+          <div class="auth-feature-card float-delay-1" style="pointer-events: none; cursor: default;">
+            <span class="feature-icon" aria-hidden="true">📊</span>
+            <div class="feature-text">Total Entries: <strong id="loginKpiTotal"
+                style="margin-left: 4px; font-weight: 700;">-</strong></div>
+          </div>
+          <div class="auth-feature-card float-delay-2" style="pointer-events: none; cursor: default;">
+            <span class="feature-icon" aria-hidden="true">⏳</span>
+            <div class="feature-text">Pending Return: <strong id="loginKpiPending"
+                style="margin-left: 4px; font-weight: 700; color: var(--warn);">-</strong></div>
+          </div>
+          <div class="auth-feature-card float-delay-0" style="pointer-events: none; cursor: default;">
+            <span class="feature-icon" aria-hidden="true">✅</span>
+            <div class="feature-text">Returned: <strong id="loginKpiReturned"
+                style="margin-left: 4px; font-weight: 700; color: var(--good);">-</strong></div>
+          </div>
         </div>
       </div>
-      <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
-    </form>
+    </div>
 
-    <form id="requestForm" class="hidden">
-      <div class="field">
-        <label for="reqFullName">Full Name</label>
-        <input type="text" id="reqFullName" required autocomplete="name" />
-      </div>
-      <div class="field">
-        <label for="reqUsername">Desired Username</label>
-        <input type="text" id="reqUsername" required autocomplete="username" autocapitalize="none" />
-      </div>
-      <div class="field">
-        <label for="reqPassword">Desired Password</label>
-        <div class="password-field-wrap">
-          <input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" />
-          <button type="button" class="password-toggle-btn" data-password-target="reqPassword" aria-label="Show password" aria-pressed="false">Show</button>
+    <div class="auth-right">
+      <div class="auth-card">
+        <div class="brand">
+          <span class="brand-mark">⚙</span>
+          <span class="brand-text">CMM SMS <strong>STORE</strong></span>
+        </div>
+        <div class="auth-sub">Issue &amp; Return Register — Store Access</div>
+
+        <div id="loginSyncStatus" class="login-sync-row">
+          <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
+          <span id="loginSyncLabel">Checking cloud connection…</span>
+        </div>
+
+        <div id="authError" class="alert alert-error hidden" role="alert"></div>
+        <div id="authInfo" class="alert alert-info hidden"></div>
+
+        <form id="loginForm">
+          <div class="field">
+            <label for="loginUsername">Username</label>
+            <input type="text" id="loginUsername" required autocomplete="username" autocapitalize="none" />
+          </div>
+          <div class="field">
+            <label for="loginPassword">Password</label>
+            <div class="password-field-wrap">
+              <input type="password" id="loginPassword" required autocomplete="current-password" />
+              <button type="button" class="password-toggle-btn" data-password-target="loginPassword"
+                aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
+        </form>
+
+        <form id="requestForm" class="hidden">
+          <div class="field">
+            <label for="reqFullName">Full Name</label>
+            <input type="text" id="reqFullName" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="reqUsername">Desired Username</label>
+            <input type="text" id="reqUsername" required autocomplete="username" autocapitalize="none" />
+          </div>
+          <div class="field">
+            <label for="reqPassword">Desired Password</label>
+            <div class="password-field-wrap">
+              <input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" />
+              <button type="button" class="password-toggle-btn" data-password-target="reqPassword"
+                aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
+        </form>
+
+        <div class="request-link-row">
+          <button type="button" id="showRequestForm">Need access? Request a storekeeper account →</button>
+          <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
+        </div>
+
+        <div class="auth-hint" id="authHintText">
+          Staff accounts are created by an Admin from inside the app, or requested here — an Admin must approve your
+          request before you can log in.
+          <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
         </div>
       </div>
-      <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
-    </form>
-
-    <div class="request-link-row">
-      <button type="button" id="showRequestForm">Need access? Request a storekeeper account →</button>
-      <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
-    </div>
-
-    <div class="auth-hint" id="authHintText">
-      Staff accounts are created by an Admin from inside the app, or requested here — an Admin must approve your request before you can log in.
-      <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
     </div>
   </div>
-  </div>
-</div>
 
-<div id="appScreen" class="hidden">
-  <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">
-    <span class="pull-refresh-icon">↻</span>
-    <span id="pullRefreshText">Pull to refresh</span>
-  </div>
-  <div class="app-layout">
-    <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <span class="brand-mark">⚙</span>
-        <span class="brand-text">CMM SMS <strong>STORE</strong></span>
-      </div>
-      <nav class="nav" id="navLinks" aria-label="Main navigation"></nav>
-      <button type="button" id="themeToggle" class="theme-toggle" role="switch" aria-checked="false" aria-label="Switch to dark theme" title="Switch theme">
-        <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
-        <span class="theme-toggle-knob" aria-hidden="true"></span>
-      </button>
-      <div class="who">
-        <img id="topbarAvatar" class="avatar hidden" alt="Avatar" />
-        <span class="who-name" id="whoName"></span>
-        <span class="who-role" id="whoRole"></span>
-        <button class="link-btn" id="logoutBtn">Log out</button>
-      </div>
+  <div id="appScreen" class="hidden">
+    <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">
+      <span class="pull-refresh-icon">↻</span>
+      <span id="pullRefreshText">Pull to refresh</span>
     </div>
-    <div class="status-bar">
-      <div class="status-bar-inner">
-        <button type="button" class="status-sync cloud-sync-button" id="cloudSyncRefreshBtn" aria-live="polite" aria-label="Refresh data from cloud database" title="Refresh from cloud database">
-          <span class="cloud-sync-visual is-offline" id="appSyncDot" aria-hidden="true">
-            <span class="cloud-sync-cloud">☁</span>
-            <span class="cloud-sync-arrows">↻</span>
-          </span>
-          <span id="syncIcon" class="hidden" aria-hidden="true"></span>
-          <span class="cloud-sync-copy">
-            <span id="appSyncLabel">Cloud Sync checking…</span>
-            <span class="cloud-sync-progress" id="cloudSyncProgress" aria-hidden="true">
-              <span class="cloud-sync-progress-fill" id="cloudSyncProgressFill"></span>
+    <div class="app-layout">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <div class="brand">
+            <span class="brand-mark">⚙</span>
+            <span class="brand-text">CMM SMS <strong>STORE</strong></span>
+          </div>
+          <nav class="nav" id="navLinks" aria-label="Main navigation"></nav>
+          <button type="button" id="themeToggle" class="theme-toggle" role="switch" aria-checked="false"
+            aria-label="Switch to dark theme" title="Switch theme">
+            <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
+            <span class="theme-toggle-knob" aria-hidden="true"></span>
+          </button>
+          <div class="who">
+            <img id="topbarAvatar" class="avatar hidden" alt="Avatar" />
+            <span class="who-name" id="whoName"></span>
+            <span class="who-role" id="whoRole"></span>
+            <button class="link-btn" id="logoutBtn">Log out</button>
+          </div>
+        </div>
+        <div class="status-bar">
+          <div class="status-bar-inner">
+            <button type="button" class="status-sync cloud-sync-button" id="cloudSyncRefreshBtn" aria-live="polite"
+              aria-label="Refresh data from cloud database" title="Refresh from cloud database">
+              <span class="cloud-sync-visual is-offline" id="appSyncDot" aria-hidden="true">
+                <span class="cloud-sync-cloud">☁</span>
+                <span class="cloud-sync-arrows">↻</span>
+              </span>
+              <span id="syncIcon" class="hidden" aria-hidden="true"></span>
+              <span class="cloud-sync-copy">
+                <span id="appSyncLabel">Cloud Sync checking…</span>
+                <span class="cloud-sync-progress" id="cloudSyncProgress" aria-hidden="true">
+                  <span class="cloud-sync-progress-fill" id="cloudSyncProgressFill"></span>
+                </span>
+              </span>
+              <span id="cloudSyncRetryBtn" class="cloud-sync-retry hidden" aria-hidden="true">Retry</span>
+            </button>
+            <span class="status-clock mono" id="statusTimeGroup">
+              <span class="status-badge status-badge-clock" id="appClock" title="Current date and time">
+                <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="12" y1="12" x2="12" y2="7" />
+                  <line x1="12" y1="12" x2="15.3" y2="14" />
+                </svg>
+                <span class="status-badge-text"><span id="clockDate"></span><span class="status-badge-sep">·</span><span
+                    id="clockTime"></span><span id="clockMeridiem" class="status-badge-meridiem"></span></span>
+              </span>
+              <span class="status-badge status-badge-timer" id="sessionTimer"
+                title="Time remaining before automatic sign-out from inactivity">
+                <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <line x1="5" y1="3" x2="19" y2="3" />
+                  <line x1="5" y1="21" x2="19" y2="21" />
+                  <path d="M7 3L17 3L12 12L17 21L7 21L12 12Z" />
+                </svg>
+                <span class="status-badge-text"><span id="timerText"></span></span>
+              </span>
             </span>
-          </span>
-          <span id="cloudSyncRetryBtn" class="cloud-sync-retry hidden" aria-hidden="true">Retry</span>
-        </button>
-        <span class="status-clock mono" id="statusTimeGroup">
-          <span class="status-badge status-badge-clock" id="appClock" title="Current date and time">
-            <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="12" x2="12" y2="7"/><line x1="12" y1="12" x2="15.3" y2="14"/></svg>
-            <span class="status-badge-text"><span id="clockDate"></span><span class="status-badge-sep">·</span><span id="clockTime"></span><span id="clockMeridiem" class="status-badge-meridiem"></span></span>
-          </span>
-          <span class="status-badge status-badge-timer" id="sessionTimer" title="Time remaining before automatic sign-out from inactivity">
-            <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="3" x2="19" y2="3"/><line x1="5" y1="21" x2="19" y2="21"/><path d="M7 3L17 3L12 12L17 21L7 21L12 12Z"/></svg>
-            <span class="status-badge-text"><span id="timerText"></span></span>
-          </span>
-        </span>
-      </div>
+          </div>
+        </div>
+      </header>
+      <main class="app-main" id="appMain"></main>
     </div>
-  </header>
-  <main class="app-main" id="appMain"></main>
+    <button type="button" class="mobile-fab" data-nav="issue-new" aria-label="Log New Issue">
+      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    </button>
   </div>
-  <button type="button" class="mobile-fab" data-nav="issue-new" aria-label="Log New Issue">
-    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-  </button>
-</div>
 
-<script src="boot.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script type="module" src="app.js?v=3"></script>
+  <script src="boot.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module" src="app.js?v=5"></script>
 
 
-<script>
-/* Independent UI lock tied to the application's Firebase connection state. */
-(() => {
-  const overlay = document.getElementById('cloudFailSafe');
-  const retry = document.getElementById('cloudFailRetry');
-  if (!overlay || !retry) return;
+  <script>
+    /* Independent UI lock tied to the application's Firebase connection state. */
+    (() => {
+      const overlay = document.getElementById('cloudFailSafe');
+      const retry = document.getElementById('cloudFailRetry');
+      if (!overlay || !retry) return;
 
-  let failed = false;
-  let failDebounceTimer = null;
+      let failed = false;
+      let failDebounceTimer = null;
 
-  function setCloudFailSafe(connected) {
-    const isDisconnected = connected !== true;
-    
-    // Clear any pending toggle timer
-    if (failDebounceTimer) {
-      clearTimeout(failDebounceTimer);
-      failDebounceTimer = null;
-    }
+      function setCloudFailSafe(connected) {
+        const isDisconnected = connected !== true;
 
-    if (!isDisconnected) {
-      // Reconnected! Hide overlay immediately
+        // Clear any pending toggle timer
+        if (failDebounceTimer) {
+          clearTimeout(failDebounceTimer);
+          failDebounceTimer = null;
+        }
+
+        if (!isDisconnected) {
+          // Reconnected! Hide overlay immediately
+          failed = false;
+          overlay.classList.remove('is-active');
+          document.body.classList.remove('cloud-sync-suspended');
+          overlay.setAttribute('aria-hidden', 'true');
+        } else {
+          // Disconnected: wait 3 seconds before showing blocking overlay
+          // to absorb transient WiFi drops and Firebase reconnect cycles.
+          failDebounceTimer = setTimeout(() => {
+            failDebounceTimer = null;
+            failed = true;
+            overlay.classList.add('is-active');
+            document.body.classList.add('cloud-sync-suspended');
+            overlay.setAttribute('aria-hidden', 'false');
+            setTimeout(() => retry.focus(), 0);
+          }, 3000);
+        }
+      }
+
+      // Block interaction behind the fail-safe while cloud state is unavailable.
+      ['click', 'dblclick', 'submit', 'change', 'input', 'keydown', 'pointerdown', 'touchstart'].forEach(type => {
+        document.addEventListener(type, event => {
+          if (failed && !overlay.contains(event.target)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      });
+
+      retry.addEventListener('click', async () => {
+        retry.disabled = true;
+        retry.textContent = 'Retrying...';
+        try {
+          const bridge = window.cloudSyncBridge;
+          if (!bridge || typeof bridge.retry !== 'function') {
+            throw new Error('Cloud Sync module is not ready yet. Please retry.');
+          }
+          await bridge.retry();
+          setCloudFailSafe(bridge.isConnected());
+        } catch (error) {
+          console.error('Fail-safe retry failed:', error);
+          setCloudFailSafe(false);
+        } finally {
+          retry.disabled = false;
+          retry.textContent = 'Retry Cloud Sync';
+        }
+      });
+
+      // Module-to-classic-script communication.
+      window.addEventListener('cloud-sync-state', event => {
+        setCloudFailSafe(event.detail?.connected === true);
+      });
+      window.addEventListener('cloud-sync-bridge-ready', event => {
+        setCloudFailSafe(event.detail?.connected === true);
+      });
+
+      // Keep overlay hidden on initial page load
       failed = false;
       overlay.classList.remove('is-active');
-      document.body.classList.remove('cloud-sync-suspended');
       overlay.setAttribute('aria-hidden', 'true');
-    } else {
-      // Disconnected: wait 3 seconds before showing blocking overlay
-      // to absorb transient WiFi drops and Firebase reconnect cycles.
-      failDebounceTimer = setTimeout(() => {
-        failDebounceTimer = null;
-        failed = true;
-        overlay.classList.add('is-active');
-        document.body.classList.add('cloud-sync-suspended');
-        overlay.setAttribute('aria-hidden', 'false');
-        setTimeout(() => retry.focus(), 0);
-      }, 3000);
+      document.body.classList.remove('cloud-sync-suspended');
+    })();
+
+
+    // ---------- Persistent detailed error logging (Admin > Settings) ----------
+    const ADMIN_ERROR_LOG_KEY = 'inventory.admin.errorLogs.v1';
+    const ADMIN_ERROR_LOG_LIMIT = 200;
+    let adminErrorLoggingBusy = false;
+
+    function safeErrorString(value, fallback = 'Unknown error') {
+      try {
+        if (value instanceof Error) return value.message || value.name || fallback;
+        if (typeof value === 'string') return value;
+        if (value == null) return fallback;
+        return JSON.stringify(value);
+      } catch (_) { return String(value || fallback); }
     }
-  }
-
-  // Block interaction behind the fail-safe while cloud state is unavailable.
-  ['click','dblclick','submit','change','input','keydown','pointerdown','touchstart'].forEach(type => {
-    document.addEventListener(type, event => {
-      if (failed && !overlay.contains(event.target)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    }, true);
-  });
-
-  retry.addEventListener('click', async () => {
-    retry.disabled = true;
-    retry.textContent = 'Retrying...';
-    try {
-      const bridge = window.cloudSyncBridge;
-      if (!bridge || typeof bridge.retry !== 'function') {
-        throw new Error('Cloud Sync module is not ready yet. Please retry.');
-      }
-      await bridge.retry();
-      setCloudFailSafe(bridge.isConnected());
-    } catch (error) {
-      console.error('Fail-safe retry failed:', error);
-      setCloudFailSafe(false);
-    } finally {
-      retry.disabled = false;
-      retry.textContent = 'Retry Cloud Sync';
+    function getAdminErrorLogs() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(ADMIN_ERROR_LOG_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) { return []; }
     }
-  });
+    function captureAdminError(error, context = {}) {
+      if (adminErrorLoggingBusy) return;
+      adminErrorLoggingBusy = true;
+      try {
+        const err = error instanceof Error ? error : null;
+        const entry = {
+          id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          timestamp: new Date().toISOString(),
+          level: context.level || 'error',
+          source: context.source || 'application',
+          message: context.message || safeErrorString(error),
+          name: context.name || (err && err.name) || '',
+          code: context.code || (error && error.code) || '',
+          stack: context.stack || (err && err.stack) || '',
+          page: context.page || window.currentView || location.hash || location.pathname,
+          url: location.href,
+          user: window.currentUser ? (window.currentUser.fullName || window.currentUser.username || 'signed-in user') : 'not signed in',
+          online: navigator.onLine,
+          userAgent: navigator.userAgent,
+          details: context.details || ''
+        };
+        const logs = getAdminErrorLogs();
+        logs.unshift(entry);
+        localStorage.setItem(ADMIN_ERROR_LOG_KEY, JSON.stringify(logs.slice(0, ADMIN_ERROR_LOG_LIMIT)));
+        if (window.currentView === 'settings-admin') refreshAdminErrorLogView();
+      } catch (_) { /* Logging must never interrupt the application. */ }
+      finally { adminErrorLoggingBusy = false; }
+    }
+    function errorLogText(entry) {
+      return [entry.message, entry.name, entry.code, entry.source, entry.page, entry.user, entry.details, entry.stack].join(' ').toLowerCase();
+    }
+    function filteredAdminErrorLogs() {
+      const query = (document.getElementById('errorLogSearch')?.value || '').trim().toLowerCase();
+      const level = document.getElementById('errorLogLevel')?.value || 'all';
+      return getAdminErrorLogs().filter(e => (level === 'all' || e.level === level) && (!query || errorLogText(e).includes(query)));
+    }
+    function renderAdminErrorSummary() {
+      const logs = getAdminErrorLogs();
+      const count = l => logs.filter(e => e.level === l).length;
+      return `<span class="error-log-chip">Total: ${logs.length}</span><span class="error-log-chip">Errors: ${count('error')}</span><span class="error-log-chip">Warnings: ${count('warning')}</span><span class="error-log-chip">Info: ${count('info')}</span>`;
+    }
+    function renderAdminErrorLogs(logs = getAdminErrorLogs()) {
+      const esc = (s) => (s ?? '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      if (!logs.length) return '<div class="error-log-empty">No errors recorded. New errors will appear here automatically.</div>';
+      return logs.map(e => `<article class="error-log-item ${esc(e.level || 'error')}"><div class="error-log-top"><div class="error-log-title">${esc(e.message || 'Unknown error')}</div><time class="error-log-time">${esc(new Date(e.timestamp).toLocaleString())}</time></div><div class="error-log-meta">${esc((e.level || 'error').toUpperCase())} · ${esc(e.source || 'application')} · Page: ${esc(e.page || '—')} ${e.code ? '· Code: ' + esc(e.code) : ''}</div><div class="error-log-meta">User: ${esc(e.user || '—')} · ${e.online ? 'Online' : 'Offline'}${e.details ? ' · ' + esc(String(e.details)) : ''}</div>${e.stack ? `<pre class="error-log-stack">${esc(e.stack)}</pre>` : ''}</article>`).join('');
+    }
+    function refreshAdminErrorLogView() {
+      const list = document.getElementById('adminErrorLogList'); if (!list) return;
+      list.innerHTML = renderAdminErrorLogs(filteredAdminErrorLogs());
+      const summary = document.getElementById('adminErrorLogSummary'); if (summary) summary.innerHTML = renderAdminErrorSummary();
+      const count = document.getElementById('adminErrorCount'); if (count) count.textContent = getAdminErrorLogs().length;
+    }
+    function exportAdminErrorLogs() {
+      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), logs: getAdminErrorLogs() }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `error-log-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    window.addEventListener('error', event => captureAdminError(event.error || event.message, { source: 'window.error', message: event.message, details: `${event.filename || ''}:${event.lineno || 0}:${event.colno || 0}` }));
+    window.addEventListener('unhandledrejection', event => captureAdminError(event.reason, { source: 'unhandledrejection' }));
+    window.addEventListener('offline', () => captureAdminError('Browser went offline', { source: 'network', level: 'warning' }));
+    const originalConsoleError = console.error.bind(console);
+    console.error = (...args) => { originalConsoleError(...args); captureAdminError(args[0], { source: 'console.error', message: args.map(v => safeErrorString(v, '')).join(' ') }); };
+    document.addEventListener('input', e => { if (e.target.id === 'errorLogSearch') refreshAdminErrorLogView(); });
+    document.addEventListener('change', e => { if (e.target.id === 'errorLogLevel') refreshAdminErrorLogView(); });
+    document.addEventListener('click', async e => {
+      if (e.target.closest('#refreshErrorLogBtn')) refreshAdminErrorLogView();
+      if (e.target.closest('#exportErrorLogBtn')) exportAdminErrorLogs();
+      if (e.target.closest('#clearErrorLogBtn')) {
+        const ok = typeof window.appConfirm === 'function' ? await window.appConfirm('This permanently removes all locally stored error entries.', { title: 'Clear error log?', type: 'danger', confirmText: 'Clear log' }) : confirm('Clear all error logs?');
+        if (ok) { localStorage.removeItem(ADMIN_ERROR_LOG_KEY); refreshAdminErrorLogView(); }
+      }
+    });
 
-  // Module-to-classic-script communication.
-  window.addEventListener('cloud-sync-state', event => {
-    setCloudFailSafe(event.detail?.connected === true);
-  });
-  window.addEventListener('cloud-sync-bridge-ready', event => {
-    setCloudFailSafe(event.detail?.connected === true);
-  });
+  </script>
 
-  // Keep overlay hidden on initial page load
-  failed = false;
-  overlay.classList.remove('is-active');
-  overlay.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('cloud-sync-suspended');
-})();
-
-
-// ---------- Persistent detailed error logging (Admin > Settings) ----------
-const ADMIN_ERROR_LOG_KEY = 'inventory.admin.errorLogs.v1';
-const ADMIN_ERROR_LOG_LIMIT = 200;
-let adminErrorLoggingBusy = false;
-
-function safeErrorString(value, fallback='Unknown error') {
-  try {
-    if (value instanceof Error) return value.message || value.name || fallback;
-    if (typeof value === 'string') return value;
-    if (value == null) return fallback;
-    return JSON.stringify(value);
-  } catch (_) { return String(value || fallback); }
-}
-function getAdminErrorLogs() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(ADMIN_ERROR_LOG_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (_) { return []; }
-}
-function captureAdminError(error, context={}) {
-  if (adminErrorLoggingBusy) return;
-  adminErrorLoggingBusy = true;
-  try {
-    const err = error instanceof Error ? error : null;
-    const entry = {
-      id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      timestamp: new Date().toISOString(),
-      level: context.level || 'error',
-      source: context.source || 'application',
-      message: context.message || safeErrorString(error),
-      name: context.name || (err && err.name) || '',
-      code: context.code || (error && error.code) || '',
-      stack: context.stack || (err && err.stack) || '',
-      page: context.page || window.currentView || location.hash || location.pathname,
-      url: location.href,
-      user: window.currentUser ? (window.currentUser.fullName || window.currentUser.username || 'signed-in user') : 'not signed in',
-      online: navigator.onLine,
-      userAgent: navigator.userAgent,
-      details: context.details || ''
-    };
-    const logs = getAdminErrorLogs();
-    logs.unshift(entry);
-    localStorage.setItem(ADMIN_ERROR_LOG_KEY, JSON.stringify(logs.slice(0, ADMIN_ERROR_LOG_LIMIT)));
-    if (window.currentView === 'settings-admin') refreshAdminErrorLogView();
-  } catch (_) { /* Logging must never interrupt the application. */ }
-  finally { adminErrorLoggingBusy = false; }
-}
-function errorLogText(entry) {
-  return [entry.message,entry.name,entry.code,entry.source,entry.page,entry.user,entry.details,entry.stack].join(' ').toLowerCase();
-}
-function filteredAdminErrorLogs() {
-  const query=(document.getElementById('errorLogSearch')?.value||'').trim().toLowerCase();
-  const level=document.getElementById('errorLogLevel')?.value||'all';
-  return getAdminErrorLogs().filter(e=>(level==='all'||e.level===level)&&(!query||errorLogText(e).includes(query)));
-}
-function renderAdminErrorSummary() {
-  const logs=getAdminErrorLogs();
-  const count=l=>logs.filter(e=>e.level===l).length;
-  return `<span class="error-log-chip">Total: ${logs.length}</span><span class="error-log-chip">Errors: ${count('error')}</span><span class="error-log-chip">Warnings: ${count('warning')}</span><span class="error-log-chip">Info: ${count('info')}</span>`;
-}
-function renderAdminErrorLogs(logs=getAdminErrorLogs()) {
-  const esc = (s) => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  if(!logs.length) return '<div class="error-log-empty">No errors recorded. New errors will appear here automatically.</div>';
-  return logs.map(e=>`<article class="error-log-item ${esc(e.level||'error')}"><div class="error-log-top"><div class="error-log-title">${esc(e.message||'Unknown error')}</div><time class="error-log-time">${esc(new Date(e.timestamp).toLocaleString())}</time></div><div class="error-log-meta">${esc((e.level||'error').toUpperCase())} · ${esc(e.source||'application')} · Page: ${esc(e.page||'—')} ${e.code?'· Code: '+esc(e.code):''}</div><div class="error-log-meta">User: ${esc(e.user||'—')} · ${e.online?'Online':'Offline'}${e.details?' · '+esc(String(e.details)):''}</div>${e.stack?`<pre class="error-log-stack">${esc(e.stack)}</pre>`:''}</article>`).join('');
-}
-function refreshAdminErrorLogView() {
-  const list=document.getElementById('adminErrorLogList'); if(!list) return;
-  list.innerHTML=renderAdminErrorLogs(filteredAdminErrorLogs());
-  const summary=document.getElementById('adminErrorLogSummary'); if(summary) summary.innerHTML=renderAdminErrorSummary();
-  const count=document.getElementById('adminErrorCount'); if(count) count.textContent=getAdminErrorLogs().length;
-}
-function exportAdminErrorLogs() {
-  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),logs:getAdminErrorLogs()},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=`error-log-${new Date().toISOString().slice(0,10)}.json`; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-window.addEventListener('error', event=>captureAdminError(event.error||event.message,{source:'window.error',message:event.message,details:`${event.filename||''}:${event.lineno||0}:${event.colno||0}`}));
-window.addEventListener('unhandledrejection', event=>captureAdminError(event.reason,{source:'unhandledrejection'}));
-window.addEventListener('offline', ()=>captureAdminError('Browser went offline',{source:'network',level:'warning'}));
-const originalConsoleError=console.error.bind(console);
-console.error=(...args)=>{ originalConsoleError(...args); captureAdminError(args[0],{source:'console.error',message:args.map(v=>safeErrorString(v,'')).join(' ')}); };
-document.addEventListener('input',e=>{if(e.target.id==='errorLogSearch') refreshAdminErrorLogView();});
-document.addEventListener('change',e=>{if(e.target.id==='errorLogLevel') refreshAdminErrorLogView();});
-document.addEventListener('click',async e=>{
-  if(e.target.closest('#refreshErrorLogBtn')) refreshAdminErrorLogView();
-  if(e.target.closest('#exportErrorLogBtn')) exportAdminErrorLogs();
-  if(e.target.closest('#clearErrorLogBtn')) {
-    const ok=typeof window.appConfirm==='function' ? await window.appConfirm('This permanently removes all locally stored error entries.', { title: 'Clear error log?', type: 'danger', confirmText: 'Clear log' }) : confirm('Clear all error logs?');
-    if(ok){localStorage.removeItem(ADMIN_ERROR_LOG_KEY);refreshAdminErrorLogView();}
-  }
-});
-
-</script>
-
-<!-- =====================================================================
+  <!-- =====================================================================
      ENHANCED ANIMATION LAYER — mobile & desktop
      ===================================================================== -->
 
 
-<!-- Animation JS: scroll-reveal, ripple, nav-ink, KPI counter, topbar scroll-shadow -->
-<script src="anim.js"></script>
+  <!-- Animation JS: scroll-reveal, ripple, nav-ink, KPI counter, topbar scroll-shadow -->
+  <script src="anim.js"></script>
 
 </body>
+
 </html>
