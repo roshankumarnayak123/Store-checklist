@@ -425,50 +425,65 @@ async function appendCameraPhoto(input, targetArrayName, previewSelector) {
   input.value='';
 }
 
-// Client-Side Image Compressor
+// Client-Side Image Compressor (Optimized with createImageBitmap)
 async function compressImage(file, maxWidth = 1280, quality = 0.7) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+  try {
+    let imgSource;
+    if (window.createImageBitmap) {
+      imgSource = await createImageBitmap(file);
+    } else {
+      imgSource = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    }
 
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
+    if (!imgSource) return file;
+
+    return new Promise((resolve) => {
+      let width = imgSource.width;
+      let height = imgSource.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      // JPEG has no alpha channel. Without this fill, any transparent
+      // areas in the source image (e.g. a PNG logo/screenshot) render as
+      // solid black once converted, silently corrupting the photo.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(imgSource, 0, 0, width, height);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        } else {
+          resolve(file);
         }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        // JPEG has no alpha channel. Without this fill, any transparent
-        // areas in the source image (e.g. a PNG logo/screenshot) render as
-        // solid black once converted, silently corrupting the photo.
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressedFile);
-          } else {
-            resolve(file); 
-          }
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = () => resolve(file); 
-    };
-    reader.onerror = () => resolve(file); 
-  });
+      }, 'image/jpeg', quality);
+    });
+  } catch (err) {
+    console.warn("Image compression failed, falling back to original", err);
+    return file;
+  }
 }
 
 let registerFilterState = { q: '', status: 'all', month: 'all', year: 'all', vendor: 'all', area: 'all', supervisor: 'all', issuedBy: 'all', dateFrom: '', dateTo: '', page: 1 };
@@ -843,6 +858,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', role: 'admin', profilePhotoUrl: null };
       window.currentUser = currentUser;
+      document.body.dataset.role = currentUser.role;
       saveSession(currentUser);
       initTopbar();
       listenToCollections();
@@ -2088,19 +2104,6 @@ function renderStorageUsage() {
    EVENT WIRING
    ========================================================================= */
 function wireViewEvents(viewId) {
-  $$('[data-nav]').forEach((btn) => btn.addEventListener('click', () => {
-    if (activeUploadTask) { try { activeUploadTask.cancel(); } catch (_) {} }
-    navigateTo(btn.dataset.nav);
-  }));
-  $$('.kpi-button[data-kpi-status]').forEach((card) => card.addEventListener('click', () => {
-    registerFilterState.status = card.dataset.kpiStatus || 'all';
-    registerFilterState.q = '';
-    registerFilterState.month = 'all';
-    registerFilterState.year = 'all';
-    registerFilterState.page = 1;
-    formDirty=false; navigateTo('register');
-  }));
-
   if (viewId === 'register') {
     $('#regSearch')?.addEventListener('input', (e) => {
       const value = e.target.value;
@@ -3019,3 +3022,25 @@ function setupLoginKPIs() {
   }
 }
 setTimeout(setupLoginKPIs, 1000);
+
+// =========================================================================
+// GLOBAL EVENT DELEGATION
+// =========================================================================
+document.addEventListener('click', (e) => {
+  const navBtn = e.target.closest('[data-nav]');
+  if (navBtn) {
+    if (typeof activeUploadTask !== 'undefined' && activeUploadTask) { try { activeUploadTask.cancel(); } catch (_) {} }
+    navigateTo(navBtn.dataset.nav);
+    return;
+  }
+  const kpiBtn = e.target.closest('.kpi-button[data-kpi-status]');
+  if (kpiBtn) {
+    registerFilterState.status = kpiBtn.dataset.kpiStatus || 'all';
+    registerFilterState.q = '';
+    registerFilterState.month = 'all';
+    registerFilterState.year = 'all';
+    registerFilterState.page = 1;
+    formDirty=false; navigateTo('register');
+    return;
+  }
+});
