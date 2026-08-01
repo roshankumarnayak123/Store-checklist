@@ -1417,43 +1417,47 @@ function renderRegister() {
     </button>
 
     <div class="filter-bar register-toolbar${registerFiltersOpen ? ' open' : ''}" id="regFilterBar">
-      <input type="text" id="regSearch" placeholder="Search material, vendor, area, supervisor…" value="${escapeHtml(registerFilterState.q)}" aria-label="Search register" />
-      <select id="regStatus" aria-label="Filter by status">
-        <option value="all" ${registerFilterState.status === 'all' ? 'selected' : ''}>All statuses</option>
-        <option value="pending" ${registerFilterState.status === 'pending' ? 'selected' : ''}>Pending Return</option>
-        <option value="issued" ${registerFilterState.status === 'issued' ? 'selected' : ''}>Issued</option>
-        <option value="partiallyreturned" ${registerFilterState.status === 'partiallyreturned' ? 'selected' : ''}>Partially Returned</option>
-        <option value="returned" ${registerFilterState.status === 'returned' ? 'selected' : ''}>Returned</option>
-      </select>
-      <select id="regYear" aria-label="Filter by year">
-        <option value="all" ${registerFilterState.year === 'all' ? 'selected' : ''}>All Years</option>
-        ${yearOptions.map((y) => `<option value="${y}" ${registerFilterState.year === y ? 'selected' : ''}>${y}</option>`).join('')}
-      </select>
-      <select id="regMonth" aria-label="Filter by month">
-        <option value="all" ${registerFilterState.month === 'all' ? 'selected' : ''}>All Months</option>
-        <option value="01" ${registerFilterState.month === '01' ? 'selected' : ''}>Jan</option>
-        <option value="02" ${registerFilterState.month === '02' ? 'selected' : ''}>Feb</option>
-        <option value="03" ${registerFilterState.month === '03' ? 'selected' : ''}>Mar</option>
-        <option value="04" ${registerFilterState.month === '04' ? 'selected' : ''}>Apr</option>
-        <option value="05" ${registerFilterState.month === '05' ? 'selected' : ''}>May</option>
-        <option value="06" ${registerFilterState.month === '06' ? 'selected' : ''}>Jun</option>
-        <option value="07" ${registerFilterState.month === '07' ? 'selected' : ''}>Jul</option>
-        <option value="08" ${registerFilterState.month === '08' ? 'selected' : ''}>Aug</option>
-        <option value="09" ${registerFilterState.month === '09' ? 'selected' : ''}>Sep</option>
-        <option value="10" ${registerFilterState.month === '10' ? 'selected' : ''}>Oct</option>
-        <option value="11" ${registerFilterState.month === '11' ? 'selected' : ''}>Nov</option>
-        <option value="12" ${registerFilterState.month === '12' ? 'selected' : ''}>Dec</option>
-      </select>
-      <button type="button" class="btn btn-ghost btn-sm more-filters-toggle" id="moreFiltersToggle">More Filters${activeFilterChips().filter(([k])=>['vendor','area','supervisor','issuedBy','year','month'].includes(k)).length?` · ${activeFilterChips().filter(([k])=>['vendor','area','supervisor','issuedBy','year','month'].includes(k)).length}`:''}</button>
+      <div style="display: flex; gap: 10px; width: 100%; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="regSearch" placeholder="Search material, vendor, area, supervisor…" value="${escapeHtml(registerFilterState.q)}" aria-label="Search register" style="flex: 1; min-width: 200px;" />
+        <button type="button" class="btn btn-ghost btn-sm more-filters-toggle" id="moreFiltersToggle">More Filters${activeFilterChips().filter(([k])=>['vendor','area','supervisor','issuedBy','year','month','status'].includes(k)).length?` · ${activeFilterChips().filter(([k])=>['vendor','area','supervisor','issuedBy','year','month','status'].includes(k)).length}`:''}</button>
+        <button type="button" class="btn btn-ghost btn-sm clear-filter-btn" id="clearRegisterFilters" ${activeFilterCount ? '' : 'disabled'}>Clear Filters</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="resetRegisterView">Reset View</button>
+      </div>
       <div class="register-advanced-filters ${registerMoreFiltersOpen?'':'is-collapsed'}">
+        <div class="register-filter-field"><label for="regStatus">Status</label><select id="regStatus" aria-label="Filter by status">
+          <option value="all" ${registerFilterState.status === 'all' ? 'selected' : ''}>All statuses</option>
+          <option value="pending" ${registerFilterState.status === 'pending' ? 'selected' : ''}>Pending Return</option>
+          <option value="issued" ${registerFilterState.status === 'issued' ? 'selected' : ''}>Issued</option>
+          <option value="partiallyreturned" ${registerFilterState.status === 'partiallyreturned' ? 'selected' : ''}>Partially Returned</option>
+          <option value="returned" ${registerFilterState.status === 'returned' ? 'selected' : ''}>Returned</option>
+        </select></div>
+        <div class="register-filter-field"><label for="regYear">Year</label><select id="regYear" aria-label="Filter by year">
+          <option value="all" ${registerFilterState.year === 'all' ? 'selected' : ''}>All Years</option>
+          ${yearOptions.map((y) => `<option value="${y}" ${registerFilterState.year === y ? 'selected' : ''}>${y}</option>`).join('')}
+        </select></div>
+        <div class="register-filter-field"><label for="regMonth">Month</label><select id="regMonth" aria-label="Filter by month">
+          <option value="all" ${registerFilterState.month === 'all' ? 'selected' : ''}>All Months</option>
+          <option value="01" ${registerFilterState.month === '01' ? 'selected' : ''}>Jan</option>
+          <option value="02" ${registerFilterState.month === '02' ? 'selected' : ''}>Feb</option>
+          <option value="03" ${registerFilterState.month === '03' ? 'selected' : ''}>Mar</option>
+          <option value="04" ${registerFilterState.month === '04' ? 'selected' : ''}>Apr</option>
+          <option value="05" ${registerFilterState.month === '05' ? 'selected' : ''}>May</option>
+          <option value="06" ${registerFilterState.month === '06' ? 'selected' : ''}>Jun</option>
+          <option value="07" ${registerFilterState.month === '07' ? 'selected' : ''}>Jul</option>
+          <option value="08" ${registerFilterState.month === '08' ? 'selected' : ''}>Aug</option>
+          <option value="09" ${registerFilterState.month === '09' ? 'selected' : ''}>Sep</option>
+          <option value="10" ${registerFilterState.month === '10' ? 'selected' : ''}>Oct</option>
+          <option value="11" ${registerFilterState.month === '11' ? 'selected' : ''}>Nov</option>
+          <option value="12" ${registerFilterState.month === '12' ? 'selected' : ''}>Dec</option>
+        </select></div>
         <div class="register-filter-field"><label for="regVendor">Vendor</label><select id="regVendor"><option value="all">All vendors</option>${vendorOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.vendor===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
         <div class="register-filter-field"><label for="regArea">Area</label><select id="regArea"><option value="all">All areas</option>${areaOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.area===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
         <div class="register-filter-field"><label for="regSupervisor">Supervisor</label><select id="regSupervisor"><option value="all">All supervisors</option>${supervisorOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.supervisor===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
         <div class="register-filter-field"><label for="regIssuedBy">Issued By</label><select id="regIssuedBy"><option value="all">All issuers</option>${issuedByOptions.map(v=>`<option value="${escapeHtml(v)}" ${registerFilterState.issuedBy===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div>
         <div class="register-filter-field"><label for="regDateFrom">Issue Date From</label><input type="date" id="regDateFrom" value="${escapeHtml(registerFilterState.dateFrom)}" max="${escapeHtml(registerFilterState.dateTo||todayStr())}" /></div>
         <div class="register-filter-field"><label for="regDateTo">Issue Date To</label><input type="date" id="regDateTo" value="${escapeHtml(registerFilterState.dateTo)}" min="${escapeHtml(registerFilterState.dateFrom)}" max="${todayStr()}" /></div>
+        <div class="register-filter-actions" style="grid-column: 1 / -1;"><button type="button" class="btn btn-primary btn-sm apply-filter-btn" id="applyRegisterFilters" style="display: inline-flex;">Apply Filters</button></div>
       </div>
-      <div class="register-filter-actions"><button type="button" class="btn btn-primary btn-sm apply-filter-btn" id="applyRegisterFilters">Apply Filters</button><button type="button" class="btn btn-ghost btn-sm clear-filter-btn" id="clearRegisterFilters" ${activeFilterCount ? '' : 'disabled'}>Clear Filters</button><button type="button" class="btn btn-ghost btn-sm" id="resetRegisterView">Reset View</button></div>
     </div>
     ${activeFilterCount ? `<div class="filter-chips">${activeFilterChips().map(([key,label])=>`<span class="filter-chip">${escapeHtml(label)}<button type="button" data-clear-filter="${key}" aria-label="Remove ${escapeHtml(label)}">×</button></span>`).join('')}</div>` : ''}
 
