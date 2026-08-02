@@ -180,6 +180,7 @@ html[data-theme="dark"] .theme-toggle-knob { transform: translateX(26px); backgr
 @media (max-width: 768px) {
   .theme-toggle { width: 50px; flex-basis: 50px; }
   html[data-theme="dark"] .theme-toggle-knob { transform: translateX(22px); }
+  .auth-theme-toggle { bottom: calc(85px + env(safe-area-inset-bottom, 0px)); right: 20px; }
 }
 
 /* Login-screen theme and contrast fixes */
@@ -204,7 +205,7 @@ html[data-theme="dark"] .auth-card .alert-error { background: #3b1518; color: #f
 html[data-theme="dark"] .auth-card .alert-info { background: #3a2b0b; color: #fde68a; border-color: #92400e; }
 html[data-theme="dark"] .auth-card .alert-good { background: #073b2b; color: #a7f3d0; border-color: #047857; }
 @media (max-width: 480px) {
-  .auth-theme-toggle { bottom: 50px; right: 14px; }
+  .auth-theme-toggle { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 16px; }
 }
 
 /* Topbar */
