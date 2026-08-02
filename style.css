@@ -1653,6 +1653,8 @@ html[data-theme="dark"] .kpi-button:hover .kpi-open-hint { color: #fbbf24; }
     width: 44px;
     height: 24px;
     flex-basis: 44px;
+    transform: translateY(-5px);
+    margin-bottom: 2px;
   }
   .status-right-group .theme-toggle-knob { width: 16px; height: 16px; }
   html[data-theme="dark"] .status-right-group .theme-toggle-knob { transform: translateX(20px); }
@@ -3414,6 +3416,16 @@ a, button, input, select, textarea, .kpi, .navlink, .status-filter-chip, .photo-
   }
   .status-bar-inner { flex-wrap: wrap !important; row-gap: 4px; }
   .status-sync { width: 100%; }
+  .status-right-group {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .status-right-group .theme-toggle,
+  #themeToggle {
+    transform: translateY(-5px) !important;
+    margin-bottom: 2px !important;
+  }
   .status-clock {
     display: flex !important;
     align-items: center;
