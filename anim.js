@@ -3,7 +3,8 @@
 let _io = null;
 
 const initReveal = () => {
-  const selectors = '.kpi, .panel, .filter-bar, .reg-pagination, .request-card, .kv-row';
+  if (window.innerWidth <= 768) return;
+  const selectors = '.kpi, .panel, .filter-bar, .reg-pagination, .request-card, .kv-row, .tool-mobile-card';
   const items = document.querySelectorAll(selectors);
 
   if (!_io) {
@@ -38,12 +39,17 @@ const initReveal = () => {
 // ── KPI value counter roll-up ──
 const initKpiCounters = () => {
   document.querySelectorAll('.kpi-value').forEach((el) => {
-    if (el.dataset.animDone) return;
     const raw = el.textContent.trim();
-    const num = parseInt(raw.replace(/[^0-9]/g, ''), 10);
-    if (isNaN(num) || num === 0 || num > 99999) return;
+    if (el.dataset.animVal === raw) return;
+    // Bug 4 fix: extract only the first number sequence so '12 of 50' → 12, not 1250
+    const match = raw.match(/[0-9]+/);
+    const num = match ? parseInt(match[0], 10) : NaN;
+    if (isNaN(num) || num === 0 || num > 99999) {
+      el.dataset.animVal = raw;
+      return;
+    }
     
-    el.dataset.animDone = '1';
+    el.dataset.animVal = raw;
 
     let frame = 0;
     const total = 28;
@@ -60,11 +66,12 @@ const initKpiCounters = () => {
         requestAnimationFrame(step);
       } else {
         el.textContent = raw;
+        el.classList.remove('animating'); // Bug 2 fix: clean up class after animation
       }
     };
     
     el.classList.add('animating');
-    setTimeout(() => requestAnimationFrame(step), 150);
+    setTimeout(() => requestAnimationFrame(step), 120);
   });
 };
 
@@ -154,7 +161,8 @@ const initDesktopShortcuts = () => {
 
   document.addEventListener('keydown', (e) => {
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-    const isInput = ['input', 'textarea', 'select'].includes(activeTag) || document.activeElement.isContentEditable;
+    // Bug 3 fix: guard against null activeElement (can occur in iframes or after DOM mutations)
+    const isInput = ['input', 'textarea', 'select'].includes(activeTag) || !!(document.activeElement && document.activeElement.isContentEditable);
 
     if (e.key === 'Escape') {
       const searchInput = document.getElementById('regSearch');
@@ -201,15 +209,20 @@ const init = () => {
 
   if (!_clickHandlerBound) {
     _clickHandlerBound = true;
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('.navlink')) {
-        setTimeout(() => {
+
+    // Auto-refresh counters and reveals smoothly on dynamic view changes
+    const appMain = document.getElementById('appMain');
+    if (appMain && window.MutationObserver) {
+      let mutationDebounce = null;
+      new MutationObserver(() => {
+        clearTimeout(mutationDebounce);
+        mutationDebounce = setTimeout(() => {
           initReveal();
           initKpiCounters();
           refreshRegisterStagger();
-        }, 80);
-      }
-    });
+        }, 50);
+      }).observe(appMain, { childList: true, subtree: false });
+    }
   }
 
   initDesktopShortcuts();
@@ -229,21 +242,24 @@ function init3DBackground() {
   canvas.dataset.initialized = '1';
   
   const ctx = canvas.getContext('2d');
-  let width, height;
+  let width, height, radius; // Bug 1 fix: radius must be updated on resize, not captured once
   let points = [];
-  const numPoints = 120;
+  const isMobile = window.innerWidth <= 768;
+  const numPoints = isMobile ? 45 : 100;
   let angle = 0;
+  let animationFrameId = null;
+  let isRunning = false;
   
   function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
+    radius = Math.min(width, height) * 0.9; // Bug 1 fix: recompute radius on every resize
   }
   
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', resize, { passive: true });
   resize();
   
-  // Create random 3D points in a sphere
-  const radius = Math.min(width, height) * 0.9;
+  // Create random 3D points in a sphere (radius is now kept live via resize())
   for(let i = 0; i < numPoints; i++) {
     const theta = Math.random() * 2 * Math.PI;
     const phi = Math.acos(Math.random() * 2 - 1);
@@ -253,7 +269,7 @@ function init3DBackground() {
     points.push({x, y, z});
   }
   
-  function animate() {
+  function renderFrame() {
     ctx.clearRect(0, 0, width, height);
     angle += 0.0015;
     const cos = Math.cos(angle);
@@ -302,8 +318,41 @@ function init3DBackground() {
       ctx.arc(p.x, p.y, 2 * p.scale, 0, Math.PI * 2);
       ctx.fill();
     });
-    
-    requestAnimationFrame(animate);
   }
-  animate();
+
+  function animate() {
+    if (!isRunning) return;
+    renderFrame();
+    animationFrameId = requestAnimationFrame(animate);
+  }
+
+  function startAnimation() {
+    if (isRunning) return;
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      renderFrame();
+      return;
+    }
+    isRunning = true;
+    animate();
+  }
+
+  function stopAnimation() {
+    isRunning = false;
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+  }
+
+  // Battery and background tab conservation
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopAnimation();
+    } else {
+      startAnimation();
+    }
+  });
+
+  startAnimation();
 }

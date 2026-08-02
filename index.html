@@ -1,24 +1,24 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>CMM SMS Store</title>
+  <meta name="description" content="CMM SMS Store material issue & return tracking system" />
+  <meta name="theme-color" content="#09090b" id="themeColorMeta" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Store Register" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <!-- Refresh-session persistence fix applied: 2026-07-16 -->
   <!-- Register progress bar removed: 2026-07-16 -->
   <!-- Return History date and time stamp fix: 2026-07-16 -->
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="style.css">
-
-
-
-
-
-
-
-
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 
 <body>
@@ -218,11 +218,6 @@
             <span class="brand-text">CMM SMS <strong>STORE</strong></span>
           </div>
           <nav class="nav" id="navLinks" aria-label="Main navigation"></nav>
-          <button type="button" id="themeToggle" class="theme-toggle" role="switch" aria-checked="false"
-            aria-label="Switch to dark theme" title="Switch theme">
-            <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
-            <span class="theme-toggle-knob" aria-hidden="true"></span>
-          </button>
           <div class="who">
             <img id="topbarAvatar" class="avatar hidden" alt="Avatar" />
             <span class="who-name" id="whoName"></span>
@@ -235,8 +230,11 @@
             <button type="button" class="status-sync cloud-sync-button" id="cloudSyncRefreshBtn" aria-live="polite"
               aria-label="Refresh data from cloud database" title="Refresh from cloud database">
               <span class="cloud-sync-visual is-offline" id="appSyncDot" aria-hidden="true">
-                <span class="cloud-sync-cloud">☁</span>
-                <span class="cloud-sync-arrows">↻</span>
+                <svg class="cloud-sync-gear-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span class="cloud-sync-status-dot"></span>
               </span>
               <span id="syncIcon" class="hidden" aria-hidden="true"></span>
               <span class="cloud-sync-copy">
@@ -247,35 +245,43 @@
               </span>
               <span id="cloudSyncRetryBtn" class="cloud-sync-retry hidden" aria-hidden="true">Retry</span>
             </button>
-            <span class="status-clock mono" id="statusTimeGroup">
-              <span class="status-badge status-badge-clock" id="appClock" title="Current date and time">
-                <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <line x1="12" y1="12" x2="12" y2="7" />
-                  <line x1="12" y1="12" x2="15.3" y2="14" />
-                </svg>
-                <span class="status-badge-text"><span id="clockDate"></span><span class="status-badge-sep">·</span><span
-                    id="clockTime"></span><span id="clockMeridiem" class="status-badge-meridiem"></span></span>
+            <div class="status-right-group">
+              <span class="status-clock mono" id="statusTimeGroup">
+                <span class="status-badge status-badge-clock" id="appClock" title="Current date and time">
+                  <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <line x1="12" y1="12" x2="12" y2="7" />
+                    <line x1="12" y1="12" x2="15.3" y2="14" />
+                  </svg>
+                  <span class="status-badge-text"><span id="clockDate"></span><span class="status-badge-sep">·</span><span
+                      id="clockTime"></span><span id="clockMeridiem" class="status-badge-meridiem"></span></span>
+                </span>
+                <span class="status-badge status-badge-timer" id="sessionTimer"
+                  title="Time remaining before automatic sign-out from inactivity">
+                  <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="5" y1="3" x2="19" y2="3" />
+                    <line x1="5" y1="21" x2="19" y2="21" />
+                    <path d="M7 3L17 3L12 12L17 21L7 21L12 12Z" />
+                  </svg>
+                  <span class="status-badge-text"><span id="timerText"></span></span>
+                </span>
               </span>
-              <span class="status-badge status-badge-timer" id="sessionTimer"
-                title="Time remaining before automatic sign-out from inactivity">
-                <svg class="status-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <line x1="5" y1="3" x2="19" y2="3" />
-                  <line x1="5" y1="21" x2="19" y2="21" />
-                  <path d="M7 3L17 3L12 12L17 21L7 21L12 12Z" />
-                </svg>
-                <span class="status-badge-text"><span id="timerText"></span></span>
-              </span>
-            </span>
+              <button type="button" id="themeToggle" class="theme-toggle" role="switch" aria-checked="false"
+                aria-label="Switch to dark theme" title="Switch theme">
+                <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
+                <span class="theme-toggle-knob" aria-hidden="true"></span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
       <main class="app-main" id="appMain"></main>
+      <nav class="mobile-bottom-bar" id="mobileBottomNav" aria-label="Mobile Navigation"></nav>
     </div>
-    <button type="button" class="mobile-fab" data-nav="issue-new" aria-label="Log New Issue">
-      <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"
+    <button type="button" class="mobile-fab" id="mobileFab" data-nav="issue-new" aria-label="Log New Issue" title="Issue Material">
+      <svg viewBox="0 0 24 24" width="26" height="26" stroke="currentColor" stroke-width="2.6" fill="none"
         stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -285,7 +291,8 @@
 
   <script src="boot.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="app.js?v=5"></script>
+  <script type="module" src="app.js?v=13"></script>
+  <script src="anim.js?v=13" defer></script>
 
 
   <script>
@@ -472,6 +479,33 @@
 
   <!-- Animation JS: scroll-reveal, ripple, nav-ink, KPI counter, topbar scroll-shadow -->
   <script src="anim.js"></script>
+
+  <!-- PWA Service Worker Registration & Theme Color Sync -->
+  <script>
+    (() => {
+      // Sync meta theme-color with HTML theme attribute
+      const updateThemeColor = () => {
+        const themeMeta = document.getElementById('themeColorMeta');
+        if (!themeMeta) return;
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        themeMeta.setAttribute('content', isDark ? '#09090b' : '#f8fafc');
+      };
+      const observer = new MutationObserver(updateThemeColor);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      updateThemeColor();
+
+      // Register Service Worker
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then((reg) => {
+            console.log('[PWA] Service Worker registered with scope:', reg.scope);
+          }).catch((err) => {
+            console.warn('[PWA] Service Worker registration failed:', err);
+          });
+        });
+      }
+    })();
+  </script>
 
 </body>
 

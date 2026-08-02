@@ -50,6 +50,26 @@ const todayStr = () => {
   return d.toISOString().slice(0, 10);
 };
 
+function triggerHaptic(pattern = 12) {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  } catch (_) {}
+}
+
+const MOBILE_NAV_ICONS = {
+  'dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  'admin-dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
+  'register': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+  'issue-new': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+  'tools-dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+  'add-tool': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+  'users-admin': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  'settings-admin': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  'profile': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+};
+
 // Unified custom dialogs replace native alert/confirm popups.
 let appDialogResolver = null;
 let appDialogLastFocus = null;
@@ -429,8 +449,8 @@ async function appendCameraPhoto(input, targetArrayName, previewSelector) {
   input.value = '';
 }
 
-// Client-Side Image Compressor (Optimized with createImageBitmap)
-async function compressImage(file, maxWidth = 1280, quality = 0.7) {
+// Client-Side Image Compressor (Optimized with createImageBitmap & dual-axis scaling)
+async function compressImage(file, maxDimension = 1600, quality = 0.82) {
   try {
     let imgSource;
     if (window.createImageBitmap) {
@@ -451,27 +471,30 @@ async function compressImage(file, maxWidth = 1280, quality = 0.7) {
 
     if (!imgSource) return file;
 
-    return new Promise((resolve) => {
-      let width = imgSource.width;
-      let height = imgSource.height;
+    let width = imgSource.width;
+    let height = imgSource.height;
 
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width = maxWidth;
+    if (width > maxDimension || height > maxDimension) {
+      if (width > height) {
+        height = Math.round((height * maxDimension) / width);
+        width = maxDimension;
+      } else {
+        width = Math.round((width * maxDimension) / height);
+        height = maxDimension;
       }
+    }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { alpha: false });
 
-      // JPEG has no alpha channel. Without this fill, any transparent
-      // areas in the source image (e.g. a PNG logo/screenshot) render as
-      // solid black once converted, silently corrupting the photo.
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(imgSource, 0, 0, width, height);
+    // JPEG has no alpha channel. Without this fill, transparent areas turn solid black
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(imgSource, 0, 0, width, height);
 
+    return new Promise((resolve) => {
       canvas.toBlob((blob) => {
         if (blob) {
           const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
@@ -532,8 +555,17 @@ let profilePasswordError = '';
 
 function showScreen(id) {
   ['authScreen', 'appScreen'].forEach((s) => {
-    $('#' + s).classList.toggle('hidden', s !== id);
+    const el = $('#' + s);
+    if (!el) return;
+    const isTarget = (s === id);
+    el.classList.toggle('hidden', !isTarget);
+    if (!isTarget) {
+      el.style.display = 'none';
+    } else {
+      el.style.removeProperty('display');
+    }
   });
+  window.scrollTo(0, 0);
 }
 
 const configIsPlaceholder = Object.values(firebaseConfig).some((v) => v.startsWith('YOUR_'));
@@ -989,13 +1021,94 @@ document.addEventListener('click', (event) => {
   button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
 });
 
-// START APP IMMEDIATELY
-loadRegisterPreferences();
-startApp();
-
 /* =========================================================================
-   TOPBAR / NAV
+   TOPBAR / NAV & MOBILE BOTTOM NAVIGATION
    ========================================================================= */
+
+function updateMobileFab() {
+  const fab = $('#mobileFab');
+  if (!fab) return;
+
+  const roles = currentUser?.roles || [];
+  const hasStorekeeper = roles.includes('storekeeper') || roles.includes('user') || roles.includes('admin');
+  const hasToolsAdmin = roles.includes('tools_admin') || roles.includes('admin');
+  const canCreate = hasStorekeeper || hasToolsAdmin;
+
+  const nonFabViews = ['issue-new', 'add-tool', 'return-new', 'edit-issue', 'edit-return', 'profile', 'settings-admin', 'users-admin'];
+  if (!canCreate || nonFabViews.includes(currentView)) {
+    fab.style.display = 'none';
+    return;
+  }
+
+  fab.style.removeProperty('display');
+
+  if (currentView === 'tools-dashboard' || (hasToolsAdmin && !hasStorekeeper)) {
+    fab.dataset.nav = 'add-tool';
+    fab.setAttribute('aria-label', 'Add New Tool');
+    fab.setAttribute('title', 'Add New Tool');
+  } else {
+    fab.dataset.nav = 'issue-new';
+    fab.setAttribute('aria-label', 'Issue Material');
+    fab.setAttribute('title', 'Issue Material');
+  }
+}
+
+function renderMobileBottomNav(roles = []) {
+  const bottomNav = $('#mobileBottomNav');
+  if (!bottomNav) return;
+
+  const links = [];
+  const hasAdmin = roles.includes('admin');
+  const hasStorekeeper = roles.includes('storekeeper') || roles.includes('user');
+  const hasViewer = roles.includes('viewer');
+  const hasToolsAdmin = roles.includes('tools_admin');
+  const hasToolsViewer = roles.includes('tools_viewer');
+  const hasToolsAccess = hasAdmin || hasToolsAdmin || hasToolsViewer;
+
+  if (hasAdmin) {
+    links.push(
+      ['admin-dashboard', 'Dashboard'],
+      ['register', 'Register'],
+      ['tools-dashboard', 'Tools'],
+      ['users-admin', 'Users'],
+      ['settings-admin', 'Settings']
+    );
+  } else if (hasStorekeeper) {
+    links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
+    if (hasToolsAccess) {
+      links.push(['tools-dashboard', 'Tools']);
+    }
+    links.push(['profile', 'Profile']);
+  } else if (hasToolsAdmin || hasToolsViewer) {
+    links.push(['tools-dashboard', 'Tools'], ['profile', 'Profile']);
+  } else if (hasViewer) {
+    links.push(['register', 'Register']);
+    if (hasToolsAccess) {
+      links.push(['tools-dashboard', 'Tools']);
+    }
+    links.push(['profile', 'Profile']);
+  } else {
+    links.push(['profile', 'Profile']);
+  }
+
+  bottomNav.innerHTML = links.map(([id, label]) => {
+    const icon = MOBILE_NAV_ICONS[id] || MOBILE_NAV_ICONS['dashboard'];
+    return `<button type="button" class="mobile-nav-item${currentView === id ? ' active' : ''}" data-view="${id}" aria-label="${label}">
+      <span class="mobile-nav-icon">${icon}</span>
+      <span class="mobile-nav-label">${label}</span>
+    </button>`;
+  }).join('');
+
+  bottomNav.querySelectorAll('.mobile-nav-item').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      triggerHaptic(14);
+      navigateTo(btn.dataset.view);
+    });
+  });
+
+  updateMobileFab();
+}
+
 function initTopbar() {
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
   $('#whoRole').textContent = currentUser.roles.join(', ');
@@ -1020,6 +1133,8 @@ function initTopbar() {
     btn.addEventListener('click', () => navigateTo(btn.dataset.view));
   });
 
+  renderMobileBottomNav(currentUser.roles);
+
   if (currentUser.roles.includes('admin')) {
     if (unsubRequests) { unsubRequests(); unsubRequests = null; }
     unsubRequests = onValue(ref(db, 'accessRequests'), (snap) => {
@@ -1034,34 +1149,41 @@ function initTopbar() {
 // popping instantly. Feature-detected and skipped entirely on browsers
 // without support or when the user prefers reduced motion.
 function renderTransition() {
+  const isMobile = window.innerWidth <= 768;
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const swap = () => { render(); window.scrollTo(0, 0); };
-  if (!reduceMotion && typeof document.startViewTransition === 'function') {
+  if (!isMobile && !reduceMotion && typeof document.startViewTransition === 'function') {
     try { document.startViewTransition(swap); return; } catch (_) { /* fall through */ }
   }
   swap();
 }
 
 async function navigateTo(viewId) {
-  if (viewId !== currentView && formDirty) { const leave = await appConfirm('You have unsaved changes. Leave this page and discard them?', { title: 'Unsaved Changes', confirmText: 'Leave Page', cancelText: 'Stay' }); if (!leave) return; formDirty = false; }
-  if (currentView === 'register' && viewId !== 'register') { registerStickyObserver?.disconnect(); registerStickyObserver = null; }
-  if (viewId !== currentView) {
-    // Only clear pending photo selections when actually leaving this view for
-    // another one — not on every re-render, so an in-progress selection isn't
-    // silently dropped by unrelated background updates or validation errors.
-    selectedPhotoFiles = [];
-    returnSelectedPhotoFiles = [];
-    editReturnSelectedPhotoFiles = [];
-    editIssueSelectedPhotoFiles = [];
-    profileSelectedPhotoFile = null;
-    issueFormError = '';
-    editIssueError = '';
-    returnFormError = '';
-    editReturnError = '';
-    userFormError = '';
+  if (viewId === currentView) return;
+  if (formDirty) {
+    const leave = await appConfirm('You have unsaved changes. Leave this page and discard them?', { title: 'Unsaved Changes', confirmText: 'Leave Page', cancelText: 'Stay' });
+    if (!leave) return;
+    formDirty = false;
   }
+  if (currentView === 'register' && viewId !== 'register') {
+    registerStickyObserver?.disconnect();
+    registerStickyObserver = null;
+  }
+  selectedPhotoFiles = [];
+  returnSelectedPhotoFiles = [];
+  editReturnSelectedPhotoFiles = [];
+  editIssueSelectedPhotoFiles = [];
+  profileSelectedPhotoFile = null;
+  issueFormError = '';
+  editIssueError = '';
+  returnFormError = '';
+  editReturnError = '';
+  userFormError = '';
+
   currentView = viewId;
   $$('.navlink').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId));
+  $$('.mobile-nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId));
+  updateMobileFab();
   renderTransition();
 }
 
@@ -1631,7 +1753,7 @@ function renderIssueForm() {
           </div>
           <div class="field">
             <label for="f_qty">Quantity Issued</label>
-            <input type="number" min="1" id="f_qty" required />
+            <input type="number" inputmode="numeric" min="1" id="f_qty" required />
           </div>
           <div class="field">
             <label for="f_vendor">Vendor</label>
@@ -1701,7 +1823,7 @@ function renderEditIssueForm() {
           </div>
           <div class="field">
             <label for="ei_qty">Quantity Issued</label>
-            <input type="number" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required />
+            <input type="number" inputmode="numeric" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required />
           </div>
           <div class="field">
             <label for="ei_vendor">Vendor</label>
@@ -1780,7 +1902,7 @@ function renderReturnForm() {
           </div>
           <div class="field">
             <label for="r_qty">Qty Returning Now (max ${remaining})</label>
-            <input type="number" min="1" max="${remaining}" id="r_qty" value="${remaining}" required />
+            <input type="number" inputmode="numeric" min="1" max="${remaining}" id="r_qty" value="${remaining}" required />
           </div>
           <div class="field">
             <label for="r_date">Return Date</label>
@@ -1836,7 +1958,7 @@ function renderEditReturnForm() {
           </div>
           <div class="field">
             <label for="er_qty">Qty Returned</label>
-            <input type="number" min="0" max="${issue.qtyIssued}" id="er_qty" value="${issue.qtyReturned || 0}" required />
+            <input type="number" inputmode="numeric" min="0" max="${issue.qtyIssued}" id="er_qty" value="${issue.qtyReturned || 0}" required />
           </div>
           <div class="field">
             <label for="er_date">Return Date</label>
@@ -2785,11 +2907,59 @@ $('#clearDataPassword').addEventListener('keydown', (event) => {
 });
 $('#clearDataDialog').addEventListener('click', (event) => { if (event.target.id === 'clearDataDialog') closeClearDataDialog(false); });
 document.addEventListener('click', (event) => { const trigger = event.target.closest?.('[data-photo-gallery]'); if (trigger) { event.preventDefault(); openPhotoGallery(trigger.dataset.photoGallery); } });
-$('#photoGalleryCloseBtn').addEventListener('click', closePhotoGallery);
-$('#photoGalleryPrev').addEventListener('click', () => { if (photoGalleryUrls.length) { photoGalleryIndex = (photoGalleryIndex - 1 + photoGalleryUrls.length) % photoGalleryUrls.length; updatePhotoGallery(); } });
-$('#photoGalleryNext').addEventListener('click', () => { if (photoGalleryUrls.length) { photoGalleryIndex = (photoGalleryIndex + 1) % photoGalleryUrls.length; updatePhotoGallery(); } });
+$('#photoGalleryCloseBtn').addEventListener('click', () => { triggerHaptic(10); closePhotoGallery(); });
+$('#photoGalleryPrev').addEventListener('click', () => {
+  if (photoGalleryUrls.length) {
+    triggerHaptic(12);
+    photoGalleryIndex = (photoGalleryIndex - 1 + photoGalleryUrls.length) % photoGalleryUrls.length;
+    updatePhotoGallery();
+  }
+});
+$('#photoGalleryNext').addEventListener('click', () => {
+  if (photoGalleryUrls.length) {
+    triggerHaptic(12);
+    photoGalleryIndex = (photoGalleryIndex + 1) % photoGalleryUrls.length;
+    updatePhotoGallery();
+  }
+});
 $('#photoGalleryDialog').addEventListener('click', (event) => { if (event.target.id === 'photoGalleryDialog') closePhotoGallery(); });
-document.addEventListener('keydown', (event) => { if ($('#photoGalleryDialog').classList.contains('hidden')) return; if (event.key === 'Escape') closePhotoGallery(); if (event.key === 'ArrowLeft') $('#photoGalleryPrev').click(); if (event.key === 'ArrowRight') $('#photoGalleryNext').click(); });
+document.addEventListener('keydown', (event) => {
+  if ($('#photoGalleryDialog').classList.contains('hidden')) return;
+  if (event.key === 'Escape') closePhotoGallery();
+  if (event.key === 'ArrowLeft') $('#photoGalleryPrev').click();
+  if (event.key === 'ArrowRight') $('#photoGalleryNext').click();
+});
+
+// Touch Swipe Gestures for Mobile Photo Lightbox
+(function initGallerySwipe() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const galleryStage = document.querySelector('.photo-gallery-stage');
+  if (!galleryStage) return;
+
+  galleryStage.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  galleryStage.addEventListener('touchend', (e) => {
+    if (!touchStartX || !e.changedTouches || !e.changedTouches.length) return;
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) >= 40) {
+      triggerHaptic(12);
+      if (diffX < 0) {
+        $('#photoGalleryNext').click();
+      } else {
+        $('#photoGalleryPrev').click();
+      }
+    }
+    touchStartX = 0;
+    touchStartY = 0;
+  }, { passive: true });
+})();
 
 async function handleCleanupOldRecords() {
   const cutoffDate = new Date();
@@ -2915,16 +3085,20 @@ async function handleRejectRequest(username) {
 }
 
 function updatePendingRequestsNavBadge(count) {
-  const navBtn = document.querySelector('.navlink[data-view="users-admin"]');
-  if (!navBtn) return;
-  const existing = navBtn.querySelector('.pending-count-dot');
-  if (existing) existing.remove();
-  if (count > 0) {
-    const dot = document.createElement('span');
-    dot.className = 'pending-count-dot';
-    dot.textContent = count;
-    navBtn.appendChild(dot);
-  }
+  const updateBadgeIn = (selector) => {
+    const btn = document.querySelector(selector);
+    if (!btn) return;
+    const existing = btn.querySelector('.pending-count-dot');
+    if (existing) existing.remove();
+    if (count > 0) {
+      const dot = document.createElement('span');
+      dot.className = 'pending-count-dot';
+      dot.textContent = count;
+      btn.appendChild(dot);
+    }
+  };
+  updateBadgeIn('.navlink[data-view="users-admin"]');
+  updateBadgeIn('.mobile-nav-item[data-view="users-admin"]');
 }
 
 async function loadUsersTable() {
@@ -3156,24 +3330,68 @@ function renderToolsDashboard() {
   const main = $('#appMain');
   const canEdit = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
   
+  const categories = Array.from(new Set(toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+  const activeSearch = (window.toolsSearchQuery || '').toLowerCase().trim();
+  const activeStatus = window.toolsStatusFilter || 'all';
+  const activeCategory = window.toolsCategoryFilter || 'all';
+
+  let filteredTools = toolsCache.filter(t => {
+    if (activeStatus !== 'all' && (t.status || 'Available') !== activeStatus) return false;
+    if (activeCategory !== 'all' && (t.category || '').trim() !== activeCategory) return false;
+    if (activeSearch) {
+      const matchName = String(t.toolName || '').toLowerCase().includes(activeSearch);
+      const matchId = String(t.uniqueId || '').toLowerCase().includes(activeSearch);
+      const matchLoc = String(t.location || '').toLowerCase().includes(activeSearch);
+      const matchCat = String(t.category || '').toLowerCase().includes(activeSearch);
+      const matchNotes = String(t.notes || '').toLowerCase().includes(activeSearch);
+      if (!matchName && !matchId && !matchLoc && !matchCat && !matchNotes) return false;
+    }
+    return true;
+  });
+
+  const getStatusBadge = (status) => {
+    let badgeClass = 'good';
+    if (status === 'Lost' || status === 'Damaged') badgeClass = 'bad';
+    else if (status === 'In Use' || status === 'In Maintenance') badgeClass = 'warn';
+    return `<span class="badge ${badgeClass}">${escapeHtml(status || 'Available')}</span>`;
+  };
+
   let html = `
     <div class="panel">
-      <div class="panel-head" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;">
-        <h2 style="margin: 0;">Tools Master List</h2>
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <select id="toolsStatusFilter" class="input-select" style="padding: 6px 12px; height: auto; font-size: 14px; max-width: 200px;">
-            <option value="all">Master List (All)</option>
-            <option value="Available">Available</option>
-            <option value="In Use">In Use</option>
-            <option value="Damaged">Damage Declared</option>
-            <option value="In Maintenance">Under Maintenance</option>
-            <option value="Lost">Lost</option>
-          </select>
-          ${canEdit ? '<button class="btn btn-primary" data-nav="add-tool">Add New Tool</button>' : ''}
+      <div class="panel-head tools-panel-head">
+        <div class="tools-head-title">
+          <h2>Tools Master List</h2>
+          <span class="tools-count-pill">${filteredTools.length} ${filteredTools.length === 1 ? 'tool' : 'tools'}</span>
+        </div>
+        <div class="tools-head-actions">
+          ${canEdit ? '<button class="btn btn-primary" data-nav="add-tool"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add New Tool</button>' : ''}
         </div>
       </div>
       <div class="panel-pad">
-        <div class="table-responsive">
+        <div class="tools-filter-bar">
+          <div class="tools-search-wrap">
+            <svg class="tools-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="toolsSearchInput" class="tools-search-input" placeholder="Search tool by name, ID, location..." value="${escapeHtml(window.toolsSearchQuery || '')}" autocomplete="off" />
+            ${window.toolsSearchQuery ? '<button type="button" id="toolsSearchClear" class="tools-search-clear" aria-label="Clear search">&times;</button>' : ''}
+          </div>
+          <div class="tools-filters-row">
+            <select id="toolsStatusFilter" class="input-select tools-filter-select">
+              <option value="all"${activeStatus === 'all' ? ' selected' : ''}>All Statuses</option>
+              <option value="Available"${activeStatus === 'Available' ? ' selected' : ''}>Available</option>
+              <option value="In Use"${activeStatus === 'In Use' ? ' selected' : ''}>In Use</option>
+              <option value="Damaged"${activeStatus === 'Damaged' ? ' selected' : ''}>Damage Declared</option>
+              <option value="In Maintenance"${activeStatus === 'In Maintenance' ? ' selected' : ''}>Under Maintenance</option>
+              <option value="Lost"${activeStatus === 'Lost' ? ' selected' : ''}>Lost</option>
+            </select>
+            <select id="toolsCategoryFilter" class="input-select tools-filter-select">
+              <option value="all"${activeCategory === 'all' ? ' selected' : ''}>All Categories</option>
+              ${categories.map(c => `<option value="${escapeHtml(c)}"${activeCategory === c ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="table-responsive desktop-tools-table">
           <table class="data-table reg">
             <thead>
               <tr>
@@ -3189,28 +3407,19 @@ function renderToolsDashboard() {
             </thead>
             <tbody>
   `;
-  
-  let filteredTools = toolsCache;
-  if (window.toolsStatusFilter && window.toolsStatusFilter !== 'all') {
-    filteredTools = toolsCache.filter(t => (t.status || 'Available') === window.toolsStatusFilter);
-  }
 
   if (filteredTools.length === 0) {
-    html += `<tr><td colspan="${canEdit ? 8 : 7}" class="text-center" style="padding: 30px;">${toolsCache.length === 0 ? 'No tools recorded yet.' : 'No tools match the selected status.'}</td></tr>`;
+    html += `<tr><td colspan="${canEdit ? 8 : 7}" class="text-center" style="padding: 36px 16px; color:var(--text-muted); font-size:15px;">${toolsCache.length === 0 ? 'No tools recorded yet.' : 'No tools match the selected filters.'}</td></tr>`;
   } else {
     filteredTools.forEach(t => {
-      let badgeClass = 'good';
-      if (t.status === 'Lost' || t.status === 'Damaged') badgeClass = 'bad';
-      else if (t.status === 'In Use' || t.status === 'In Maintenance') badgeClass = 'warn';
-      
       html += `
         <tr>
           <td data-label="Tool ID" class="mono">${escapeHtml(t.uniqueId || '-')}</td>
           <td data-label="Tool Name"><strong>${escapeHtml(t.toolName)}</strong></td>
           <td data-label="Category">${escapeHtml(t.category || '-')}</td>
-          <td data-label="Quantity">${escapeHtml(t.quantity || '0')}</td>
+          <td data-label="Quantity"><span class="qty-pill">${escapeHtml(t.quantity || '0')}</span></td>
           <td data-label="Location">${escapeHtml(t.location || '-')}</td>
-          <td data-label="Status"><span class="badge ${badgeClass}">${escapeHtml(t.status || 'Available')}</span></td>
+          <td data-label="Status">${getStatusBadge(t.status)}</td>
           <td data-label="Notes" class="mono">${escapeHtml(t.notes || '-')}</td>
           ${canEdit ? `<td data-label="Actions">
             <button class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}">Edit</button>
@@ -3220,17 +3429,86 @@ function renderToolsDashboard() {
       `;
     });
   }
-  
-  html += `</tbody></table></div></div></div>`;
+
+  html += `</tbody></table></div>`;
+
+  // Mobile Card Grid View
+  html += `<div class="mobile-tools-cards">`;
+  if (filteredTools.length === 0) {
+    html += `<div class="empty-state" style="padding:40px 16px; text-align:center; color:var(--text-muted);">${toolsCache.length === 0 ? 'No tools recorded yet.' : 'No tools match your search.'}</div>`;
+  } else {
+    filteredTools.forEach(t => {
+      html += `
+        <div class="tool-mobile-card anim-reveal is-visible">
+          <div class="tool-card-top">
+            <div class="tool-card-identity">
+              <span class="tool-card-id mono">${escapeHtml(t.uniqueId || 'ID: —')}</span>
+              <h3 class="tool-card-name">${escapeHtml(t.toolName)}</h3>
+            </div>
+            <div class="tool-card-status">${getStatusBadge(t.status)}</div>
+          </div>
+          <div class="tool-card-meta">
+            ${t.category ? `<span class="tool-meta-chip"><span class="meta-icon">🏷</span>${escapeHtml(t.category)}</span>` : ''}
+            ${t.location ? `<span class="tool-meta-chip"><span class="meta-icon">📍</span>${escapeHtml(t.location)}</span>` : ''}
+            <span class="tool-meta-chip tool-qty-chip"><span class="meta-icon">📦</span>Qty: <strong>${escapeHtml(t.quantity || '0')}</strong></span>
+          </div>
+          ${t.notes ? `<div class="tool-card-notes"><span class="notes-label">Notes:</span> ${escapeHtml(t.notes)}</div>` : ''}
+          ${canEdit ? `
+            <div class="tool-card-actions">
+              <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-edit-tool="${escapeHtml(t.id)}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
+              </button>
+              <button type="button" class="btn btn-danger btn-sm tool-action-btn" data-delete-tool="${escapeHtml(t.id)}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+  }
+  html += `</div></div></div>`;
+
   main.innerHTML = html;
-  
-  const filterDropdown = main.querySelector('#toolsStatusFilter');
-  if (filterDropdown) {
-    if (window.toolsStatusFilter) {
-      filterDropdown.value = window.toolsStatusFilter;
-    }
-    filterDropdown.addEventListener('change', (e) => {
+
+  // Wire search and filter events
+  const searchInput = main.querySelector('#toolsSearchInput');
+  const searchClear = main.querySelector('#toolsSearchClear');
+  const statusFilter = main.querySelector('#toolsStatusFilter');
+  const categoryFilter = main.querySelector('#toolsCategoryFilter');
+
+  if (searchInput) {
+    let searchDebounce;
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        window.toolsSearchQuery = e.target.value;
+        renderToolsDashboard();
+        const reSearch = $('#toolsSearchInput');
+        if (reSearch) { reSearch.focus(); reSearch.selectionStart = reSearch.selectionEnd = reSearch.value.length; }
+      }, 180);
+    });
+  }
+
+  if (searchClear) {
+    searchClear.addEventListener('click', () => {
+      window.toolsSearchQuery = '';
+      renderToolsDashboard();
+      const reSearch = $('#toolsSearchInput');
+      if (reSearch) reSearch.focus();
+    });
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener('change', (e) => {
       window.toolsStatusFilter = e.target.value;
+      renderToolsDashboard();
+    });
+  }
+
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', (e) => {
+      window.toolsCategoryFilter = e.target.value;
       renderToolsDashboard();
     });
   }
@@ -3238,18 +3516,20 @@ function renderToolsDashboard() {
   if (canEdit) {
     main.querySelectorAll('[data-edit-tool]').forEach(btn => {
       btn.addEventListener('click', () => {
+        triggerHaptic(10);
         window.currentEditToolId = btn.dataset.editTool;
         navigateTo('edit-tool');
       });
     });
     main.querySelectorAll('[data-delete-tool]').forEach(btn => {
       btn.addEventListener('click', async () => {
+        triggerHaptic(18);
         const id = btn.dataset.deleteTool;
-        if (await appConfirm('Are you sure you want to delete this tool?')) {
+        if (await appConfirm('Are you sure you want to delete this tool?', { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
           try {
             setSyncingState(true, 'Deleting tool...');
             await remove(ref(db, 'tools/' + id));
-            showToast('Tool deleted successfully.');
+            showToast('Tool deleted successfully.', { title: 'Tool Deleted' });
           } catch (e) {
             appAlert('Could not delete tool: ' + e.message, { type: 'danger' });
           } finally {
@@ -3305,7 +3585,7 @@ function renderToolForm(title, tool) {
             </div>
             <div class="field">
               <label for="t_qty">Quantity *</label>
-              <input type="number" id="t_qty" min="0" value="${escapeHtml(tool.quantity || '1')}" required />
+              <input type="number" inputmode="numeric" id="t_qty" min="0" value="${escapeHtml(tool.quantity || '1')}" required />
             </div>
             <div class="field">
               <label for="t_loc">Location / Shelf</label>
@@ -3390,3 +3670,7 @@ function renderToolForm(title, tool) {
     }
   });
 }
+
+// START APP AFTER ALL MODULE DEFINITIONS & HANDLERS ARE LOADED
+loadRegisterPreferences();
+startApp();
