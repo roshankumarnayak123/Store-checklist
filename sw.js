@@ -1,5 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-const CACHE_NAME = 'cmm-sms-store-v1.0.9';
+// Bug #2 & #3 fix: bumped version to force SW re-install with corrected fetch handler
+const CACHE_NAME = 'cmm-sms-store-v1.1.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -43,19 +44,24 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // 1. Never cache Firebase RTDB, Firestore, Cloud Storage, or Auth API calls
+  // Bug #3 fix: added firebasestorage.app to prevent photo download URLs being cached stale
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('identitytoolkit') ||
     url.hostname.includes('securetoken') ||
+    url.hostname.includes('firebasestorage.app') ||
+    url.hostname.includes('firebasestorage.googleapis.com') ||
     event.request.method !== 'GET'
   ) {
     return;
   }
 
   // 2. Cache-first strategy for local static assets and fonts
+  // Bug #2 fix: use ignoreSearch:true so versioned URLs like style.css?v=13 match
+  // the cached 'style.css' entry — preventing a cache miss on every request.
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         // Fetch in background to update cache for next time (stale-while-revalidate for local scripts)
         fetch(event.request)

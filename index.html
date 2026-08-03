@@ -12,10 +12,14 @@
   <meta name="apple-mobile-web-app-title" content="Store Register" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <!-- Bug #9 fix: iOS Safari does not support SVG apple-touch-icons; use PNG -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <!-- Refresh-session persistence fix applied: 2026-07-16 -->
   <!-- Register progress bar removed: 2026-07-16 -->
   <!-- Return History date and time stamp fix: 2026-07-16 -->
+  <!-- Bug #10 fix: preconnect hints cut font load latency by 100-300ms -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="style.css?v=13">
@@ -469,6 +473,8 @@
         if (ok) { localStorage.removeItem(ADMIN_ERROR_LOG_KEY); refreshAdminErrorLogView(); }
       }
     });
+    // Bug #5 fix: expose on window so app.js module and future refactors can call it
+    window.refreshAdminErrorLogView = refreshAdminErrorLogView;
 
   </script>
 
@@ -477,8 +483,7 @@
      ===================================================================== -->
 
 
-  <!-- Animation JS: scroll-reveal, ripple, nav-ink, KPI counter, topbar scroll-shadow -->
-  <script src="anim.js"></script>
+  <!-- Bug #1 fix: anim.js was loaded twice (line 295 with defer + here without). Removed duplicate. -->
 
   <!-- PWA Service Worker Registration & Theme Color Sync -->
   <script>

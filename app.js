@@ -118,6 +118,9 @@ window.alert = (message) => { void appAlert(message); };
 // Cloud Sync progress and retry state
 let cloudSyncProgressValue = 0;
 let lastSyncFailureMessage = '';
+// Bug #6 fix: use a dedicated boolean flag instead of checking lastSyncFailureMessage string,
+// which could be cleared mid-retry causing the button to fire the wrong action.
+let isInRetryMode = false;
 function setCloudSyncProgress(value = null, mode = 'determinate') {
   const track = $('#cloudSyncProgress');
   const fill = $('#cloudSyncProgressFill');
@@ -137,6 +140,7 @@ function setCloudSyncProgress(value = null, mode = 'determinate') {
 }
 function showCloudSyncRetry(message = 'Cloud Sync failed') {
   lastSyncFailureMessage = message;
+  isInRetryMode = true;
   const retry = $('#cloudSyncRetryBtn');
   const label = $('#appSyncLabel');
   const visual = $('#appSyncDot');
@@ -149,6 +153,7 @@ function hideCloudSyncRetry() {
   const retry = $('#cloudSyncRetryBtn');
   if (retry) retry.classList.add('hidden');
   lastSyncFailureMessage = '';
+  isInRetryMode = false;
 }
 async function retryCloudSync() {
   const retry = $('#cloudSyncRetryBtn');
@@ -204,7 +209,8 @@ async function refreshFromCloudDatabase() {
     control?.classList.remove('is-refreshing');
   }
 }
-$('#cloudSyncRefreshBtn').addEventListener('click', () => lastSyncFailureMessage ? retryCloudSync() : refreshFromCloudDatabase());
+// Bug #6 fix: use isInRetryMode flag (not lastSyncFailureMessage) for reliable action routing
+$('#cloudSyncRefreshBtn').addEventListener('click', () => isInRetryMode ? retryCloudSync() : refreshFromCloudDatabase());
 
 // Pull-to-refresh: active only on touch devices while the page is at the top.
 const PULL_REFRESH_THRESHOLD = 78;
@@ -233,7 +239,9 @@ document.addEventListener('touchstart', (event) => {
   const interactive = target?.closest('input, textarea, select, button, a, label, [contenteditable="true"], [role="button"]');
   const formViewOpen = typeof FORM_VIEWS !== 'undefined' && FORM_VIEWS.has(currentView);
   const coolingDown = Date.now() - lastPullRefreshAt < PULL_REFRESH_COOLDOWN;
-  if (interactive || formViewOpen || coolingDown || pullRefreshing || event.touches.length !== 1 || window.scrollY > 0 || $('#appScreen').classList.contains('hidden')) return;
+  // Bug #7 fix: do not allow pull-to-refresh when the cloud fail-safe overlay is active
+  const cloudSuspended = document.body.classList.contains('cloud-sync-suspended');
+  if (interactive || formViewOpen || coolingDown || cloudSuspended || pullRefreshing || event.touches.length !== 1 || window.scrollY > 0 || $('#appScreen').classList.contains('hidden')) return;
   pullStartY = event.touches[0].clientY;
   pullDistance = 0;
   pullTracking = true;

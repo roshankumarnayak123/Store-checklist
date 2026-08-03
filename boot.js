@@ -7,7 +7,13 @@
   if (auth && (!app || app.classList.contains('hidden'))) auth.classList.remove('hidden');
 
   window.__cmmModuleReady = false;
-  window.addEventListener('cmm-module-ready', () => { window.__cmmModuleReady = true; });
+  // Bug #8 fix: store the timer ID so it can be cleared if the module loads successfully,
+  // preventing a false 'loading is delayed' error message after a slow-but-successful load.
+  let _bootWatchdog = null;
+  window.addEventListener('cmm-module-ready', () => {
+    window.__cmmModuleReady = true;
+    if (_bootWatchdog) { clearTimeout(_bootWatchdog); _bootWatchdog = null; }
+  });
 
   window.addEventListener('error', (event) => {
     const target = event.target;
@@ -21,7 +27,8 @@
     }
   }, true);
 
-  setTimeout(() => {
+  _bootWatchdog = setTimeout(() => {
+    _bootWatchdog = null;
     if (window.__cmmModuleReady) return;
     if (auth) auth.classList.remove('hidden');
     if (label) label.textContent = 'Cloud module is taking longer than expected.';

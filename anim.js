@@ -75,6 +75,36 @@ const initKpiCounters = () => {
   });
 };
 
+// ── Haptic helper (works even before app.js loads) ──
+const _haptic = (ms = 10) => {
+  try {
+    if (typeof window.triggerHaptic === 'function') {
+      window.triggerHaptic(ms);
+    } else if (navigator.vibrate) {
+      navigator.vibrate(ms);
+    }
+  } catch (_) {}
+};
+
+// ── Global haptic on every interactive touch ──
+let _hapticBound = false;
+const initHaptic = () => {
+  if (_hapticBound) return;
+  _hapticBound = true;
+
+  // Selectors that should produce haptic feedback
+  const HAPTIC_SELECTOR = '.btn, .navlink, .nav-tab, button, [role="button"], .tool-mobile-card, select, .filter-chip, .pagination-btn, .kpi, .request-card';
+
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest(HAPTIC_SELECTOR);
+    if (!el) return;
+    if (el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+    // Very subtle: 10ms for buttons, 6ms for cards/kpis
+    const isCard = el.classList.contains('kpi') || el.classList.contains('request-card') || el.classList.contains('tool-mobile-card');
+    _haptic(isCard ? 6 : 10);
+  }, { passive: true });
+};
+
 // ── Ripple on .btn clicks ──
 let _rippleBound = false;
 const initRipple = () => {
@@ -97,7 +127,7 @@ const initRipple = () => {
     
     btn.appendChild(r);
     r.addEventListener('animationend', () => r.remove());
-  });
+  }, { passive: true });
 };
 
 // ── Nav ink indicator ──
@@ -203,6 +233,7 @@ let _clickHandlerBound = false;
 const init = () => {
   init3DBackground();
   initReveal();
+  initHaptic();
   initRipple();
   initNavInk();
   initTopbarScroll();
