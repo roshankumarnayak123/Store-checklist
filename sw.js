@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// Bug #2 & #3 fix: bumped version to force SW re-install with corrected fetch handler
-const CACHE_NAME = 'cmm-sms-store-v1.1.0';
+// v1.3.0: remove nested startViewTransition from render() to fix tools-dashboard blank screen
+const CACHE_NAME = 'cmm-sms-store-v1.3.0';
 const STATIC_ASSETS = [
   './',
   './index.html',

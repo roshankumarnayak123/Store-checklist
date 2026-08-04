@@ -291,12 +291,14 @@ function init3DBackground() {
   resize();
   
   // Create random 3D points in a sphere (radius is now kept live via resize())
+  // Store as unit-sphere coords (radius = 1). Each frame, multiply by live radius
+  // so window resize rescales the sphere without regenerating all points.
   for(let i = 0; i < numPoints; i++) {
     const theta = Math.random() * 2 * Math.PI;
     const phi = Math.acos(Math.random() * 2 - 1);
-    const x = radius * Math.sin(phi) * Math.cos(theta);
-    const y = radius * Math.sin(phi) * Math.sin(theta);
-    const z = radius * Math.cos(phi);
+    const x = Math.sin(phi) * Math.cos(theta);
+    const y = Math.sin(phi) * Math.sin(theta);
+    const z = Math.cos(phi);
     points.push({x, y, z});
   }
   
@@ -308,11 +310,15 @@ function init3DBackground() {
     const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
     const color = isDark ? '56, 189, 248' : '15, 23, 42'; // Light blue in dark theme, slate in light
     
-    // Rotate and project
+    // Scale unit-sphere points by live radius each frame — correctly tracks resize
+    const r = radius;
     const projected = points.map(p => {
-      const rx = p.x * cos - p.z * sin;
-      const rz = p.x * sin + p.z * cos;
-      const ry = p.y;
+      const wx = p.x * r;
+      const wy = p.y * r;
+      const wz = p.z * r;
+      const rx = wx * cos - wz * sin;
+      const rz = wx * sin + wz * cos;
+      const ry = wy;
       
       const scale = 800 / (800 + rz); 
       return {
@@ -343,7 +349,7 @@ function init3DBackground() {
     }
     
     projected.forEach(p => {
-      const alpha = Math.max(0.1, (p.z + radius) / (radius * 2));
+      const alpha = Math.max(0.1, (p.z + r) / (r * 2));
       ctx.fillStyle = `rgba(${color}, ${alpha * 0.6})`;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2 * p.scale, 0, Math.PI * 2);

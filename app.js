@@ -1,5 +1,3 @@
-window.__cmmModuleReady = true;
-window.dispatchEvent(new CustomEvent('cmm-module-ready'));
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
   getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment
@@ -7,6 +5,11 @@ import {
 import {
   getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+
+// Bug fix: import statements must come before any executable code in an ES module.
+// Moved these two lines from the top of the file to after all imports.
+window.__cmmModuleReady = true;
+window.dispatchEvent(new CustomEvent('cmm-module-ready'));
 
 /* =========================================================================
    FIREBASE CONFIG
@@ -241,7 +244,8 @@ document.addEventListener('touchstart', (event) => {
   const coolingDown = Date.now() - lastPullRefreshAt < PULL_REFRESH_COOLDOWN;
   // Bug #7 fix: do not allow pull-to-refresh when the cloud fail-safe overlay is active
   const cloudSuspended = document.body.classList.contains('cloud-sync-suspended');
-  if (interactive || formViewOpen || coolingDown || cloudSuspended || pullRefreshing || event.touches.length !== 1 || window.scrollY > 0 || $('#appScreen').classList.contains('hidden')) return;
+  // Bug fix: use optional chaining — #appScreen may not exist on very early load
+  if (interactive || formViewOpen || coolingDown || cloudSuspended || pullRefreshing || event.touches.length !== 1 || window.scrollY > 0 || $('#appScreen')?.classList.contains('hidden')) return;
   pullStartY = event.touches[0].clientY;
   pullDistance = 0;
   pullTracking = true;
@@ -1293,15 +1297,9 @@ function render() {
   };
 
   const fn = views[currentView] || (currentUser.roles.includes('admin') ? renderAdminDashboard : renderUserDashboard);
-  if (document.startViewTransition) {
-    document.startViewTransition(() => {
-      main.innerHTML = fn();
-      wireViewEvents(currentView);
-    });
-  } else {
-    main.innerHTML = fn();
-    wireViewEvents(currentView);
-  }
+  const html = fn();
+  if (typeof html === 'string') main.innerHTML = html;
+  wireViewEvents(currentView);
 }
 
 function statsSummary() {
@@ -2470,6 +2468,79 @@ function wireViewEvents(viewId) {
     updateExcelModuleReadiness();
     updateExcelExportSummary();
   }
+
+  if (viewId === 'tools-dashboard') {
+    const canEdit = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
+    const main = $('#appMain');
+
+    const searchInput = main.querySelector('#toolsSearchInput');
+    const searchClear = main.querySelector('#toolsSearchClear');
+    const statusFilter = main.querySelector('#toolsStatusFilter');
+    const categoryFilter = main.querySelector('#toolsCategoryFilter');
+
+    if (searchInput) {
+      let searchDebounce;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+          window.toolsSearchQuery = e.target.value;
+          render();
+          const reSearch = $('#toolsSearchInput');
+          if (reSearch) { reSearch.focus(); reSearch.selectionStart = reSearch.selectionEnd = reSearch.value.length; }
+        }, 180);
+      });
+    }
+
+    if (searchClear) {
+      searchClear.addEventListener('click', () => {
+        window.toolsSearchQuery = '';
+        render();
+        const reSearch = $('#toolsSearchInput');
+        if (reSearch) reSearch.focus();
+      });
+    }
+
+    if (statusFilter) {
+      statusFilter.addEventListener('change', (e) => {
+        window.toolsStatusFilter = e.target.value;
+        render();
+      });
+    }
+
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', (e) => {
+        window.toolsCategoryFilter = e.target.value;
+        render();
+      });
+    }
+
+    if (canEdit) {
+      main.querySelectorAll('[data-edit-tool]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(10);
+          window.currentEditToolId = btn.dataset.editTool;
+          navigateTo('edit-tool');
+        });
+      });
+      main.querySelectorAll('[data-delete-tool]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          triggerHaptic(18);
+          const id = btn.dataset.deleteTool;
+          if (await appConfirm('Are you sure you want to delete this tool?', { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
+            try {
+              setSyncingState(true, 'Deleting tool...');
+              await remove(ref(db, 'tools/' + id));
+              showToast('Tool deleted successfully.', { title: 'Tool Deleted' });
+            } catch (e) {
+              appAlert('Could not delete tool: ' + e.message, { type: 'danger' });
+            } finally {
+              setSyncingState(false);
+            }
+          }
+        });
+      });
+    }
+  }
 }
 
 /* =========================================================================
@@ -3068,7 +3139,8 @@ async function handleApproveRequest(username) {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { alert(`A user named "${username}" already exists. Reject this request or ask them to choose a different username.`); return; }
     const { fullName, password } = reqSnap.val();
-    await set(ref(db, 'users/' + username), { fullName, password, createdAt: serverTimestamp() });
+    // Bug fix: include default roles so the user record is complete from creation
+    await set(ref(db, 'users/' + username), { fullName, password, roles: ['storekeeper'], createdAt: serverTimestamp() });
     await remove(ref(db, 'accessRequests/' + username));
     loadRequestsTable();
     loadUsersTable();
@@ -3241,8 +3313,10 @@ async function handleNewUserSubmit(e) {
   } catch (err) {
     userFormError = 'Could not create this account: ' + (err.message || 'unknown error');
     showInlineError('userFormAlert', userFormError);
+    // Bug fix: only re-enable the button on failure; on success navigateTo() has
+    // already re-rendered the view and btn is a detached (removed) DOM node.
+    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Create Account'; }
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
     setSyncingState(false);
   }
 }
@@ -3425,7 +3499,7 @@ function renderToolsDashboard() {
           <td data-label="Tool ID" class="mono">${escapeHtml(t.uniqueId || '-')}</td>
           <td data-label="Tool Name"><strong>${escapeHtml(t.toolName)}</strong></td>
           <td data-label="Category">${escapeHtml(t.category || '-')}</td>
-          <td data-label="Quantity"><span class="qty-pill">${escapeHtml(t.quantity || '0')}</span></td>
+          <td data-label="Quantity"><span class="qty-pill">${String(t.quantity ?? 0)}</span></td>
           <td data-label="Location">${escapeHtml(t.location || '-')}</td>
           <td data-label="Status">${getStatusBadge(t.status)}</td>
           <td data-label="Notes" class="mono">${escapeHtml(t.notes || '-')}</td>
@@ -3477,86 +3551,22 @@ function renderToolsDashboard() {
   }
   html += `</div></div></div>`;
 
-  main.innerHTML = html;
-
-  // Wire search and filter events
-  const searchInput = main.querySelector('#toolsSearchInput');
-  const searchClear = main.querySelector('#toolsSearchClear');
-  const statusFilter = main.querySelector('#toolsStatusFilter');
-  const categoryFilter = main.querySelector('#toolsCategoryFilter');
-
-  if (searchInput) {
-    let searchDebounce;
-    searchInput.addEventListener('input', (e) => {
-      clearTimeout(searchDebounce);
-      searchDebounce = setTimeout(() => {
-        window.toolsSearchQuery = e.target.value;
-        renderToolsDashboard();
-        const reSearch = $('#toolsSearchInput');
-        if (reSearch) { reSearch.focus(); reSearch.selectionStart = reSearch.selectionEnd = reSearch.value.length; }
-      }, 180);
-    });
-  }
-
-  if (searchClear) {
-    searchClear.addEventListener('click', () => {
-      window.toolsSearchQuery = '';
-      renderToolsDashboard();
-      const reSearch = $('#toolsSearchInput');
-      if (reSearch) reSearch.focus();
-    });
-  }
-
-  if (statusFilter) {
-    statusFilter.addEventListener('change', (e) => {
-      window.toolsStatusFilter = e.target.value;
-      renderToolsDashboard();
-    });
-  }
-
-  if (categoryFilter) {
-    categoryFilter.addEventListener('change', (e) => {
-      window.toolsCategoryFilter = e.target.value;
-      renderToolsDashboard();
-    });
-  }
-
-  if (canEdit) {
-    main.querySelectorAll('[data-edit-tool]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        triggerHaptic(10);
-        window.currentEditToolId = btn.dataset.editTool;
-        navigateTo('edit-tool');
-      });
-    });
-    main.querySelectorAll('[data-delete-tool]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        triggerHaptic(18);
-        const id = btn.dataset.deleteTool;
-        if (await appConfirm('Are you sure you want to delete this tool?', { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
-          try {
-            setSyncingState(true, 'Deleting tool...');
-            await remove(ref(db, 'tools/' + id));
-            showToast('Tool deleted successfully.', { title: 'Tool Deleted' });
-          } catch (e) {
-            appAlert('Could not delete tool: ' + e.message, { type: 'danger' });
-          } finally {
-            setSyncingState(false);
-          }
-        }
-      });
-    });
-  }
+  return html;
 }
 
 function renderAddToolForm() {
+  // Bug fix: renderToolForm writes directly to main.innerHTML (it also wires its
+  // own submit handler inline), so it must NOT return a string for render() to
+  // set — returning null signals render() to skip its own innerHTML assignment.
   renderToolForm('Add New Tool', {});
+  return null;
 }
 
 function renderEditToolForm() {
   const tool = toolsCache.find(t => t.id === window.currentEditToolId);
-  if (!tool) { navigateTo('tools-dashboard'); return; }
+  if (!tool) { navigateTo('tools-dashboard'); return null; }
   renderToolForm('Edit Tool', tool);
+  return null;
 }
 
 function renderToolForm(title, tool) {
@@ -3622,7 +3632,13 @@ function renderToolForm(title, tool) {
     </div>
   `;
   
-  trackFormDirty('#toolForm');
+  // Bug fix: trackFormDirty was called but never defined anywhere in the codebase.
+  // Replace with the existing setFormDirty pattern used throughout app.js.
+  setFormDirty(false);
+  $('#toolForm')?.querySelectorAll('input, select, textarea').forEach(el => {
+    el.addEventListener('input', () => setFormDirty(true), { once: false });
+    el.addEventListener('change', () => setFormDirty(true), { once: false });
+  });
   
   $('#toolForm').addEventListener('submit', async (e) => {
     e.preventDefault();
