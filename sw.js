@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v1.3.0: remove nested startViewTransition from render() to fix tools-dashboard blank screen
-const CACHE_NAME = 'cmm-sms-store-v1.4.0';
+// v1.5.0: Enhanced PWA offline shell, PNG icons precaching, asset update synchronization
+const CACHE_NAME = 'cmm-sms-store-v1.5.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,21 +9,23 @@ const STATIC_ASSETS = [
   './anim.js',
   './boot.js',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './apple-touch-icon.png'
 ];
 
-// Install: precache core app shell assets
+// Install: precache core app shell assets immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[SW] Pre-caching partial failure:', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate: clean up older cache versions
+// Activate: clean up older cache versions immediately and claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -39,12 +41,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Allow clients to trigger immediate update
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // Fetch: Strategy for offline support without disrupting live Firebase sync
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // 1. Never cache Firebase RTDB, Firestore, Cloud Storage, or Auth API calls
-  // Bug #3 fix: added firebasestorage.app to prevent photo download URLs being cached stale
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
@@ -58,15 +66,13 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 2. Cache-first strategy for local static assets and fonts
-  // Bug #2 fix: use ignoreSearch:true so versioned URLs like style.css?v=13 match
-  // the cached 'style.css' entry — preventing a cache miss on every request.
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to update cache for next time (stale-while-revalidate for local scripts)
+        // Fetch in background to update cache for next time
         fetch(event.request)
           .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
               const resClone = networkResponse.clone();
               caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
             }
@@ -81,8 +87,13 @@ self.addEventListener('fetch', (event) => {
           if (!networkResponse || networkResponse.status !== 200) {
             return networkResponse;
           }
-          // Cache external fonts / CDN stylesheets
-          if (url.origin.includes('fonts.googleapis.com') || url.origin.includes('fonts.gstatic.com') || url.origin === location.origin) {
+          // Cache external fonts / CDN stylesheets / scripts
+          if (
+            url.origin.includes('fonts.googleapis.com') ||
+            url.origin.includes('fonts.gstatic.com') ||
+            url.origin.includes('cdn.jsdelivr.net') ||
+            url.origin === location.origin
+          ) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           }

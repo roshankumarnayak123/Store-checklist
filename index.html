@@ -509,10 +509,10 @@
 
   <!-- Bug #1 fix: anim.js was loaded twice (line 295 with defer + here without). Removed duplicate. -->
 
-  <!-- PWA Service Worker Registration & Theme Color Sync -->
+  <!-- PWA Service Worker Registration, Install Prompter & Network Watcher -->
   <script>
     (() => {
-      // Sync meta theme-color with HTML theme attribute
+      // 1. Sync meta theme-color with active theme
       const updateThemeColor = () => {
         const themeMeta = document.getElementById('themeColorMeta');
         if (!themeMeta) return;
@@ -523,16 +523,73 @@
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
       updateThemeColor();
 
-      // Register Service Worker
-      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      // 2. Capture beforeinstallprompt for native 1-tap install
+      window.__deferredPwaPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.__deferredPwaPrompt = e;
+        window.dispatchEvent(new CustomEvent('cmm-pwa-installable'));
+      });
+
+      window.addEventListener('appinstalled', () => {
+        window.__deferredPwaPrompt = null;
+        console.log('[PWA] Application successfully installed');
+        window.dispatchEvent(new CustomEvent('cmm-pwa-installed'));
+      });
+
+      // Global helper for in-app install buttons
+      window.promptPwaInstall = async () => {
+        if (!window.__deferredPwaPrompt) return false;
+        try {
+          window.__deferredPwaPrompt.prompt();
+          const choice = await window.__deferredPwaPrompt.userChoice;
+          window.__deferredPwaPrompt = null;
+          return choice.outcome === 'accepted';
+        } catch (err) {
+          console.warn('[PWA] Prompt error:', err);
+          return false;
+        }
+      };
+
+      // 3. Register Service Worker reliably across HTTPS, localhost & local IPs
+      if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);
+            
+            // Check for updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[PWA] New version ready.');
+                  }
+                });
+              }
+            });
           }).catch((err) => {
-            console.warn('[PWA] Service Worker registration failed:', err);
+            console.warn('[PWA] Service Worker registration notice:', err);
           });
         });
       }
+
+      // 4. Offline & Online connectivity indicators
+      window.addEventListener('offline', () => {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-warn';
+        toast.textContent = 'You are currently offline. Cached records remain viewable.';
+        document.getElementById('toastRegion')?.appendChild(toast);
+        setTimeout(() => toast.remove(), 4500);
+      });
+
+      window.addEventListener('online', () => {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-good';
+        toast.textContent = 'Connection restored. Realtime sync active.';
+        document.getElementById('toastRegion')?.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+      });
     })();
   </script>
 

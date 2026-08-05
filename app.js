@@ -1440,6 +1440,23 @@ function renderProfile() {
     </div>
 
     <div class="panel panel-pad" style="max-width:600px; margin-top:24px;">
+      <h2 style="margin-top:0;">Install App (PWA)</h2>
+      <p style="margin:0 0 14px; font-size:13.5px; color:var(--text-muted);">
+        Install CMM SMS Store on your mobile or desktop device for fast, full-screen standalone access and quick action shortcuts.
+      </p>
+      <div id="profilePwaStatusArea">
+        <button type="button" class="btn btn-primary" id="profilePwaInstallBtn" style="display:inline-flex; align-items:center; gap:8px;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Install App to Home Screen
+        </button>
+      </div>
+    </div>
+
+    <div class="panel panel-pad" style="max-width:600px; margin-top:24px;">
       <h2 style="margin-top:0;">Change Password</h2>
       <div class="alert alert-error${profilePasswordError ? '' : ' hidden'}" id="profilePasswordAlert" role="alert">${escapeHtml(profilePasswordError)}</div>
       <form id="profilePasswordForm">
@@ -2456,6 +2473,26 @@ function wireViewEvents(viewId) {
     $('#profileChoosePhotoBtn')?.addEventListener('click', () => $('#p_photo')?.click());
     $('#profileForm').addEventListener('submit', handleProfileSubmit);
     $('#profilePasswordForm').addEventListener('submit', handleProfilePasswordSubmit);
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const pwaStatus = $('#profilePwaStatusArea');
+    if (pwaStatus) {
+      if (isStandalone) {
+        pwaStatus.innerHTML = '<span class="tag tag-returned" style="padding:7px 14px; font-size:13px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">✓ App is Installed & Running Standalone</span>';
+      } else {
+        $('#profilePwaInstallBtn')?.addEventListener('click', async () => {
+          if (typeof window.promptPwaInstall === 'function' && window.__deferredPwaPrompt) {
+            const accepted = await window.promptPwaInstall();
+            if (accepted) {
+              showToast('Thank you for installing CMM SMS Store!', { title: 'App Installed' });
+              render();
+            }
+          } else {
+            showToast('To install: tap your browser menu (⋮ or Share) and choose "Install App" or "Add to Home screen".', { title: 'Install Instructions' });
+          }
+        });
+      }
+    }
   }
 
   if (viewId === 'issue-new') {
