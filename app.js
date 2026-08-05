@@ -140,10 +140,23 @@ window.appConfirm = appConfirm; // bridge for the classic-script error logger
 $('#appDialogConfirm').addEventListener('click', () => closeAppDialog(true));
 $('#appDialogCancel').addEventListener('click', () => closeAppDialog(false));
 $('#appDialog').addEventListener('click', (event) => { if (event.target.id === 'appDialog') closeAppDialog(false); });
-document.addEventListener('keydown', (event) => {
-  if ($('#appDialog').classList.contains('hidden')) return;
-  if (event.key === 'Escape') closeAppDialog(false);
+// iOS Safari Install Modal Controls
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function showIosInstallDialog() {
+  $('#iosInstallDialog')?.classList.remove('hidden');
+}
+function closeIosInstallDialog() {
+  $('#iosInstallDialog')?.classList.add('hidden');
+}
+$('#iosInstallCloseBtn')?.addEventListener('click', closeIosInstallDialog);
+$('#iosInstallGotItBtn')?.addEventListener('click', closeIosInstallDialog);
+$('#iosInstallDialog')?.addEventListener('click', (e) => {
+  if (e.target.id === 'iosInstallDialog') closeIosInstallDialog();
 });
+
 // Preserve old alert call sites while giving them the same modern dialog appearance.
 window.alert = (message) => { void appAlert(message); };
 
@@ -669,7 +682,7 @@ function startApp() {
     currentUser = saved;
     initTopbar();
     showScreen('appScreen');
-    navigateTo(getHomeView(currentUser));
+    navigateTo(getStartupView(currentUser), false);
   } else {
     showScreen('authScreen');
   }
@@ -897,6 +910,25 @@ function getHomeView(user) {
     return isValid ? saved : fallback;
   } catch (_) { return fallback; }
 }
+
+function getStartupView(user) {
+  if (!user) return 'dashboard';
+  const hash = (window.location.hash || '').replace('#', '').trim();
+  const allowed = navLinksForRoles(user.roles).map(([id]) => id);
+  const canIssue = user.roles.includes('admin') || user.roles.includes('storekeeper') || user.roles.includes('user');
+  const canTools = user.roles.includes('admin') || user.roles.includes('tools_admin') || user.roles.includes('tools_viewer');
+  
+  if (hash === 'issue-new' || hash === 'return-record') {
+    if (canIssue) return hash;
+  }
+  if (hash === 'add-tool' || hash === 'tools-dashboard') {
+    if (canTools) return hash;
+  }
+  if (hash && (allowed.includes(hash) || hash === 'profile')) {
+    return hash;
+  }
+  return getHomeView(user);
+}
 function setHomeView(user, viewId) {
   if (!user) return;
   try {
@@ -959,7 +991,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
       initTopbar();
       listenToCollections();
       showScreen('appScreen');
-      navigateTo(getHomeView(currentUser));
+      navigateTo(getStartupView(currentUser));
       return;
     }
 
@@ -979,7 +1011,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
     initTopbar();
     listenToCollections();
     showScreen('appScreen');
-    navigateTo(getHomeView(currentUser));
+    navigateTo(getStartupView(currentUser));
   } catch (err) {
     console.error(err);
     showAuthError('Unable to log in: failed to sync with cloud. (' + (err.message || 'unknown error') + ')');
@@ -1214,7 +1246,7 @@ function renderTransition() {
   swap();
 }
 
-async function navigateTo(viewId) {
+async function navigateTo(viewId, updateHistory = true) {
   if (viewId === currentView) return;
   if (formDirty) {
     const leave = await appConfirm('You have unsaved changes. Leave this page and discard them?', { title: 'Unsaved Changes', confirmText: 'Leave Page', cancelText: 'Stay' });
@@ -1237,11 +1269,25 @@ async function navigateTo(viewId) {
   userFormError = '';
 
   currentView = viewId;
+  if (updateHistory && window.location.hash !== '#' + viewId) {
+    try {
+      history.pushState({ view: viewId }, '', '#' + viewId);
+    } catch (_) { }
+  }
   $$('.navlink').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId));
   $$('.mobile-nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId));
   updateMobileFab();
   renderTransition();
 }
+
+// Android Back Button and Browser History Handler
+window.addEventListener('popstate', (e) => {
+  if (!currentUser) return;
+  const target = (e.state && e.state.view) || (window.location.hash ? window.location.hash.replace('#', '').trim() : getHomeView(currentUser));
+  if (target && target !== currentView) {
+    navigateTo(target, false);
+  }
+});
 
 function snapshotToArray(snap) {
   const val = snap.val();
@@ -2481,7 +2527,9 @@ function wireViewEvents(viewId) {
         pwaStatus.innerHTML = '<span class="tag tag-returned" style="padding:7px 14px; font-size:13px; display:inline-flex; align-items:center; gap:6px; font-weight:600;">✓ App is Installed & Running Standalone</span>';
       } else {
         $('#profilePwaInstallBtn')?.addEventListener('click', async () => {
-          if (typeof window.promptPwaInstall === 'function' && window.__deferredPwaPrompt) {
+          if (isIosDevice()) {
+            showIosInstallDialog();
+          } else if (typeof window.promptPwaInstall === 'function' && window.__deferredPwaPrompt) {
             const accepted = await window.promptPwaInstall();
             if (accepted) {
               showToast('Thank you for installing CMM SMS Store!', { title: 'App Installed' });

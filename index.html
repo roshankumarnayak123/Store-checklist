@@ -10,10 +10,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Store Register" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
-  <!-- Bug #9 fix: iOS Safari does not support SVG apple-touch-icons; use PNG -->
+  <!-- iOS Safari Touch Icons (PNG formats required for iOS SpringBoard) -->
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon.png" />
   <!-- Refresh-session persistence fix applied: 2026-07-16 -->
   <!-- Register progress bar removed: 2026-07-16 -->
   <!-- Return History date and time stamp fix: 2026-07-16 -->
@@ -22,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 
 <body>
@@ -90,6 +95,61 @@
       <div class="app-dialog-actions">
         <button type="button" class="btn btn-ghost" id="appDialogCancel">Cancel</button>
         <button type="button" class="btn btn-primary" id="appDialogConfirm">Confirm</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- iOS Safari Install Guide Dialog -->
+  <div id="iosInstallDialog" class="ios-install-backdrop hidden" role="presentation">
+    <section class="ios-install-modal" role="dialog" aria-modal="true" aria-labelledby="iosInstallTitle">
+      <div class="ios-install-head">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img src="apple-touch-icon.png" class="ios-app-icon" alt="App Icon" style="width:42px; height:42px; border-radius:10px; border:1px solid var(--border);" />
+          <div>
+            <h3 id="iosInstallTitle" style="margin:0; font-size:16px; font-weight:700;">Install on iPhone / iPad</h3>
+            <span style="font-size:12px; color:var(--text-muted);">Safari Home Screen Web App</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="iosInstallCloseBtn" style="padding:4px 10px; min-height:32px; font-size:16px; border-radius:8px;">✕</button>
+      </div>
+      <div class="ios-install-body">
+        <p style="margin:0 0 16px; font-size:13px; color:var(--text-muted); line-height:1.45;">
+          Apple requires adding Web Apps directly from Safari. Follow these 3 steps:
+        </p>
+        <div class="ios-step-list">
+          <div class="ios-step-row">
+            <div class="ios-step-badge">1</div>
+            <div class="ios-step-content">
+              <span>Tap the <strong>Share button</strong> in Safari's bottom toolbar</span>
+              <svg class="ios-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+            </div>
+          </div>
+          <div class="ios-step-row">
+            <div class="ios-step-badge">2</div>
+            <div class="ios-step-content">
+              <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+              <svg class="ios-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" ry="3"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+            </div>
+          </div>
+          <div class="ios-step-row">
+            <div class="ios-step-badge">3</div>
+            <div class="ios-step-content">
+              <span>Tap <strong>"Add"</strong> in the top-right corner</span>
+              <span class="ios-step-pill">Add</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ios-install-foot">
+        <button type="button" class="btn btn-primary" id="iosInstallGotItBtn" style="width:100%; justify-content:center;">Got it</button>
       </div>
     </section>
   </div>

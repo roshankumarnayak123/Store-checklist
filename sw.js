@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v1.5.0: Enhanced PWA offline shell, PNG icons precaching, asset update synchronization
-const CACHE_NAME = 'cmm-sms-store-v1.5.0';
+// v1.5.1: Desktop sidebar layout & theme toggle proportions fix
+const CACHE_NAME = 'cmm-sms-store-v1.5.1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -10,7 +10,9 @@ const STATIC_ASSETS = [
   './boot.js',
   './manifest.json',
   './icon.svg',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Install: precache core app shell assets immediately
