@@ -27,6 +27,23 @@ Welcome to the **CMM SMS STORE Checklist** application! This is a robust web-bas
 * **Beautiful UI:**
   Features a responsive, modern aesthetic with a smooth dark mode toggle, animated KPI counters, glassmorphism elements, and sleek custom dropdown menus for user management.
 
+## ⚠️ Architecture & Database Separation Rule (For Developers & AI Agents)
+
+**CRITICAL:** The application maintains **TWO COMPLETELY SEPARATE, UNCONNECTED DATABASES/COLLECTIONS**:
+
+1. **Material Issue Register (`issues/` in Firebase RTDB):**
+   * **Cache:** `issuesCache`
+   * **Scope:** Daily records of consumables and materials issued to supervisors/vendors, tracking partial/full return statuses.
+   * **Views:** Dashboard, Register, Issue Material, Return Record.
+
+2. **Tool Register / Tools Master List (`tools/` in Firebase RTDB):**
+   * **Cache:** `toolsCache`
+   * **Scope:** Physical tool master catalog, unique auto-generated serial numbers (`CMM/SMS/[TOOLNAME]/[SEQ]`), quantities, shelf locations, and tool physical conditions (Available, In Use, In Maintenance, Damaged, Lost).
+   * **Views:** Tools Master List, Add Tool, Edit Tool.
+
+> **STRICT CONSTRAINT:**
+> There is **NO** relationship, foreign key, cross-dependency, or shared ID space between `tools/` and `issues/`. Any AI agent or developer modifying or debugging this code must **NOT** attempt to merge, cross-reference, or join these databases. They must remain completely isolated.
+
 ## Setup & Running
 
 This is a client-side web application using Firebase as a backend. 

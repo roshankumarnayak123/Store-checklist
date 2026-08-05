@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 
 <body>
@@ -98,7 +98,19 @@
   <div id="authScreen" class="auth-main">
     <button type="button" id="authThemeToggle" class="theme-toggle auth-theme-toggle" role="switch" aria-checked="false"
       aria-label="Switch to dark theme" title="Switch theme">
-      <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
+      <span class="theme-toggle-track" aria-hidden="true">
+        <span class="theme-toggle-icon theme-toggle-sun" title="Light Mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          </svg>
+        </span>
+        <span class="theme-toggle-icon theme-toggle-moon" title="Dark Mode">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </span>
+      </span>
       <span class="theme-toggle-knob" aria-hidden="true"></span>
     </button>
 
@@ -274,7 +286,19 @@
               </span>
               <button type="button" id="themeToggle" class="theme-toggle" role="switch" aria-checked="false"
                 aria-label="Switch to dark theme" title="Switch theme">
-                <span class="theme-toggle-track" aria-hidden="true"><span>☀</span><span>☾</span></span>
+                <span class="theme-toggle-track" aria-hidden="true">
+                  <span class="theme-toggle-icon theme-toggle-sun" title="Light Mode">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="4"/>
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    </svg>
+                  </span>
+                  <span class="theme-toggle-icon theme-toggle-moon" title="Dark Mode">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                  </span>
+                </span>
                 <span class="theme-toggle-knob" aria-hidden="true"></span>
               </button>
             </div>
@@ -295,8 +319,8 @@
 
   <script src="boot.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="app.js?v=13"></script>
-  <script src="anim.js?v=13" defer></script>
+  <script type="module" src="app.js?v=14"></script>
+  <script src="anim.js?v=14" defer></script>
 
 
   <script>

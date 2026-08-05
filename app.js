@@ -12,6 +12,35 @@ window.__cmmModuleReady = true;
 window.dispatchEvent(new CustomEvent('cmm-module-ready'));
 
 /* =========================================================================
+   ARCHITECTURE & DATABASE SEPARATION INSTRUCTION (FOR DEVELOPERS & AI AGENTS)
+   =========================================================================
+   IMPORTANT ARCHITECTURAL RULE — STRICT SCHEMA SEPARATION:
+   This codebase manages TWO COMPLETELY INDEPENDENT, UNCONNECTED DATABASES/COLLECTIONS:
+
+   1. MATERIAL ISSUE REGISTER (Firebase RTDB: `issues/` path):
+      - In-memory cache: `issuesCache`
+      - Purpose: Daily logging of materials/consumables issued to workers/supervisors/vendors,
+        tracking issue dates, quantities, partial/full return statuses, and return logs.
+      - Key Views: 'dashboard', 'register', 'issue-new', 'return-record', 'edit-issue', 'edit-return'.
+      - Roles: 'storekeeper', 'viewer', 'admin'.
+
+   2. TOOL REGISTER / TOOLS MASTER LIST (Firebase RTDB: `tools/` path):
+      - In-memory cache: `toolsCache`
+      - Purpose: Master catalog and inventory tracking of physical tools/equipment,
+        unique auto-incrementing serial IDs (`CMM/SMS/[TOOLNAME]/[SEQ]`), quantities,
+        shelf locations, conditions/statuses (Available, In Use, In Maintenance, Damaged, Lost), and notes.
+      - Key Views: 'tools-dashboard', 'add-tool', 'edit-tool'.
+      - Roles: 'tools_admin', 'tools_viewer', 'admin'.
+
+   STRICT GUIDELINES FOR ANY FUTURE AI AGENTS OR DEVELOPERS:
+   - There is NO relationship, foreign key, cross-dependency, or shared ID space between `tools/` and `issues/`.
+   - DO NOT attempt to merge these databases, link `tool.id` into `issues/`, or enforce relational constraints.
+   - DO NOT conflate tool master catalog records with material issue/return entries.
+   - Any bug fixes, refactoring, or feature additions to the Tool Register MUST NOT alter or depend on
+     the Material Issue Register, and vice-versa. They operate in complete isolation.
+   ========================================================================= */
+
+/* =========================================================================
    FIREBASE CONFIG
    ========================================================================= */
 const firebaseConfig = {
@@ -25,11 +54,11 @@ const firebaseConfig = {
 };
 
 /* =========================================================================
-   STATE
+   STATE (Independent Caches for Issues and Tools)
    ========================================================================= */
 let currentUser = null;
-let issuesCache = [];
-let toolsCache = [];
+let issuesCache = []; // Material Issue & Return Register records ('issues/')
+let toolsCache = [];  // Physical Tool Master Catalog records ('tools/')
 let unsubIssues = null;
 let unsubTools = null;
 let unsubRequests = null;
@@ -429,7 +458,10 @@ function limitPhotoFiles(files, existingCount = 0) {
   if (files.length > available) { void appAlert(`Only ${available} more photo${available === 1 ? '' : 's'} can be added. Maximum ${MAX_PHOTOS_PER_ENTRY} photos are allowed per entry.`, { title: 'Photo Limit', type: 'danger' }); }
   return files.slice(0, available);
 }
-function previewSelectedImages(files, selector) { const h = $(selector); if (!h) return; h.innerHTML = ''; files.forEach((f, i) => { const item = document.createElement('div'); item.className = 'photo-preview-item'; const img = document.createElement('img'); img.alt = `Selected photo ${i + 1}`; img.style.cssText = 'width:110px;height:90px;object-fit:cover;border-radius:12px;display:block;'; const r = new FileReader(); r.onload = () => img.src = r.result; r.readAsDataURL(f); const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'photo-preview-remove'; rm.setAttribute('aria-label', `Remove photo ${i + 1}`); rm.title = 'Remove photo'; rm.textContent = '\u00d7'; rm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); files.splice(i, 1); previewSelectedImages(files, selector); }); item.appendChild(img); item.appendChild(rm); h.appendChild(item); }); h.parentElement.style.display = files.length ? 'block' : 'none'; }
+// Bug G fix: recalculate the live DOM index at click-time instead of closing
+// over the forEach `i`, which becomes stale when the user rapidly removes
+// multiple photos before the DOM re-renders.
+function previewSelectedImages(files, selector) { const h = $(selector); if (!h) return; h.innerHTML = ''; files.forEach((f, i) => { const item = document.createElement('div'); item.className = 'photo-preview-item'; const img = document.createElement('img'); img.alt = `Selected photo ${i + 1}`; img.style.cssText = 'width:110px;height:90px;object-fit:cover;border-radius:12px;display:block;'; const r = new FileReader(); r.onload = () => img.src = r.result; r.readAsDataURL(f); const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'photo-preview-remove'; rm.setAttribute('aria-label', `Remove photo ${i + 1}`); rm.title = 'Remove photo'; rm.textContent = '\u00d7'; rm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const liveIndex = Array.from(h.children).indexOf(item); if (liveIndex !== -1) files.splice(liveIndex, 1); previewSelectedImages(files, selector); }); item.appendChild(img); item.appendChild(rm); h.appendChild(item); }); h.parentElement.style.display = files.length ? 'block' : 'none'; }
 function uniqueRecentValues(field, limit = 12) {
   const seen = new Set(), values = [];
   for (const item of issuesCache) {
@@ -854,6 +886,7 @@ function getHomeView(user) {
   let fallback = 'dashboard';
   const roles = user?.roles || [];
   if (roles.includes('admin')) fallback = 'admin-dashboard';
+  else if (roles.includes('user') || roles.includes('storekeeper')) fallback = 'dashboard';
   else if (roles.includes('tools_admin') || roles.includes('tools_viewer')) fallback = 'tools-dashboard';
   else if (roles.includes('viewer')) fallback = 'register';
   
@@ -960,6 +993,10 @@ $('#logoutBtn').addEventListener('click', () => {
   if (unsubTools) { unsubTools(); unsubTools = null; }
   if (unsubRequests) { unsubRequests(); unsubRequests = null; }
 
+  // Bug D fix: unsubscribe the login-screen KPI listener to prevent memory
+  // leak from accumulating Firebase listeners across login/logout cycles.
+  if (loginKpiUnsub) { loginKpiUnsub(); loginKpiUnsub = null; }
+
   if (clockInterval) {
     clearInterval(clockInterval);
     clockStarted = false;
@@ -968,6 +1005,12 @@ $('#logoutBtn').addEventListener('click', () => {
     clearInterval(sessionTimerInterval);
     sessionTimerStarted = false;
   }
+
+  // Bug H fix: reset tool search/filter state so it doesn't bleed into
+  // the next user's session on a shared device.
+  window.toolsSearchQuery = '';
+  window.toolsStatusFilter = 'all';
+  window.toolsCategoryFilter = 'all';
 
   currentUser = null;
   window.currentUser = null;
@@ -1046,7 +1089,8 @@ function updateMobileFab() {
   const hasToolsAdmin = roles.includes('tools_admin') || roles.includes('admin');
   const canCreate = hasStorekeeper || hasToolsAdmin;
 
-  const nonFabViews = ['issue-new', 'add-tool', 'return-new', 'edit-issue', 'edit-return', 'profile', 'settings-admin', 'users-admin'];
+  // Bug C fix: use 'return-record' (the actual view name) not 'return-new'
+  const nonFabViews = ['issue-new', 'add-tool', 'return-record', 'edit-issue', 'edit-return', 'profile', 'settings-admin', 'users-admin'];
   if (!canCreate || nonFabViews.includes(currentView)) {
     fab.style.display = 'none';
     return;
@@ -1228,6 +1272,12 @@ function friendlySaveError(error, activity = 'save this activity') {
 // visible DOM just isn't force-refreshed until the user navigates away.
 const FORM_VIEWS = new Set(['issue-new', 'return-record', 'edit-issue', 'edit-return', 'profile', 'users-admin', 'add-tool', 'edit-tool']);
 
+// -------------------------------------------------------------------------
+// Realtime Database Listeners (Completely Separate Paths & Collections)
+// 1. Material Issue Register -> `issues/` (populates `issuesCache`)
+// 2. Tool Register           -> `tools/`  (populates `toolsCache`)
+// There is NO joining, foreign key linking, or cross-dependency between them.
+// -------------------------------------------------------------------------
 function listenToCollections() {
   if (unsubIssues) unsubIssues();
   if (unsubTools) unsubTools();
@@ -1497,7 +1547,9 @@ function activeFilterChips() {
   if (registerFilterState.dateTo) c.push(['dateTo', `To: ${registerFilterState.dateTo}`]);
   return c;
 }
-function resetRegisterFilters() { registerFilterState = { q: '', status: 'all', month: 'all', year: 'all', vendor: 'all', area: 'all', supervisor: 'all', issuedBy: 'all', dateFrom: '', dateTo: '', page: 1 }; }
+// Bug A fix: also clear expanded-row overrides so stale IDs from the old result
+// set don't accidentally expand rows in the new filtered result set.
+function resetRegisterFilters() { registerFilterState = { q: '', status: 'all', month: 'all', year: 'all', vendor: 'all', area: 'all', supervisor: 'all', issuedBy: 'all', dateFrom: '', dateTo: '', page: 1 }; registerExpandedRows.clear(); }
 function registerFilterOptions(field) { return Array.from(new Set(issuesCache.map(item => String(item?.[field] || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)); }
 function countRegisterMatches(filters) {
   return enrichedIssues().filter(r => {
@@ -1516,7 +1568,10 @@ function countRegisterMatches(filters) {
 }
 function renderRegister() {
   const isAdmin = currentUser.roles.includes('admin');
-  let rows = enrichedIssues();
+  // Bug I fix: compute enrichedIssues() once and reuse — previously called 6
+  // times per render (O(6n)), now called once (O(n)).
+  const allEnriched = enrichedIssues();
+  let rows = allEnriched;
 
   if (registerFilterState.q) {
     const needle = registerFilterState.q.toLowerCase();
@@ -1582,19 +1637,23 @@ function renderRegister() {
   const areaOptions = registerFilterOptions('area');
   const supervisorOptions = registerFilterOptions('supervisorName');
   const issuedByOptions = Array.from(new Set(issuesCache.map(r => String(r.issuedByName || r.issuedBy || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const totalPending = allEnriched.filter(i => i.status !== 'Returned').length;
+  const totalReturned = allEnriched.filter(i => i.status === 'Returned').length;
+  const totalIssued = allEnriched.filter(i => i.status === 'Issued').length;
+  const totalPartial = allEnriched.filter(i => i.status === 'Partially Returned').length;
 
   return `
     <div class="page-head">
       <div>
         <span class="eyebrow">Records</span>
-        <h1>${isAdmin ? 'Full Register' : 'Issue & Return Register'}</h1>
+        <h1>${isAdmin ? 'Full Register' : 'Issue &amp; Return Register'}</h1>
         <div class="page-sub">${isAdmin ? 'Every record. Admins can remove entries here.' : 'All material movements logged by the store.'}</div>
-        <div class="register-summary-meta"><span><strong>${totalRows}</strong> shown</span><span>${issuesCache.length} total</span><span>${enrichedIssues().filter(i => i.status !== 'Returned').length} pending</span><span>${enrichedIssues().filter(i => i.status === 'Returned').length} returned</span></div>
+        <div class="register-summary-meta"><span><strong>${totalRows}</strong> shown</span><span>${issuesCache.length} total</span><span>${totalPending} pending</span><span>${totalReturned} returned</span></div>
       </div>
     </div>
 
     <div class="status-filter-chips" aria-label="Quick status filters">
-      ${[['all', 'All', issuesCache.length], ['pending', 'Pending', enrichedIssues().filter(i => i.status !== 'Returned').length], ['issued', 'Issued', enrichedIssues().filter(i => i.status === 'Issued').length], ['partiallyreturned', 'Partial', enrichedIssues().filter(i => i.status === 'Partially Returned').length], ['returned', 'Returned', enrichedIssues().filter(i => i.status === 'Returned').length]].map(([value, label, count]) => `<button type="button" class="status-filter-chip ${registerFilterState.status === value ? 'is-active' : ''}" data-status-chip="${value}">${label} · ${count}</button>`).join('')}
+      ${[['all', 'All', issuesCache.length], ['pending', 'Pending', totalPending], ['issued', 'Issued', totalIssued], ['partiallyreturned', 'Partial', totalPartial], ['returned', 'Returned', totalReturned]].map(([value, label, count]) => `<button type="button" class="status-filter-chip ${registerFilterState.status === value ? 'is-active' : ''}" data-status-chip="${value}">${label} · ${count}</button>`).join('')}
     </div>
     <button type="button" class="btn btn-ghost filter-toggle" id="filterToggleBtn" aria-expanded="${registerFiltersOpen ? 'true' : 'false'}" aria-controls="regFilterBar">
       <span>Filters${activeFilterCount ? `<span class="count-badge">${activeFilterCount}</span>` : ''}</span>
@@ -2481,12 +2540,18 @@ function wireViewEvents(viewId) {
     if (searchInput) {
       let searchDebounce;
       searchInput.addEventListener('input', (e) => {
+        const cursorPos = e.target.selectionStart;
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(() => {
           window.toolsSearchQuery = e.target.value;
           render();
           const reSearch = $('#toolsSearchInput');
-          if (reSearch) { reSearch.focus(); reSearch.selectionStart = reSearch.selectionEnd = reSearch.value.length; }
+          if (reSearch) {
+            reSearch.focus();
+            if (typeof cursorPos === 'number') {
+              reSearch.setSelectionRange(cursorPos, cursorPos);
+            }
+          }
         }, 180);
       });
     }
@@ -2526,10 +2591,12 @@ function wireViewEvents(viewId) {
         btn.addEventListener('click', async () => {
           triggerHaptic(18);
           const id = btn.dataset.deleteTool;
-          if (await appConfirm('Are you sure you want to delete this tool?', { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
+          const tool = toolsCache.find(t => t.id === id);
+          if (await appConfirm(`Are you sure you want to delete tool "${tool?.toolName || id}"?`, { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
             try {
               setSyncingState(true, 'Deleting tool...');
               await remove(ref(db, 'tools/' + id));
+              await writeAudit('tool-deleted', id, { toolName: tool?.toolName, uniqueId: tool?.uniqueId });
               showToast('Tool deleted successfully.', { title: 'Tool Deleted' });
             } catch (e) {
               appAlert('Could not delete tool: ' + e.message, { type: 'danger' });
@@ -3331,6 +3398,9 @@ window.dispatchEvent(new CustomEvent('cloud-sync-bridge-ready', {
 }));
 
 // --- Login Screen KPI Setup ---
+// Bug D fix: store the Firebase listener unsub function so it can be called
+// during logout, preventing listener accumulation on repeated login/logout cycles.
+let loginKpiUnsub = null;
 function setupLoginKPIs() {
   const kpiGrid = document.getElementById('loginKpiGrid');
   if (!kpiGrid) return;
@@ -3338,9 +3408,12 @@ function setupLoginKPIs() {
   const penEl = document.getElementById('loginKpiPending');
   const retEl = document.getElementById('loginKpiReturned');
 
+  // Avoid attaching a duplicate listener if already set up.
+  if (loginKpiUnsub) return;
+
   try {
     if (typeof db !== 'undefined' && db) {
-      onValue(ref(db, 'issues'), (snap) => {
+      loginKpiUnsub = onValue(ref(db, 'issues'), (snap) => {
         if (!snap.exists()) return;
         const records = [];
         snap.forEach(child => { records.push(child.val()); });
@@ -3406,7 +3479,12 @@ document.addEventListener('click', (e) => {
 });
 
 // =========================================================================
-// TOOLS MASTER LIST MODULE
+// TOOLS MASTER LIST MODULE (INDEPENDENT TOOL REGISTER)
+// =========================================================================
+// ARCHITECTURE INSTRUCTION:
+// This module operates strictly on the `tools/` Firebase collection and
+// `toolsCache`. It is COMPLETELY SEPARATE and INDEPENDENT from the Material
+// Issue & Return Register (`issues/`). Do NOT connect or link them.
 // =========================================================================
 function renderToolsDashboard() {
   const main = $('#appMain');
@@ -3603,7 +3681,7 @@ function renderToolForm(title, tool) {
             </div>
             <div class="field">
               <label for="t_qty">Quantity *</label>
-              <input type="number" inputmode="numeric" id="t_qty" min="0" value="${escapeHtml(tool.quantity || '1')}" required />
+              <input type="number" inputmode="numeric" id="t_qty" min="0" value="${escapeHtml(tool.quantity !== undefined && tool.quantity !== null ? tool.quantity : '1')}" required />
             </div>
             <div class="field">
               <label for="t_loc">Location / Shelf</label>
@@ -3646,10 +3724,11 @@ function renderToolForm(title, tool) {
     btn.disabled = true; btn.textContent = 'Saving...';
     
     const toolName = $('#t_name').value.trim();
+    const toolQty = Math.max(0, parseInt($('#t_qty').value, 10) || 0);
     const toolData = {
       toolName: toolName,
       category: $('#t_category').value.trim(),
-      quantity: Number($('#t_qty').value) || 0,
+      quantity: toolQty,
       location: $('#t_loc').value.trim(),
       status: $('#t_status').value,
       notes: $('#t_notes').value.trim(),
@@ -3661,13 +3740,17 @@ function renderToolForm(title, tool) {
       setSyncingState(true, 'Saving tool...');
       if (isEdit) {
         await update(ref(db, 'tools/' + tool.id), toolData);
+        await writeAudit('tool-edited', tool.id, { toolName, quantity: toolQty, status: toolData.status, uniqueId: tool.uniqueId });
       } else {
-        const upperName = toolName.toUpperCase();
+        const cleanName = toolName.replace(/\//g, '-').trim();
+        const upperName = cleanName.toUpperCase();
         let maxSequence = 0;
         
         toolsCache.forEach(t => {
-          if (t.uniqueId && t.toolName && t.toolName.toUpperCase() === upperName) {
-            const match = t.uniqueId.match(/(\d+)$/);
+          const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
+          const prefix = `CMM/SMS/${upperName}/`;
+          if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
+            const match = (t.uniqueId || '').match(/(\d+)$/);
             if (match) {
               const seq = parseInt(match[1], 10);
               if (seq > maxSequence) maxSequence = seq;
@@ -3680,7 +3763,8 @@ function renderToolForm(title, tool) {
         
         toolData.createdAt = serverTimestamp();
         toolData.createdBy = currentUser.username;
-        await push(ref(db, 'tools'), toolData);
+        const newRef = await push(ref(db, 'tools'), toolData);
+        await writeAudit('tool-created', newRef.key, { toolName, quantity: toolQty, uniqueId: toolData.uniqueId });
       }
       formDirty = false;
       window.toolsStatusFilter = 'all';
