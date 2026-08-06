@@ -1598,12 +1598,13 @@ function showToast(message, { title = 'Done', type = 'success', duration = 3500,
   const normType = (type === 'danger' || type === 'error') ? 'danger' : (type === 'warning' || type === 'warn') ? 'warning' : type === 'info' ? 'info' : 'success';
   const el = document.createElement('section');
   el.className = 'toast'; el.dataset.type = normType; el.setAttribute('role', normType === 'danger' ? 'alert' : 'status'); el.style.setProperty('--toast-duration', `${duration}ms`);
-  el.innerHTML = `<span class="toast-icon" aria-hidden="true">${icons[normType] || icons.success}</span><div class="toast-copy"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionText ? `<div class="toast-actions"><button type="button" class="toast-action">${escapeHtml(actionText)}</button></div>` : ''}</div><button type="button" class="toast-close" aria-label="Dismiss notification">×</button><span class="toast-progress" aria-hidden="true"><span class="toast-progress-fill"></span></span>`;
-  let timer = null, remaining = duration, started = 0, paused = false, hovered = false, focused = false;
+  const closeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  el.innerHTML = `<span class="toast-icon" aria-hidden="true">${icons[normType] || icons.success}</span><div class="toast-copy"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionText ? `<div class="toast-actions"><button type="button" class="toast-action">${escapeHtml(actionText)}</button></div>` : ''}</div><button type="button" class="toast-close" aria-label="Dismiss notification">${closeSvg}</button><span class="toast-progress" aria-hidden="true"><span class="toast-progress-fill"></span></span>`;
+  let timer = null, remaining = duration, started = 0, paused = false, hovered = false, focused = false, isTouching = false;
   const close = () => { if (!el.isConnected || el.classList.contains('is-leaving')) return; clearTimeout(timer); el.classList.add('is-leaving'); setTimeout(() => el.remove(), 220) };
   const startTimer = () => { if (paused || !el.isConnected) return; clearTimeout(timer); started = Date.now(); timer = setTimeout(close, remaining) };
-  const pauseTimer = () => { if (paused) return; paused = true; clearTimeout(timer); remaining = Math.max(250, remaining - (Date.now() - started)) };
-  const resumeIfReady = () => { if (hovered || focused) return; paused = false; startTimer() };
+  const pauseTimer = () => { if (paused) return; paused = true; clearTimeout(timer); remaining = Math.max(250, remaining - (Date.now() - started)); el.classList.add('is-paused'); };
+  const resumeIfReady = () => { if (hovered || focused || isTouching) return; paused = false; el.classList.remove('is-paused'); startTimer() };
   el.querySelector('.toast-close').addEventListener('click', close);
   el.querySelector('.toast-action')?.addEventListener('click', () => { try { onAction?.() } finally { close() } });
   el.addEventListener('mouseenter', () => { hovered = true; pauseTimer() });
@@ -1611,15 +1612,36 @@ function showToast(message, { title = 'Done', type = 'success', duration = 3500,
   el.addEventListener('focusin', () => { focused = true; pauseTimer() });
   el.addEventListener('focusout', (event) => { if (el.contains(event.relatedTarget)) return; focused = false; resumeIfReady() });
   let startX = 0, startY = 0;
-  el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; pauseTimer(); }, { passive: true });
+  el.addEventListener('touchstart', (e) => {
+    if (!e.touches || !e.touches[0]) return;
+    isTouching = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    pauseTimer();
+  }, { passive: true });
   el.addEventListener('touchend', (e) => {
+    isTouching = false;
+    if (!e.changedTouches || !e.changedTouches[0]) { resumeIfReady(); return; }
     const endX = e.changedTouches[0].clientX, endY = e.changedTouches[0].clientY;
-    if (Math.abs(endX - startX) > 60 || (startY - endY) > 45) close();
+    if (Math.abs(endX - startX) > 60 || (startY - endY) > 40) close();
     else resumeIfReady();
+  }, { passive: true });
+  el.addEventListener('touchcancel', () => {
+    isTouching = false;
+    resumeIfReady();
   }, { passive: true });
   try { if (navigator.vibrate) navigator.vibrate(normType === 'danger' ? [20, 30, 20] : 15); } catch (_) {}
   region.appendChild(el);
-  while (region.children.length > 3) { const oldest = region.firstElementChild; if (oldest && oldest !== el) oldest.remove(); else break; }
+  const activeToasts = Array.from(region.querySelectorAll('.toast:not(.is-leaving)'));
+  if (activeToasts.length > 3) {
+    for (let i = 0; i < activeToasts.length - 3; i++) {
+      const old = activeToasts[i];
+      if (old && old !== el) {
+        old.classList.add('is-leaving');
+        setTimeout(() => old.remove(), 220);
+      }
+    }
+  }
   startTimer();
 }
 window.showToast = showToast;
