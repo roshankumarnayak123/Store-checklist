@@ -251,6 +251,7 @@ async function refreshFromCloudDatabase() {
     issuesLoaded = true;
     const snapTools = await get(ref(db, 'tools'));
     toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+    toolsLoaded = true;
     cloudConnected = true;
     lastSyncedAt = new Date();
     updateLoginSyncIndicator(true);
@@ -599,6 +600,7 @@ const REGISTER_PREFS_KEY = 'cmm_register_preferences';
 let regSearchDebounceTimer = null;
 const REG_PAGE_SIZE = 10;
 let issuesLoaded = false;
+let toolsLoaded = false;
 
 // NOTE: these were previously declared much further down in the file (near the
 // functions that use them). Since render() touches them on every call, and a
@@ -1349,6 +1351,7 @@ function listenToCollections() {
   
   unsubTools = onValue(ref(db, 'tools'), (snap) => {
     toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+    toolsLoaded = true;
     if (!FORM_VIEWS.has(currentView)) render();
   });
 }
@@ -2716,6 +2719,15 @@ function wireViewEvents(viewId) {
       });
     }
 
+    main.querySelectorAll('#toolsClearFiltersBtn, #toolsClearFiltersBtnMobile').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.toolsSearchQuery = '';
+        window.toolsStatusFilter = 'all';
+        window.toolsCategoryFilter = 'all';
+        render();
+      });
+    });
+
     if (canEdit) {
       main.querySelectorAll('[data-edit-tool]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3626,11 +3638,32 @@ document.addEventListener('click', (e) => {
 function renderToolsDashboard() {
   const main = $('#appMain');
   const canEdit = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
+
+  if (!toolsLoaded) {
+    return `
+      <div class="panel">
+        <div class="panel-head tools-panel-head">
+          <div class="tools-head-title">
+            <h2>Tools Master List</h2>
+            <span class="tools-count-pill"><span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>Loading...</span>
+          </div>
+        </div>
+        <div class="panel-pad">
+          <div class="tools-skeleton" aria-label="Loading tools">
+            <div class="tools-skeleton-row"></div>
+            <div class="tools-skeleton-row"></div>
+            <div class="tools-skeleton-row"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
   
   const categories = Array.from(new Set(toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
   const activeSearch = (window.toolsSearchQuery || '').toLowerCase().trim();
   const activeStatus = window.toolsStatusFilter || 'all';
   const activeCategory = window.toolsCategoryFilter || 'all';
+  const hasActiveFilters = Boolean(activeSearch || activeStatus !== 'all' || activeCategory !== 'all');
 
   let filteredTools = toolsCache.filter(t => {
     if (activeStatus !== 'all' && (t.status || 'Available') !== activeStatus) return false;
@@ -3661,7 +3694,7 @@ function renderToolsDashboard() {
           <span class="tools-count-pill">${filteredTools.length} ${filteredTools.length === 1 ? 'tool' : 'tools'}</span>
         </div>
         <div class="tools-head-actions">
-          ${canEdit ? '<button class="btn btn-primary" data-nav="add-tool"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add New Tool</button>' : ''}
+          ${canEdit ? '<button type="button" class="btn btn-primary" data-nav="add-tool"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add New Tool</button>' : ''}
         </div>
       </div>
       <div class="panel-pad">
@@ -3676,8 +3709,8 @@ function renderToolsDashboard() {
               <option value="all"${activeStatus === 'all' ? ' selected' : ''}>All Statuses</option>
               <option value="Available"${activeStatus === 'Available' ? ' selected' : ''}>Available</option>
               <option value="In Use"${activeStatus === 'In Use' ? ' selected' : ''}>In Use</option>
-              <option value="Damaged"${activeStatus === 'Damaged' ? ' selected' : ''}>Damage Declared</option>
               <option value="In Maintenance"${activeStatus === 'In Maintenance' ? ' selected' : ''}>Under Maintenance</option>
+              <option value="Damaged"${activeStatus === 'Damaged' ? ' selected' : ''}>Damage Declared</option>
               <option value="Lost"${activeStatus === 'Lost' ? ' selected' : ''}>Lost</option>
             </select>
             <select id="toolsCategoryFilter" class="input-select tools-filter-select">
@@ -3688,58 +3721,75 @@ function renderToolsDashboard() {
         </div>
 
         <!-- Desktop Table View -->
-        <div class="table-responsive desktop-tools-table">
-          <table class="data-table reg">
-            <thead>
-              <tr>
-                <th>Tool ID</th>
-                <th>Tool Name</th>
-                <th>Category</th>
-                <th>Quantity</th>
-                <th>Location</th>
-                <th>Status</th>
-                <th>Notes</th>
-                ${canEdit ? '<th>Actions</th>' : ''}
-              </tr>
-            </thead>
-            <tbody>
+        <div class="desktop-tools-table">
+          <div class="tools-table-wrap">
+            <table class="tools-master-table">
+              <thead>
+                <tr>
+                  <th scope="col" style="width:140px;">Tool ID</th>
+                  <th scope="col">Tool Name</th>
+                  <th scope="col" style="width:130px;">Category</th>
+                  <th scope="col" style="width:90px; text-align:center;">Quantity</th>
+                  <th scope="col" style="width:120px;">Location</th>
+                  <th scope="col" style="width:130px; text-align:center;">Status</th>
+                  <th scope="col">Notes</th>
+                  ${canEdit ? '<th scope="col" style="width:140px; text-align:right;">Actions</th>' : ''}
+                </tr>
+              </thead>
+              <tbody>
   `;
 
   if (filteredTools.length === 0) {
-    html += `<tr><td colspan="${canEdit ? 8 : 7}" class="text-center" style="padding: 36px 16px; color:var(--text-muted); font-size:15px;">${toolsCache.length === 0 ? 'No tools recorded yet.' : 'No tools match the selected filters.'}</td></tr>`;
+    html += `
+      <tr>
+        <td colspan="${canEdit ? 8 : 7}" style="text-align:center; padding: 48px 16px;">
+          <div class="empty-state" style="padding:0;">
+            <div class="display" style="font-size:16px; margin-bottom:6px;">${toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
+            <p style="margin:0 0 16px; font-size:13.5px; color:var(--text-muted);">${toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
+            ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtn">Clear Filters</button>' : (canEdit ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
+          </div>
+        </td>
+      </tr>
+    `;
   } else {
     filteredTools.forEach(t => {
       html += `
         <tr>
-          <td data-label="Tool ID" class="mono">${escapeHtml(t.uniqueId || '-')}</td>
-          <td data-label="Tool Name"><strong>${escapeHtml(t.toolName)}</strong></td>
-          <td data-label="Category">${escapeHtml(t.category || '-')}</td>
-          <td data-label="Quantity"><span class="qty-pill">${String(t.quantity ?? 0)}</span></td>
-          <td data-label="Location">${escapeHtml(t.location || '-')}</td>
-          <td data-label="Status">${getStatusBadge(t.status)}</td>
-          <td data-label="Notes" class="mono">${escapeHtml(t.notes || '-')}</td>
-          ${canEdit ? `<td data-label="Actions">
-            <button class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}">Edit</button>
-            <button class="btn btn-danger btn-sm" data-delete-tool="${escapeHtml(t.id)}">Delete</button>
+          <td class="tool-id-cell">${escapeHtml(t.uniqueId || '—')}</td>
+          <td class="tool-name-cell"><strong>${escapeHtml(t.toolName)}</strong></td>
+          <td><span class="tool-cat-badge">${escapeHtml(t.category || 'General')}</span></td>
+          <td style="text-align:center;"><span class="tool-qty-pill">${String(t.quantity ?? 0)}</span></td>
+          <td><span class="tool-loc-badge"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(t.location || '—')}</span></td>
+          <td style="text-align:center;">${getStatusBadge(t.status)}</td>
+          <td class="tool-notes-cell" title="${escapeHtml(t.notes || '')}">${escapeHtml(t.notes || '—')}</td>
+          ${canEdit ? `<td class="tool-actions-cell">
+            <button type="button" class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}" title="Edit Tool">Edit</button>
+            <button type="button" class="btn btn-danger btn-sm" data-delete-tool="${escapeHtml(t.id)}" title="Delete Tool">Delete</button>
           </td>` : ''}
         </tr>
       `;
     });
   }
 
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
 
   // Mobile Card Grid View
   html += `<div class="mobile-tools-cards">`;
   if (filteredTools.length === 0) {
-    html += `<div class="empty-state" style="padding:40px 16px; text-align:center; color:var(--text-muted);">${toolsCache.length === 0 ? 'No tools recorded yet.' : 'No tools match your search.'}</div>`;
+    html += `
+      <div class="empty-state" style="padding:40px 16px; text-align:center;">
+        <div class="display" style="font-size:16px; margin-bottom:6px;">${toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
+        <p style="margin:0 0 16px; font-size:13px; color:var(--text-muted);">${toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
+        ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtnMobile">Clear Filters</button>' : (canEdit ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
+      </div>
+    `;
   } else {
     filteredTools.forEach(t => {
       html += `
         <div class="tool-mobile-card anim-reveal is-visible">
           <div class="tool-card-top">
             <div class="tool-card-identity">
-              <span class="tool-card-id mono">${escapeHtml(t.uniqueId || 'ID: —')}</span>
+              <span class="tool-card-id">${escapeHtml(t.uniqueId || 'ID: —')}</span>
               <h3 class="tool-card-name">${escapeHtml(t.toolName)}</h3>
             </div>
             <div class="tool-card-status">${getStatusBadge(t.status)}</div>
@@ -3749,7 +3799,7 @@ function renderToolsDashboard() {
             ${t.location ? `<span class="tool-meta-chip"><span class="meta-icon">📍</span>${escapeHtml(t.location)}</span>` : ''}
             <span class="tool-meta-chip tool-qty-chip"><span class="meta-icon">📦</span>Qty: <strong>${escapeHtml(t.quantity || '0')}</strong></span>
           </div>
-          ${t.notes ? `<div class="tool-card-notes"><span class="notes-label">Notes:</span> ${escapeHtml(t.notes)}</div>` : ''}
+          ${t.notes ? `<div class="tool-card-notes"><span class="notes-label">Notes:</span>${escapeHtml(t.notes)}</div>` : ''}
           ${canEdit ? `
             <div class="tool-card-actions">
               <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-edit-tool="${escapeHtml(t.id)}">
