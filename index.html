@@ -636,19 +636,23 @@
 
       // 4. Offline & Online connectivity indicators
       window.addEventListener('offline', () => {
-        const toast = document.createElement('div');
-        toast.className = 'toast toast-warn';
-        toast.textContent = 'You are currently offline. Cached records remain viewable.';
-        document.getElementById('toastRegion')?.appendChild(toast);
-        setTimeout(() => toast.remove(), 4500);
+        if (typeof window.showToast === 'function') {
+          window.showToast('You are currently offline. Cached records remain viewable.', {
+            title: 'Offline Mode',
+            type: 'warning',
+            duration: 4500
+          });
+        }
       });
 
       window.addEventListener('online', () => {
-        const toast = document.createElement('div');
-        toast.className = 'toast toast-good';
-        toast.textContent = 'Connection restored. Realtime sync active.';
-        document.getElementById('toastRegion')?.appendChild(toast);
-        setTimeout(() => toast.remove(), 3500);
+        if (typeof window.showToast === 'function') {
+          window.showToast('Connection restored. Realtime sync active.', {
+            title: 'Back Online',
+            type: 'success',
+            duration: 3500
+          });
+        }
       });
     })();
   </script>

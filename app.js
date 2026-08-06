@@ -139,10 +139,11 @@ function appAlert(message, options = {}) {
 function appConfirm(message, options = {}) {
   return showAppDialog(message, { title: options.title || 'Please confirm', type: options.type || 'confirm', confirmText: options.confirmText || 'Confirm', cancelText: options.cancelText || 'Cancel', showCancel: true });
 }
-window.appConfirm = appConfirm; // bridge for the classic-script error logger
-$('#appDialogConfirm').addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(true); });
-$('#appDialogCancel').addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(false); });
-$('#appDialog').addEventListener('click', (event) => { if (event.target.id === 'appDialog') closeAppDialog(false); });
+window.appConfirm = appConfirm;
+window.appAlert = appAlert;
+$('#appDialogConfirm')?.addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(true); });
+$('#appDialogCancel')?.addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(false); });
+$('#appDialog')?.addEventListener('click', (event) => { if (event.target.id === 'appDialog') closeAppDialog(false); });
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     const backdrop = $('#appDialog');
@@ -1584,14 +1585,22 @@ function formatTimestamp(ms) {
 function saveRegisterPreferences() { try { localStorage.setItem(REGISTER_PREFS_KEY, JSON.stringify({ filters: registerFilterState, expanded: registerViewExpanded, more: registerMoreFiltersOpen, filtersOpen: registerFiltersOpen })); } catch (_) { } }
 function loadRegisterPreferences() { try { const p = JSON.parse(localStorage.getItem(REGISTER_PREFS_KEY) || 'null'); if (p?.filters) registerFilterState = { ...registerFilterState, ...p.filters, page: 1 }; if (typeof p?.expanded === 'boolean') registerViewExpanded = p.expanded; if (typeof p?.more === 'boolean') registerMoreFiltersOpen = p.more; if (typeof p?.filtersOpen === 'boolean') registerFiltersOpen = p.filtersOpen; } catch (_) { } }
 function resetRegisterPreferences() { try { localStorage.removeItem(REGISTER_PREFS_KEY); } catch (_) { } resetRegisterFilters(); registerViewExpanded = false; registerMoreFiltersOpen = false; registerFiltersOpen = false; registerExpandedRows.clear(); }
-function showToast(message, { title = 'Done', type = 'success', duration = 3600, actionText = '', onAction = null } = {}) {
+function showToast(message, { title = 'Done', type = 'success', duration = 3500, actionText = '', onAction = null } = {}) {
   const region = $('#toastRegion'); if (!region) return;
-  const icons = { success: '✓', danger: '!', info: 'i', warning: '!' };
+  const icons = {
+    success: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
+    danger: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+    error: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+    warning: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+    warn: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+    info: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
+  };
+  const normType = (type === 'danger' || type === 'error') ? 'danger' : (type === 'warning' || type === 'warn') ? 'warning' : type === 'info' ? 'info' : 'success';
   const el = document.createElement('section');
-  el.className = 'toast'; el.dataset.type = type; el.setAttribute('role', type === 'danger' ? 'alert' : 'status'); el.style.setProperty('--toast-duration', `${duration}ms`);
-  el.innerHTML = `<span class="toast-icon" aria-hidden="true">${icons[type] || '✓'}</span><div class="toast-copy"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionText ? `<div class="toast-actions"><button type="button" class="toast-action">${escapeHtml(actionText)}</button></div>` : ''}</div><button type="button" class="toast-close" aria-label="Dismiss notification">×</button><span class="toast-progress" aria-hidden="true"><span class="toast-progress-fill"></span></span>`;
+  el.className = 'toast'; el.dataset.type = normType; el.setAttribute('role', normType === 'danger' ? 'alert' : 'status'); el.style.setProperty('--toast-duration', `${duration}ms`);
+  el.innerHTML = `<span class="toast-icon" aria-hidden="true">${icons[normType] || icons.success}</span><div class="toast-copy"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p>${actionText ? `<div class="toast-actions"><button type="button" class="toast-action">${escapeHtml(actionText)}</button></div>` : ''}</div><button type="button" class="toast-close" aria-label="Dismiss notification">×</button><span class="toast-progress" aria-hidden="true"><span class="toast-progress-fill"></span></span>`;
   let timer = null, remaining = duration, started = 0, paused = false, hovered = false, focused = false;
-  const close = () => { if (!el.isConnected || el.classList.contains('is-leaving')) return; clearTimeout(timer); el.classList.add('is-leaving'); setTimeout(() => el.remove(), 250) };
+  const close = () => { if (!el.isConnected || el.classList.contains('is-leaving')) return; clearTimeout(timer); el.classList.add('is-leaving'); setTimeout(() => el.remove(), 220) };
   const startTimer = () => { if (paused || !el.isConnected) return; clearTimeout(timer); started = Date.now(); timer = setTimeout(close, remaining) };
   const pauseTimer = () => { if (paused) return; paused = true; clearTimeout(timer); remaining = Math.max(250, remaining - (Date.now() - started)) };
   const resumeIfReady = () => { if (hovered || focused) return; paused = false; startTimer() };
@@ -1601,10 +1610,19 @@ function showToast(message, { title = 'Done', type = 'success', duration = 3600,
   el.addEventListener('mouseleave', () => { hovered = false; resumeIfReady() });
   el.addEventListener('focusin', () => { focused = true; pauseTimer() });
   el.addEventListener('focusout', (event) => { if (el.contains(event.relatedTarget)) return; focused = false; resumeIfReady() });
+  let startX = 0, startY = 0;
+  el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; pauseTimer(); }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    const endX = e.changedTouches[0].clientX, endY = e.changedTouches[0].clientY;
+    if (Math.abs(endX - startX) > 60 || (startY - endY) > 45) close();
+    else resumeIfReady();
+  }, { passive: true });
+  try { if (navigator.vibrate) navigator.vibrate(normType === 'danger' ? [20, 30, 20] : 15); } catch (_) {}
   region.appendChild(el);
-  while (region.children.length > 4) { const oldest = region.firstElementChild; if (oldest && oldest !== el) oldest.remove(); else break; }
+  while (region.children.length > 3) { const oldest = region.firstElementChild; if (oldest && oldest !== el) oldest.remove(); else break; }
   startTimer();
 }
+window.showToast = showToast;
 function setFormDirty(value = true) { formDirty = value; document.querySelector('.page-head h1')?.classList.toggle('has-unsaved', value); }
 function isRegisterRowExpanded(id) { const overridden = registerExpandedRows.has(String(id)); return overridden ? !registerViewExpanded : registerViewExpanded; }
 function syncRegisterStickyOffset() { const t = $('#registerViewToolbar'), h = document.querySelector('.topbar'); if (!t || !h) return; const apply = () => document.documentElement.style.setProperty('--register-sticky-top', `${Math.ceil(h.getBoundingClientRect().height) + 6}px`); apply(); registerStickyObserver?.disconnect(); if ('ResizeObserver' in window) { registerStickyObserver = new ResizeObserver(apply); registerStickyObserver.observe(h); } }
@@ -3142,35 +3160,35 @@ async function handleClearAllStoreData() {
     setSyncingState(false);
   }
 }
-$('#clearDataCancelBtn').addEventListener('click', () => closeClearDataDialog(false));
-$('#clearDataVerifyBtn').addEventListener('click', verifyClearDataPassword);
-$('#clearDataPassword').addEventListener('keydown', (event) => {
+$('#clearDataCancelBtn')?.addEventListener('click', () => closeClearDataDialog(false));
+$('#clearDataVerifyBtn')?.addEventListener('click', verifyClearDataPassword);
+$('#clearDataPassword')?.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') { event.preventDefault(); void verifyClearDataPassword(); }
   if (event.key === 'Escape') closeClearDataDialog(false);
 });
-$('#clearDataDialog').addEventListener('click', (event) => { if (event.target.id === 'clearDataDialog') closeClearDataDialog(false); });
+$('#clearDataDialog')?.addEventListener('click', (event) => { if (event.target.id === 'clearDataDialog') closeClearDataDialog(false); });
 document.addEventListener('click', (event) => { const trigger = event.target.closest?.('[data-photo-gallery]'); if (trigger) { event.preventDefault(); openPhotoGallery(trigger.dataset.photoGallery); } });
-$('#photoGalleryCloseBtn').addEventListener('click', () => { triggerHaptic(10); closePhotoGallery(); });
-$('#photoGalleryPrev').addEventListener('click', () => {
+$('#photoGalleryCloseBtn')?.addEventListener('click', () => { triggerHaptic(10); closePhotoGallery(); });
+$('#photoGalleryPrev')?.addEventListener('click', () => {
   if (photoGalleryUrls.length) {
     triggerHaptic(12);
     photoGalleryIndex = (photoGalleryIndex - 1 + photoGalleryUrls.length) % photoGalleryUrls.length;
     updatePhotoGallery();
   }
 });
-$('#photoGalleryNext').addEventListener('click', () => {
+$('#photoGalleryNext')?.addEventListener('click', () => {
   if (photoGalleryUrls.length) {
     triggerHaptic(12);
     photoGalleryIndex = (photoGalleryIndex + 1) % photoGalleryUrls.length;
     updatePhotoGallery();
   }
 });
-$('#photoGalleryDialog').addEventListener('click', (event) => { if (event.target.id === 'photoGalleryDialog') closePhotoGallery(); });
+$('#photoGalleryDialog')?.addEventListener('click', (event) => { if (event.target.id === 'photoGalleryDialog') closePhotoGallery(); });
 document.addEventListener('keydown', (event) => {
-  if ($('#photoGalleryDialog').classList.contains('hidden')) return;
+  if ($('#photoGalleryDialog')?.classList.contains('hidden')) return;
   if (event.key === 'Escape') closePhotoGallery();
-  if (event.key === 'ArrowLeft') $('#photoGalleryPrev').click();
-  if (event.key === 'ArrowRight') $('#photoGalleryNext').click();
+  if (event.key === 'ArrowLeft') $('#photoGalleryPrev')?.click();
+  if (event.key === 'ArrowRight') $('#photoGalleryNext')?.click();
 });
 
 // Touch Swipe Gestures for Mobile Photo Lightbox
