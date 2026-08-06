@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=21">
 </head>
 
 <body>
@@ -377,10 +377,10 @@
     </button>
   </div>
 
-  <script src="boot.js"></script>
+  <script src="boot.js?v=21"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="app.js?v=14"></script>
-  <script src="anim.js?v=14" defer></script>
+  <script type="module" src="app.js?v=21"></script>
+  <script src="anim.js?v=21" defer></script>
 
 
   <script>
@@ -616,14 +616,22 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);
+            try { reg.update(); } catch (_) {}
             
+            // Check for updates on visibility change
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                try { reg.update(); } catch (_) {}
+              }
+            });
+
             // Check for updates
             reg.addEventListener('updatefound', () => {
               const newWorker = reg.installing;
               if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('[PWA] New version ready.');
+                    console.log('[PWA] New version installed and ready.');
                   }
                 });
               }
@@ -631,6 +639,15 @@
           }).catch((err) => {
             console.warn('[PWA] Service Worker registration notice:', err);
           });
+        });
+
+        // Auto reload on new service worker taking controller
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
         });
       }
 
