@@ -1187,10 +1187,10 @@ html[data-theme="dark"] table.reg td.register-actions .btn-danger:hover {
 
 /* Unified application dialog for confirmations, warnings and messages */
 .app-dialog-backdrop {
-  position: fixed; inset: 0; z-index: 1000;
+  position: fixed; inset: 0; z-index: 10000;
   display: grid; place-items: center; padding: 20px;
-  background: rgba(2,6,23,.62);
-  backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+  background: rgba(2,6,23,.72);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   animation: dialogFade .18s ease-out;
 }
 .app-dialog {
@@ -1201,19 +1201,23 @@ html[data-theme="dark"] table.reg td.register-actions .btn-danger:hover {
   border: 1px solid rgba(255,255,255,.45);
   box-shadow: 0 28px 80px rgba(2,6,23,.36);
   animation: dialogPop .24s var(--ease-spring);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
 }
 .app-dialog-icon {
   width: 48px; height: 48px; display: grid; place-items: center;
   border-radius: 15px; background: var(--amber-soft); color: var(--amber-dark);
   font-size: 22px; font-weight: 800;
+  flex-shrink: 0;
 }
 .app-dialog[data-type="danger"] .app-dialog-icon { background: var(--bad-soft); color: var(--bad-dark); }
 .app-dialog[data-type="success"] .app-dialog-icon { background: var(--good-soft); color: var(--good-dark); }
 .app-dialog[data-type="info"] .app-dialog-icon { background: #dbeafe; color: #1d4ed8; }
+.app-dialog[data-type="confirm"] .app-dialog-icon { background: #e0e7ff; color: #4338ca; }
 .app-dialog-content h2 { margin: 1px 0 7px; font-size: 22px; text-transform: none; }
 .app-dialog-content p { margin: 0; color: var(--steel-600); white-space: pre-line; line-height: 1.6; }
-.app-dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
-.app-dialog-actions .btn { min-width: 100px; }
+.app-dialog-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.app-dialog-actions .btn { min-width: 100px; min-height: 42px; font-size: 14px; }
 .app-dialog[data-type="danger"] #appDialogConfirm { background: var(--bad); color: #fff; box-shadow: 0 8px 20px rgba(239,68,68,.22); }
 html[data-theme="dark"] .app-dialog { background: #111827; color: #e5edf7; border-color: rgba(148,163,184,.2); }
 html[data-theme="dark"] .app-dialog-content h2 { color: #f8fafc; }
@@ -1221,10 +1225,10 @@ html[data-theme="dark"] .app-dialog-content p { color: #b8c4d4; }
 @keyframes dialogFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes dialogPop { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
 @media (max-width: 480px) {
-  .app-dialog { grid-template-columns: 44px 1fr; padding: 20px; border-radius: 17px; }
+  .app-dialog { grid-template-columns: 44px 1fr; padding: 20px 18px; border-radius: 20px; }
   .app-dialog-icon { width: 42px; height: 42px; }
-  .app-dialog-actions { flex-direction: column-reverse; }
-  .app-dialog-actions .btn { width: 100%; }
+  .app-dialog-actions { flex-direction: column-reverse; gap: 8px; }
+  .app-dialog-actions .btn { width: 100%; min-height: 44px; }
 }
 
 
@@ -2124,31 +2128,34 @@ html[data-theme="light"] .status-sync:focus-visible {
 
 /* Admin clear-all-data dialog */
 .clear-data-dialog-backdrop {
-  position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center;
-  padding: 18px; background: rgba(2,6,23,.68); backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
+  position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center;
+  padding: 18px; background: rgba(2,6,23,.72); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .clear-data-dialog {
   width: min(440px, 100%); padding: 24px; border-radius: 20px;
   background: var(--surface); color: var(--text-main); border: 1px solid var(--surface-border);
   box-shadow: 0 28px 80px rgba(2,6,23,.38);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
 }
 .clear-data-dialog h2 { margin: 0 0 8px; color: var(--text-strong); text-transform: none; }
 .clear-data-dialog p { margin: 0 0 18px; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
-.clear-data-dialog .actions-row { justify-content: flex-end; margin-top: 18px; }
+.clear-data-dialog .actions-row { justify-content: flex-end; margin-top: 18px; gap: 10px; }
 .danger-zone { border-color: rgba(239,68,68,.22); }
 .danger-zone .panel-head { background: rgba(239,68,68,.055); }
 .danger-zone-note { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
 @media (max-width:480px) {
-  .clear-data-dialog { padding: 20px 16px; border-radius: 16px; }
-  .clear-data-dialog .actions-row { display: grid !important; grid-template-columns: 1fr; }
+  .clear-data-dialog { padding: 20px 16px; border-radius: 20px; }
+  .clear-data-dialog .actions-row { display: grid !important; grid-template-columns: 1fr; gap: 8px; }
+  .clear-data-dialog .actions-row .btn { min-height: 44px; }
 }
 
 
 /* Photo gallery and five-photo limit */
 .photo-more { border:0; cursor:pointer; font:700 11px/1 'Inter',sans-serif; }
 .photo-more:hover { background:var(--amber-soft); color:var(--amber-dark); }
-.photo-gallery-backdrop { position:fixed; inset:0; z-index:1200; display:grid; place-items:center; padding:18px; background:rgba(2,6,23,.84); backdrop-filter:blur(8px); }
+.photo-gallery-backdrop { position:fixed; inset:0; z-index:10000; display:grid; place-items:center; padding:18px; background:rgba(2,6,23,.84); backdrop-filter:blur(8px); }
 .photo-gallery-dialog { width:min(920px,100%); max-height:92vh; display:flex; flex-direction:column; overflow:hidden; border:1px solid rgba(255,255,255,.16); border-radius:20px; background:var(--surface); box-shadow:0 30px 90px rgba(0,0,0,.5); }
 .photo-gallery-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid var(--surface-border); }
 .photo-gallery-head h2 { margin:0; color:var(--text-strong); text-transform:none; }
@@ -2473,16 +2480,17 @@ html[data-theme="light"] .status-sync:focus-visible {
   .reg-pagination .btn { width: 100%; min-width: 0; }
 
   /* Dialogs */
-  .app-dialog-backdrop, .clear-data-dialog-backdrop, .photo-gallery-backdrop { padding: 12px; }
+  .app-dialog-backdrop, .clear-data-dialog-backdrop, .photo-gallery-backdrop { padding: 16px; z-index: 10000; }
   .app-dialog, .clear-data-dialog, .photo-gallery-dialog {
-    width: 100%; max-width: 100%; max-height: calc(100dvh - 24px); overflow-y: auto;
+    width: 100%; max-width: min(440px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
   }
-  .app-dialog { grid-template-columns: 42px minmax(0, 1fr); gap: 12px; padding: 18px; }
+  .app-dialog { grid-template-columns: 42px minmax(0, 1fr); gap: 12px; padding: 20px 18px; border-radius: 20px; }
   .app-dialog-content { min-width: 0; }
   .app-dialog-content p { overflow-wrap: anywhere; }
-  .app-dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .app-dialog-actions .btn { width: 100%; }
-  .clear-data-dialog .actions-row { margin-top: 14px; }
+  .app-dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .app-dialog-actions .btn { width: 100%; min-height: 44px; }
+  .clear-data-dialog .actions-row { margin-top: 14px; gap: 8px; }
+  .clear-data-dialog .actions-row .btn { min-height: 44px; }
   .photo-gallery-head { position: sticky; top: 0; z-index: 2; background: var(--surface); }
 
   /* Prevent hover-only movement on touch layouts */
@@ -3337,24 +3345,27 @@ a, button, input, select, textarea, .kpi, .navlink, .status-filter-chip, .photo-
   }
 }
 
-/* 6. Mobile Dialogs (Bottom Sheet UI for Phone Screens) */
+/* 6. Mobile Dialogs (Clean Center Floating Modals with Safe Clearance) */
 @media (max-width: 640px) {
   .app-dialog-backdrop,
   .clear-data-dialog-backdrop {
-    align-items: flex-end !important;
-    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    align-items: center !important;
+    justify-items: center !important;
+    padding: 16px !important;
+    z-index: 10000 !important;
   }
   .app-dialog,
   .clear-data-dialog {
     width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-    border-top-left-radius: 20px !important;
-    border-top-right-radius: 20px !important;
-    padding: 24px 20px !important;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.3) !important;
+    max-width: min(440px, 100%) !important;
+    margin: auto !important;
+    border-radius: 20px !important;
+    padding: 22px 18px !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.45) !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow-y: auto !important;
   }
 }
 
@@ -4835,9 +4846,9 @@ html[data-theme="light"] .tool-card-notes {
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  z-index: 9999;
+  z-index: 10000;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   padding: 16px;
   animation: fadeIn 0.2s ease-out;

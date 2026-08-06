@@ -109,6 +109,7 @@ function closeAppDialog(result) {
   const backdrop = $('#appDialog');
   if (!backdrop || backdrop.classList.contains('hidden')) return;
   backdrop.classList.add('hidden');
+  document.body.classList.remove('modal-open');
   const resolver = appDialogResolver;
   appDialogResolver = null;
   if (appDialogLastFocus && typeof appDialogLastFocus.focus === 'function') appDialogLastFocus.focus();
@@ -126,7 +127,9 @@ function showAppDialog(message, options = {}) {
   $('#appDialogConfirm').textContent = confirmText;
   $('#appDialogCancel').textContent = cancelText;
   $('#appDialogCancel').classList.toggle('hidden', !showCancel);
+  document.body.classList.add('modal-open');
   backdrop.classList.remove('hidden');
+  try { if (navigator.vibrate) navigator.vibrate(type === 'danger' ? [30, 40, 30] : 20); } catch (_) {}
   setTimeout(() => $('#appDialogConfirm').focus(), 0);
   return new Promise((resolve) => { appDialogResolver = resolve; });
 }
@@ -137,9 +140,18 @@ function appConfirm(message, options = {}) {
   return showAppDialog(message, { title: options.title || 'Please confirm', type: options.type || 'confirm', confirmText: options.confirmText || 'Confirm', cancelText: options.cancelText || 'Cancel', showCancel: true });
 }
 window.appConfirm = appConfirm; // bridge for the classic-script error logger
-$('#appDialogConfirm').addEventListener('click', () => closeAppDialog(true));
-$('#appDialogCancel').addEventListener('click', () => closeAppDialog(false));
+$('#appDialogConfirm').addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(true); });
+$('#appDialogCancel').addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(false); });
 $('#appDialog').addEventListener('click', (event) => { if (event.target.id === 'appDialog') closeAppDialog(false); });
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    const backdrop = $('#appDialog');
+    if (backdrop && !backdrop.classList.contains('hidden')) {
+      event.preventDefault();
+      closeAppDialog(false);
+    }
+  }
+});
 // iOS Safari Install Modal Controls
 function isIosDevice() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) || 
