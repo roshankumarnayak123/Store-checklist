@@ -3468,8 +3468,9 @@ a, button, input, select, textarea, .kpi, .navlink, .status-filter-chip, .photo-
 
 /* 6. Mobile Dialogs (Clean Center Floating Modals with Safe Clearance) */
 @media (max-width: 640px) {
-  .app-dialog-backdrop,
-  .clear-data-dialog-backdrop {
+  .app-dialog-backdrop:not(.hidden),
+  .clear-data-dialog-backdrop:not(.hidden),
+  .photo-gallery-backdrop:not(.hidden) {
     display: grid !important;
     place-items: center !important;
     align-items: center !important;
@@ -5072,5 +5073,22 @@ html[data-theme="light"] .ios-step-row {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* Master hidden rule to prevent any cascade or media-query leak */
+.hidden,
+[hidden],
+#authScreen.hidden,
+#appScreen.hidden,
+.app-dialog-backdrop.hidden,
+.clear-data-dialog-backdrop.hidden,
+.photo-gallery-backdrop.hidden,
+.ios-install-backdrop.hidden,
+#cloudFailSafe.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 
 
