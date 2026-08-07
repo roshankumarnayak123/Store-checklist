@@ -5635,127 +5635,504 @@ html[data-theme="dark"] .tool-timeline-note {
   }
 }
 
-.overdue-modal-dialog {
-  width: min(650px, 100%);
-}
+/* =========================================================================
+   OVERDUE MODAL & NOTIFICATION DRAWER CONTAINER
+   ========================================================================= */
 
-.overdue-cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 58vh;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.overdue-card {
-  padding: 14px 16px;
-  border-radius: 12px;
+.overdue-modal-container {
+  position: relative;
+  width: min(680px, 94vw);
+  max-height: 86vh;
   background: var(--surface);
   border: 1px solid var(--surface-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.overdue-card:hover {
-  border-color: rgba(245, 158, 11, 0.4);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-
-.overdue-card-head {
+  border-radius: 20px;
+  box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.05);
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.overdue-item-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-strong);
-  display: block;
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.overdue-meta {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 2px;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.overdue-card-body {
+.overdue-modal-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px dashed var(--surface-border);
+  padding: 18px 22px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--surface-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.overdue-person-row {
+.overdue-modal-head-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.overdue-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--amber-dark, #d97706);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.overdue-head-row {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.overdue-person-info {
-  font-size: 13px;
+.overdue-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-strong);
+  margin: 0;
+  letter-spacing: -0.2px;
 }
 
-.overdue-person-label {
+.overdue-count-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--bad, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.overdue-modal-subtitle {
+  font-size: 12.5px;
   color: var(--text-muted);
-  font-size: 12px;
-  margin-right: 4px;
+  margin-top: 3px;
+  line-height: 1.35;
 }
 
-.overdue-vendor {
-  font-size: 12px;
+.overdue-modal-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
   color: var(--text-muted);
-  margin-left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
-.overdue-call-btn {
+.overdue-modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--bad, #ef4444);
+  border-color: rgba(239, 68, 68, 0.3);
+  transform: rotate(90deg);
+}
+
+.overdue-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  scrollbar-width: thin;
+}
+
+.overdue-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* =========================================================================
+   OVERDUE CARD ITEM DESIGN
+   ========================================================================= */
+
+.overdue-card-item {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.overdue-card-item:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.overdue-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.overdue-card-name-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.overdue-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.overdue-card-title-wrap {
+  min-width: 0;
+}
+
+.overdue-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  display: block;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.overdue-card-code {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.overdue-badge-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  background: #0284c7;
-  color: #ffffff;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--bad, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.overdue-call-btn:hover {
-  background: #0369a1;
-  color: #ffffff;
+.overdue-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bad, #ef4444);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
+  animation: pulseDot 2s infinite ease-in-out;
 }
 
-.overdue-card-actions {
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+.overdue-meta-chips {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.overdue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: var(--surface-soft, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--surface-border);
+  font-size: 12px;
+}
+
+.overdue-chip-label {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.overdue-chip-value {
+  color: var(--text-strong);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.overdue-chip-total {
+  color: var(--text-muted);
+  font-weight: normal;
+}
+
+.overdue-contact-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  border: 1px dashed var(--surface-border);
+  margin-bottom: 14px;
+}
+
+.overdue-supervisor-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.overdue-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.overdue-supervisor-text {
+  font-size: 12.5px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overdue-supervisor-name {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.overdue-supervisor-vendor {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  margin-left: 4px;
+}
+
+.overdue-call-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #0284c7;
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+  flex-shrink: 0;
+}
+
+.overdue-call-pill-btn:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.4);
+}
+
+.overdue-no-phone {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.overdue-card-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
   align-items: center;
 }
 
-.is-overdue-chip {
-  border-color: rgba(239, 68, 68, 0.4) !important;
-  color: var(--bad, #ef4444) !important;
-  font-weight: 700 !important;
+.overdue-action-view,
+.overdue-action-return {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
 }
 
-.overdue-pill {
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: var(--bad, #ef4444) !important;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  display: inline-block;
+.overdue-modal-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 22px;
+  background: var(--surface-soft);
+  border-top: 1px solid var(--surface-border);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.overdue-footer-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.overdue-footer-done {
+  min-width: 90px;
+  font-weight: 700;
+}
+
+.overdue-empty-state {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.overdue-empty-icon {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+.overdue-empty-title {
+  font-size: 16px;
+  color: var(--text-strong);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.overdue-empty-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* =========================================================================
+   MOBILE RESPONSIVE RULES FOR OVERDUE PANEL (< 640px)
+   ========================================================================= */
+
+@media (max-width: 640px) {
+  .app-dialog-backdrop:has(.overdue-modal-container) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .overdue-modal-container {
+    width: 100%;
+    max-width: 100%;
+    max-height: 88dvh;
+    min-height: 45dvh;
+    border-radius: 22px 22px 0 0;
+    margin: auto 0 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    animation: mobileSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes mobileSheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .overdue-modal-head {
+    padding: 16px 16px 14px;
+  }
+
+  .overdue-icon-badge {
+    width: 36px;
+    height: 36px;
+  }
+
+  .overdue-modal-title {
+    font-size: 16px;
+  }
+
+  .overdue-modal-body {
+    padding: 14px 16px;
+  }
+
+  .overdue-card-item {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .overdue-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .overdue-badge-pill {
+    align-self: flex-start;
+    font-size: 10.5px;
+    padding: 3px 8px;
+  }
+
+  .overdue-meta-chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .overdue-meta-chips .overdue-chip:last-child {
+    grid-column: span 2;
+  }
+
+  .overdue-chip {
+    padding: 4px 8px;
+    font-size: 11.5px;
+  }
+
+  .overdue-card-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .overdue-card-btns .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .overdue-card-btns .btn:only-child {
+    grid-column: span 2;
+  }
+
+  .overdue-modal-foot {
+    padding: 12px 16px;
+  }
 }
 
 /* Master hidden rule to prevent any cascade or media-query leak */
@@ -5773,6 +6150,13 @@ html[data-theme="dark"] .tool-timeline-note {
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+@keyframes highlightRow {
+  0% { background-color: rgba(245, 158, 11, 0.35); }
+  50% { background-color: rgba(245, 158, 11, 0.2); }
+  100% { background-color: transparent; }
+}
+
 
 
 

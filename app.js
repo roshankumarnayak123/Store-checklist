@@ -1383,45 +1383,49 @@ function enrichedIssues() {
 // =========================================================================
 function getOverdueIssues(thresholdDays = 7) {
   const now = Date.now();
-  const oneDayMs = 24 * 60 * 60 * 1000;
+  const oneDayMs = 86400000;
   const thresholdMs = thresholdDays * oneDayMs;
-  const all = enrichedIssues();
-  return all.filter((issue) => {
-    if (issue.status === 'Returned') return false;
+  const overdue = [];
+
+  for (let i = 0; i < issuesCache.length; i++) {
+    const issue = issuesCache[i];
+    const qtyIssued = Number(issue.qtyIssued) || 0;
+    const qtyReturned = Number(issue.qtyReturned) || 0;
+    if (qtyReturned >= qtyIssued) continue;
+
     let issueTime = 0;
     if (issue.issueDate) {
       const parts = String(issue.issueDate).split('-');
       if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        issueTime = d.getTime();
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+          issueTime = new Date(y, m, d).getTime();
+        }
       }
     }
     if (!issueTime && issue.createdAt) {
-      issueTime = Number(issue.createdAt);
+      issueTime = Number(issue.createdAt) || 0;
     }
-    if (!issueTime) return false;
-    return (now - issueTime) >= thresholdMs;
-  }).map(issue => {
-    let issueTime = 0;
-    if (issue.issueDate) {
-      const parts = String(issue.issueDate).split('-');
-      if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        issueTime = d.getTime();
-      }
+    if (!issueTime) continue;
+
+    const diff = now - issueTime;
+    if (diff >= thresholdMs) {
+      const daysAgo = Math.max(1, Math.floor(diff / oneDayMs));
+      const daysOverdue = Math.max(0, daysAgo - thresholdDays);
+      overdue.push({
+        ...issue,
+        materialName: issue.materialName || '(unnamed)',
+        status: statusOf(issue),
+        daysAgo,
+        daysOverdue,
+        qtyRemaining: Math.max(0, qtyIssued - qtyReturned)
+      });
     }
-    if (!issueTime && issue.createdAt) issueTime = Number(issue.createdAt);
-    const daysAgo = Math.max(1, Math.floor((now - issueTime) / oneDayMs));
-    const daysOverdue = Math.max(0, daysAgo - thresholdDays);
-    const qtyIssued = Number(issue.qtyIssued) || 0;
-    const qtyReturned = Number(issue.qtyReturned) || 0;
-    return {
-      ...issue,
-      daysAgo,
-      daysOverdue,
-      qtyRemaining: Math.max(0, qtyIssued - qtyReturned)
-    };
-  }).sort((a, b) => b.daysAgo - a.daysAgo);
+  }
+
+  return overdue.sort((a, b) => b.daysAgo - a.daysAgo);
 }
 
 function getNotificationPermissionLabel() {
@@ -1471,9 +1475,12 @@ function showNativeNotification(title, options = {}) {
     ...options
   };
 
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+  if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
     navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(title, defaultOpts);
+      if (reg && typeof reg.showNotification === 'function') {
+        return reg.showNotification(title, defaultOpts);
+      }
+      try { new Notification(title, defaultOpts); } catch (_) {}
     }).catch(() => {
       try { new Notification(title, defaultOpts); } catch (_) {}
     });
@@ -1543,58 +1550,123 @@ function renderOverdueBannerHtml() {
   `;
 }
 
+function formatShortDate(dateStr) {
+  if (!dateStr) return '—';
+  const parts = String(dateStr).split('-');
+  if (parts.length !== 3) return dateStr;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  if (monthIdx >= 0 && monthIdx < 12 && !isNaN(day)) {
+    return `${day} ${months[monthIdx]} ${parts[0]}`;
+  }
+  return dateStr;
+}
+
 function openOverdueFollowUpModal() {
   const overdue = getOverdueIssues(7);
   const listEl = $('#overdueFollowUpList');
   const subEl = $('#overdueModalSubtitle');
-  if (subEl) subEl.textContent = `${overdue.length} ${overdue.length === 1 ? 'item' : 'items'} issued over 7 days ago pending return.`;
+  const countBadgeEl = $('#overdueCountBadge');
+
+  if (countBadgeEl) {
+    countBadgeEl.textContent = `${overdue.length} Overdue`;
+  }
+  if (subEl) {
+    subEl.textContent = `${overdue.length} ${overdue.length === 1 ? 'item' : 'items'} issued over 7 days ago pending return.`;
+  }
+
   if (listEl) {
     if (overdue.length === 0) {
       listEl.innerHTML = `
-        <div class="empty-state" style="padding: 28px 10px; text-align:center;">
-          <div style="font-size: 36px; margin-bottom: 8px;">✅</div>
-          <strong style="font-size:15px; color:var(--text-strong); display:block;">All issued items are up to date!</strong>
-          <p style="color:var(--text-muted); font-size:13px; margin:4px 0 0;">No materials or tools are currently pending return past the 7-day threshold.</p>
+        <div class="overdue-empty-state">
+          <div class="overdue-empty-icon">✅</div>
+          <strong class="overdue-empty-title">All issued items are up to date!</strong>
+          <p class="overdue-empty-text">No materials or tools are currently pending return past the 7-day threshold.</p>
         </div>
       `;
     } else {
       listEl.innerHTML = overdue.map(item => `
-        <div class="overdue-card">
-          <div class="overdue-card-head">
-            <div>
-              <strong class="overdue-item-name">${escapeHtml(item.materialName)}</strong>
-              <div class="overdue-meta">
-                <span>Qty Remaining: <strong>${item.qtyRemaining}</strong> / ${item.qtyIssued}</span>
-                &bull;
-                <span>Area: ${escapeHtml(item.area || '—')}</span>
-                &bull;
-                <span>Issued: ${escapeHtml(item.issueDate || '—')}</span>
+        <div class="overdue-card-item">
+          <div class="overdue-card-top">
+            <div class="overdue-card-name-group">
+              <div class="overdue-item-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                  <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+              </div>
+              <div class="overdue-card-title-wrap">
+                <strong class="overdue-card-title">${escapeHtml(item.materialName)}</strong>
+                ${item.id ? `<span class="overdue-card-code">#${escapeHtml(item.id.slice(-6).toUpperCase())}</span>` : ''}
               </div>
             </div>
-            <span class="badge bad" style="font-size:11.5px; font-weight:700; flex-shrink:0;">${item.daysAgo}d ago (${item.daysOverdue}d overdue)</span>
+            <div class="overdue-badge-pill">
+              <span class="overdue-badge-dot"></span>
+              <span class="overdue-badge-text">${item.daysAgo}d ago (${item.daysOverdue}d overdue)</span>
+            </div>
           </div>
-          <div class="overdue-card-body">
-            <div class="overdue-person-row">
-              <div class="overdue-person-info">
-                <span class="overdue-person-label">Issued To:</span>
-                <strong>${escapeHtml(item.supervisorName || '—')}</strong>
-                ${item.vendor ? `<span class="overdue-vendor">(${escapeHtml(item.vendor)})</span>` : ''}
+
+          <div class="overdue-meta-chips">
+            <div class="overdue-chip">
+              <span class="overdue-chip-label">Pending:</span>
+              <strong class="overdue-chip-value">${item.qtyRemaining} <span class="overdue-chip-total">/ ${item.qtyIssued}</span></strong>
+            </div>
+            <div class="overdue-chip">
+              <span class="overdue-chip-label">Area:</span>
+              <strong class="overdue-chip-value">${escapeHtml(item.area || '—')}</strong>
+            </div>
+            <div class="overdue-chip">
+              <span class="overdue-chip-label">Issued:</span>
+              <strong class="overdue-chip-value">${formatShortDate(item.issueDate)}</strong>
+            </div>
+          </div>
+
+          <div class="overdue-contact-card">
+            <div class="overdue-supervisor-info">
+              <div class="overdue-avatar">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
               </div>
+              <div class="overdue-supervisor-text">
+                <span class="overdue-supervisor-name">${escapeHtml(item.supervisorName || 'Unassigned')}</span>
+                ${item.vendor ? `<span class="overdue-supervisor-vendor">(${escapeHtml(item.vendor)})</span>` : ''}
+              </div>
+            </div>
+            <div class="overdue-contact-action">
               ${item.supervisorContact ? `
-                <a href="tel:${escapeHtml(item.supervisorContact)}" class="btn btn-primary btn-sm overdue-call-btn" title="Call ${escapeHtml(item.supervisorName)}">
+                <a href="tel:${escapeHtml(item.supervisorContact)}" class="overdue-call-pill-btn" title="Call ${escapeHtml(item.supervisorName)} (${escapeHtml(item.supervisorContact)})">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                   </svg>
-                  Call Supervisor
+                  <span>Call</span>
                 </a>
-              ` : '<span class="muted" style="font-size:11.5px;">No phone number</span>'}
+              ` : `
+                <span class="overdue-no-phone">No phone</span>
+              `}
             </div>
-            <div class="overdue-card-actions">
-              <button type="button" class="btn btn-ghost btn-sm" data-overdue-view-issue="${item.id}">View Details</button>
-              ${(!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('admin')) ? `
-                <button type="button" class="btn btn-dark btn-sm" data-overdue-record-return="${item.id}">Record Return</button>
-              ` : ''}
-            </div>
+          </div>
+
+          <div class="overdue-card-btns">
+            <button type="button" class="btn btn-ghost btn-sm overdue-action-view" data-overdue-view-issue="${item.id}">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span>View Details</span>
+            </button>
+            ${(currentUser && (currentUser.roles.includes('admin') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('user'))) ? `
+              <button type="button" class="btn btn-dark btn-sm overdue-action-return" data-overdue-record-return="${item.id}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 14 4 9 9 4"/>
+                  <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+                </svg>
+                <span>Record Return</span>
+              </button>
+            ` : ''}
           </div>
         </div>
       `).join('');
@@ -1608,17 +1680,31 @@ function openOverdueFollowUpModal() {
       closeOverdueFollowUpModal();
       registerFilterState.q = '';
       registerFilterState.status = 'all';
-      registerFilterState.page = 1;
+
+      // Find exact page containing this issue
+      const all = typeof enrichedIssues === 'function' ? enrichedIssues() : issuesCache;
+      const itemIndex = all.findIndex(item => item.id === id);
+      if (itemIndex !== -1) {
+        registerFilterState.page = Math.floor(itemIndex / REG_PAGE_SIZE) + 1;
+      } else {
+        registerFilterState.page = 1;
+      }
+
       registerExpandedRows.add(id);
       saveRegisterPreferences();
-      navigateTo('register');
+      if (currentView === 'register') {
+        render();
+      } else {
+        navigateTo('register');
+      }
       setTimeout(() => {
         const row = document.querySelector(`tr[data-register-id="${CSS.escape(id)}"]`);
         if (row) {
           row.classList.add('mobile-expanded');
           row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          row.style.animation = 'highlightRow 2.2s ease';
         }
-      }, 200);
+      }, 250);
     });
   });
 
@@ -1688,15 +1774,19 @@ function render() {
   const html = fn();
   if (typeof html === 'string') main.innerHTML = html;
   wireViewEvents(currentView);
+  updateOverdueTopbarBadge();
 }
 
 function statsSummary() {
-  const issues = enrichedIssues();
-  return {
-    total: issues.length,
-    pending: issues.filter((i) => i.status !== 'Returned').length,
-    returned: issues.filter((i) => i.status === 'Returned').length,
-  };
+  let pending = 0;
+  let returned = 0;
+  const total = issuesCache.length;
+  for (let i = 0; i < total; i++) {
+    const isRet = (issuesCache[i].qtyReturned || 0) >= (issuesCache[i].qtyIssued || 0);
+    if (isRet) returned++;
+    else pending++;
+  }
+  return { total, pending, returned };
 }
 
 // Before the first real-time snapshot arrives, issuesCache is genuinely empty —
@@ -2054,10 +2144,17 @@ function renderRegister() {
   const areaOptions = registerFilterOptions('area');
   const supervisorOptions = registerFilterOptions('supervisorName');
   const issuedByOptions = Array.from(new Set(issuesCache.map(r => String(r.issuedByName || r.issuedBy || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-  const totalPending = allEnriched.filter(i => i.status !== 'Returned').length;
-  const totalReturned = allEnriched.filter(i => i.status === 'Returned').length;
-  const totalIssued = allEnriched.filter(i => i.status === 'Issued').length;
-  const totalPartial = allEnriched.filter(i => i.status === 'Partially Returned').length;
+  let totalPending = 0, totalReturned = 0, totalIssued = 0, totalPartial = 0;
+  for (let i = 0; i < allEnriched.length; i++) {
+    const st = allEnriched[i].status;
+    if (st === 'Returned') {
+      totalReturned++;
+    } else {
+      totalPending++;
+      if (st === 'Issued') totalIssued++;
+      else if (st === 'Partially Returned') totalPartial++;
+    }
+  }
 
   return `
     <div class="page-head">
@@ -2836,47 +2933,58 @@ function renderStorageUsage() {
     const issuesKB = new Blob([JSON.stringify(issuesCache)]).size / 1024;
     const toolsKB = new Blob([JSON.stringify(toolsCache)]).size / 1024;
     const usersKB = snapUsers?.val() ? new Blob([JSON.stringify(snapUsers.val())]).size / 1024 : 0;
-    const reqData = { access: snapAccess?.val() || null, toolDeletions: snapToolDel?.val() || null };
-    const reqKB = new Blob([JSON.stringify(reqData)]).size / 1024;
+    const accessReqKB = snapAccess?.val() ? new Blob([JSON.stringify(snapAccess.val())]).size / 1024 : 0;
+    const toolDelReqKB = snapToolDel?.val() ? new Blob([JSON.stringify(snapToolDel.val())]).size / 1024 : 0;
+    const reqKB = accessReqKB + toolDelReqKB;
     const auditKB = snapAudit?.val() ? new Blob([JSON.stringify(snapAudit.val())]).size / 1024 : 0;
 
+    const userCount = snapUsers?.val() ? Object.keys(snapUsers.val()).length : 0;
+    const accessCount = snapAccess?.val() ? Object.keys(snapAccess.val()).length : 0;
+    const toolDelCount = snapToolDel?.val() ? Object.keys(snapToolDel.val()).length : 0;
+    const auditCount = snapAudit?.val() ? Object.keys(snapAudit.val()).length : 0;
+
     const breakdown = [
-      { label: 'Issues Register', kb: issuesKB, color: '#3b82f6' },
-      { label: 'Tools Master List', kb: toolsKB, color: '#f59e0b' },
-      { label: 'User Accounts', kb: usersKB, color: '#8b5cf6' },
-      { label: 'Pending Requests', kb: reqKB, color: '#ec4899' },
-      { label: 'Audit Trail', kb: auditKB, color: '#10b981' }
+      { label: 'Material Issue Register', count: `${issuesCache.length} records`, kb: issuesKB, color: '#3b82f6' },
+      { label: 'Tool Master Catalog', count: `${toolsCache.length} tools`, kb: toolsKB, color: '#f59e0b' },
+      { label: 'Staff User Accounts', count: `${userCount} accounts`, kb: usersKB, color: '#8b5cf6' },
+      { label: 'Pending Access & Tool Requests', count: `${accessCount + toolDelCount} pending`, kb: reqKB, color: '#ec4899' },
+      { label: 'Audit Trail Logs', count: `${auditCount} events`, kb: auditKB, color: '#10b981' }
     ];
 
     const usedKB = breakdown.reduce((sum, s) => sum + s.kb, 0);
     const freeKB = Math.max(0, LIMIT_KB - usedKB);
     const pct = Math.min(100, (usedKB / LIMIT_KB) * 100);
 
+    const formatSize = (kb) => {
+      if (kb >= 1024) return (kb / 1024).toFixed(2) + ' MB';
+      return kb.toFixed(2) + ' KB';
+    };
+
     holder.innerHTML = `
       <div class="storage-bar-wrap">
         <div class="storage-bar-track">
-          <div class="storage-bar-fill" style="width:${Math.max(pct, 0.05).toFixed(3)}%; background:${pct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#10b981,#f59e0b)'};"></div>
+          <div class="storage-bar-fill" style="width:${Math.max(pct, 0.08).toFixed(3)}%; background:${pct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#10b981,#f59e0b)'};"></div>
         </div>
         <div class="storage-bar-caption">
-          <span>${usedKB.toFixed(2)} KB total used</span>
-          <span>Estimated JSON database size</span>
+          <span><strong>${formatSize(usedKB)}</strong> total database payload</span>
+          <span>${((usedKB / LIMIT_KB) * 100).toFixed(4)}% of 1 GB Realtime DB limit</span>
         </div>
       </div>
       <div class="storage-legend">
         ${breakdown.map((s) => `
           <div class="storage-legend-row">
             <span class="storage-dot" style="background:${s.color};"></span>
-            <span class="storage-legend-label">${s.label}</span>
-            <span class="storage-legend-val mono">${s.kb.toFixed(2)} KB</span>
+            <span class="storage-legend-label"><strong>${escapeHtml(s.label)}</strong> <span class="muted" style="font-size:11.5px; margin-left:4px;">(${s.count})</span></span>
+            <span class="storage-legend-val mono">${formatSize(s.kb)}</span>
           </div>`).join('')}
         <div class="storage-legend-row storage-legend-free">
           <span class="storage-dot" style="background:var(--steel-100); border:1px solid var(--steel-300);"></span>
-          <span class="storage-legend-label">Available Quota</span>
-          <span class="storage-legend-val mono">${freeKB.toFixed(2)} KB</span>
+          <span class="storage-legend-label">Available Cloud Quota</span>
+          <span class="storage-legend-val mono">${formatSize(freeKB)}</span>
         </div>
       </div>
       <div class="muted" style="font-size:12.5px; margin-top:16px;">
-        Estimated Realtime Database JSON payloads across all collections. Uploaded photo storage is tracked separately in Firebase Storage.
+        Estimated Realtime Database JSON payloads calculated live from active memory caches and Firebase collections. Uploaded photos are stored and tracked in Firebase Cloud Storage.
       </div>`;
   }).catch((err) => {
     if (document.contains(holder)) {
@@ -3092,13 +3200,41 @@ function wireViewEvents(viewId) {
   if (viewId === 'settings-admin') {
     wireHomeViewSelect();
     renderStorageUsage();
-    $('#refreshSyncStatusBtn')?.addEventListener('click', () => render());
+    $('#refreshSyncStatusBtn')?.addEventListener('click', async () => {
+      setSyncingState(true, 'Refreshing sync status...');
+      try {
+        await refreshFromCloudDatabase();
+        renderStorageUsage();
+        showToast('Sync status and storage metrics refreshed.', { title: 'Cloud Sync Updated' });
+      } catch (err) {
+        showToast('Sync refresh error: ' + err.message, { type: 'danger' });
+      } finally {
+        setSyncingState(false);
+      }
+    });
     $('#cleanupOldRecordsBtn')?.addEventListener('click', handleCleanupOldRecords);
-    $('#clearAllStoreDataBtn')?.addEventListener('click', handleClearAllStoreData);
+    $('#clearAllStoreDataBtn')?.addEventListener('click', openClearDataDialog);
     $('#excelDateFrom')?.addEventListener('change', () => { const from = $('#excelDateFrom').value; excelDateFrom = from; if ($('#excelDateTo')) $('#excelDateTo').min = from; updateExcelExportSummary(); });
     $('#excelDateTo')?.addEventListener('change', () => { const to = $('#excelDateTo').value; excelDateTo = to; if ($('#excelDateFrom')) $('#excelDateFrom').max = to || todayStr(); updateExcelExportSummary(); });
     $('#downloadRegisterExcelBtn')?.addEventListener('click', downloadRegisterExcel);
     $('#downloadToolsExcelBtn')?.addEventListener('click', downloadToolsExcel);
+
+    const updateToolsExcelSummary = () => {
+      const cat = $('#toolsExcelCategory')?.value || 'all';
+      const st = $('#toolsExcelStatus')?.value || 'all';
+      const matching = toolsCache.filter(t => {
+        if (cat !== 'all' && (t.category || '').trim() !== cat) return false;
+        if (st !== 'all' && (t.status || 'Available') !== st) return false;
+        return true;
+      }).length;
+      const summaryEl = $('#toolsExcelSummary');
+      if (summaryEl) {
+        summaryEl.innerHTML = `Matching tools to export: <strong>${matching}</strong> (out of ${toolsCache.length} total)`;
+      }
+    };
+    $('#toolsExcelCategory')?.addEventListener('change', updateToolsExcelSummary);
+    $('#toolsExcelStatus')?.addEventListener('change', updateToolsExcelSummary);
+
     $$('[data-excel-preset]').forEach(btn => btn.addEventListener('click', () => { const range = excelPresetRange(btn.dataset.excelPreset); excelDateFrom = range.from; excelDateTo = range.to; $('#excelDateFrom').value = range.from; $('#excelDateTo').value = range.to; updateExcelExportSummary(); }));
     $$('[data-excel-status]').forEach(btn => btn.addEventListener('click', () => {
       excelStatusFilter = btn.dataset.excelStatus;
@@ -3116,6 +3252,7 @@ function wireViewEvents(viewId) {
     $$('[data-settings-section]').forEach(btn => btn.addEventListener('click', () => { const key = btn.dataset.settingsSection, body = $(`[data-settings-body="${key}"]`), open = btn.getAttribute('aria-expanded') === 'true'; btn.setAttribute('aria-expanded', String(!open)); body?.classList.toggle('is-collapsed', open); }));
     updateExcelModuleReadiness();
     updateExcelExportSummary();
+    updateToolsExcelSummary();
   }
 
   if (viewId === 'tools-dashboard') {
@@ -4038,11 +4175,87 @@ $('#overdueViewAllRegisterBtn')?.addEventListener('click', () => {
   navigateTo('register');
 });
 
+// Clear All Store Data Verification Dialog Handlers
+function openClearDataDialog() {
+  const pwdInput = $('#clearDataPassword');
+  const errEl = $('#clearDataPasswordError');
+  if (pwdInput) pwdInput.value = '';
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+  $('#clearDataDialog')?.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  setTimeout(() => pwdInput?.focus(), 50);
+}
+
+function closeClearDataDialog() {
+  $('#clearDataDialog')?.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+$('#clearDataCancelBtn')?.addEventListener('click', closeClearDataDialog);
+$('#clearDataDialog')?.addEventListener('click', (event) => {
+  if (event.target.id === 'clearDataDialog') closeClearDataDialog();
+});
+
+$('#clearDataVerifyBtn')?.addEventListener('click', async () => {
+  const pwd = $('#clearDataPassword')?.value || '';
+  const errEl = $('#clearDataPasswordError');
+
+  if (pwd !== ADMIN_PASSWORD) {
+    if (errEl) {
+      errEl.textContent = 'Incorrect cleanup password. Verification failed.';
+      errEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  closeClearDataDialog();
+
+  const doubleConfirmed = await appConfirm(
+    'DANGER: Are you sure you want to permanently clear all Material Issue Register records, return logs, uploaded photos, pending access requests, and audit history?\n\nStaff accounts and Tool Master Catalog records will NOT be deleted.',
+    { title: 'Permanently Erase Store Records', type: 'danger', confirmText: 'Yes, Erase Everything', cancelText: 'Cancel' }
+  );
+  if (!doubleConfirmed) return;
+
+  setSyncingState(true, 'Clearing all store data...');
+  try {
+    // 1. Delete storage photos for issues
+    if (storage) {
+      for (const issue of issuesCache) {
+        for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) {
+          try { await deleteObject(storageRef(storage, path)); } catch (_) {}
+        }
+        for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) {
+          try { await deleteObject(storageRef(storage, path)); } catch (_) {}
+        }
+      }
+    }
+
+    // 2. Remove RTDB collections (Issues, access requests, audit log)
+    await remove(ref(db, 'issues'));
+    await remove(ref(db, 'accessRequests'));
+    await remove(ref(db, 'auditLog'));
+
+    // 3. Write new audit log marking the clear
+    await writeAudit('store-data-cleared', null, { clearedBy: currentUser.username, timestamp: Date.now() });
+
+    issuesCache = [];
+    showToast('All material issue records and store data have been cleared.', { title: 'Store Data Cleared' });
+    render();
+  } catch (err) {
+    appAlert('Error clearing store data: ' + err.message, { type: 'danger' });
+  } finally {
+    setSyncingState(false);
+  }
+});
+
 // Service Worker message receiver for mobile notification clicks
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data && (event.data.action === 'open-overdue' || event.data.action === 'open-register')) {
-      if (event.data.action === 'open-overdue') {
+    if (event.data && (event.data.action === 'open-overdue' || event.data.filter === 'overdue' || event.data.action === 'open-register')) {
+      if (event.data.action === 'open-overdue' || event.data.filter === 'overdue') {
         openOverdueFollowUpModal();
       } else {
         navigateTo('register');
@@ -4056,6 +4269,7 @@ document.addEventListener('keydown', (event) => {
     if (!$('#toolStatusDialog')?.classList.contains('hidden')) closeToolStatusModal();
     if (!$('#toolDeletionRequestDialog')?.classList.contains('hidden')) closeToolDeletionRequestModal();
     if (!$('#overdueFollowUpDialog')?.classList.contains('hidden')) closeOverdueFollowUpModal();
+    if (!$('#clearDataDialog')?.classList.contains('hidden')) closeClearDataDialog();
   }
 });
 

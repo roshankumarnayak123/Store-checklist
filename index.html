@@ -228,31 +228,44 @@
 
   <!-- Overdue Items Follow-up Dialog -->
   <div id="overdueFollowUpDialog" class="app-dialog-backdrop hidden" role="presentation">
-    <section class="tool-status-dialog overdue-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="overdueModalTitle">
-      <div class="tool-modal-head">
-        <div>
-          <h2 id="overdueModalTitle" style="margin:0; font-size:18px; font-weight:700; color:var(--warn-dark, #b45309); display:flex; align-items:center; gap:8px;">
+    <section class="overdue-modal-container" role="dialog" aria-modal="true" aria-labelledby="overdueModalTitle">
+      <div class="overdue-modal-head">
+        <div class="overdue-modal-head-title">
+          <div class="overdue-icon-badge" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
               <line x1="12" y1="9" x2="12" y2="13"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            Overdue Follow-up (> 7 Days)
-          </h2>
-          <div id="overdueModalSubtitle" class="modal-sub" style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">
-            Items issued over 1 week ago that are still pending return.
+          </div>
+          <div>
+            <div class="overdue-head-row">
+              <h2 id="overdueModalTitle" class="overdue-modal-title">Overdue Follow-up</h2>
+              <span id="overdueCountBadge" class="overdue-count-pill">0 Overdue</span>
+            </div>
+            <div id="overdueModalSubtitle" class="overdue-modal-subtitle">
+              Items issued over 7 days ago pending return.
+            </div>
           </div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="overdueFollowUpCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+        <button type="button" class="overdue-modal-close-btn" id="overdueFollowUpCloseBtn" aria-label="Close dialog">✕</button>
       </div>
-      <div class="tool-modal-body" style="padding:16px 20px 20px;">
+      <div class="overdue-modal-body">
         <div id="overdueFollowUpList" class="overdue-cards-list">
           <!-- Populated dynamically via JS -->
         </div>
       </div>
-      <div class="modal-foot" style="padding:12px 20px; border-top:1px solid var(--surface-border); display:flex; justify-content:space-between; align-items:center; background:var(--surface-soft);">
-        <button type="button" class="btn btn-ghost btn-sm" id="overdueViewAllRegisterBtn">View in Full Register →</button>
-        <button type="button" class="btn btn-primary btn-sm" id="overdueModalDoneBtn">Done</button>
+      <div class="overdue-modal-foot">
+        <button type="button" class="btn btn-ghost btn-sm overdue-footer-view-all" id="overdueViewAllRegisterBtn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          <span>View Full Register</span>
+        </button>
+        <button type="button" class="btn btn-primary btn-sm overdue-footer-done" id="overdueModalDoneBtn">Done</button>
       </div>
     </section>
   </div>

@@ -144,7 +144,7 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if (client.url.includes(location.origin) && 'focus' in client) {
           if (event.notification.data?.action === 'open-overdue') {
-            client.postMessage({ type: 'NAVIGATE_VIEW', view: 'register', filter: 'overdue' });
+            client.postMessage({ type: 'NAVIGATE_VIEW', action: 'open-overdue', view: 'register', filter: 'overdue' });
           }
           return client.focus();
         }
