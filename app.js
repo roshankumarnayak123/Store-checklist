@@ -776,12 +776,10 @@ function updateLoginSyncIndicator(connected) {
       label.textContent = isConnected ? 'Cloud Sync ready — login enabled' : 'Cloud Sync offline — login disabled';
     }
 
-    if (isConnected) {
-      const error = $('#authError');
-      if (error && error.textContent.includes('Loading is delayed')) {
-        error.textContent = '';
-        error.classList.add('hidden');
-      }
+    const error = $('#authError');
+    if (error && (isConnected || error.textContent.includes('Loading is delayed') || error.textContent.includes('taking longer'))) {
+      error.textContent = '';
+      error.classList.add('hidden');
     }
 
     const loginBtn = $('#loginBtn');

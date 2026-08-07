@@ -8,18 +8,22 @@
 
   window.__cmmModuleReady = false;
   let _bootWatchdog = null;
+
+  function dismissBootErrors() {
+    if (error) {
+      error.textContent = '';
+      error.classList.add('hidden');
+    }
+  }
+
   window.addEventListener('cmm-module-ready', () => {
     window.__cmmModuleReady = true;
     if (_bootWatchdog) {
       clearTimeout(_bootWatchdog);
       _bootWatchdog = null;
     }
-    // Cleanly dismiss delayed-load warning if the module loaded after watchdog triggered
-    if (error && error.textContent.includes('Loading is delayed')) {
-      error.textContent = '';
-      error.classList.add('hidden');
-    }
-    if (label && label.textContent === 'Cloud module is taking longer than expected.') {
+    dismissBootErrors();
+    if (label && (label.textContent.includes('taking longer') || label.textContent.includes('Checking'))) {
       label.textContent = 'Connecting to cloud database…';
     }
   });
@@ -31,19 +35,16 @@
     if (auth) auth.classList.remove('hidden');
     if (label) label.textContent = 'A required online resource could not be loaded.';
     if (error) {
-      error.textContent = 'The page could not load a required cloud library. Check the internet connection, disable blocking extensions for this site, and reload.';
+      error.textContent = 'The page could not load a required cloud library. Check your internet connection, disable blocking extensions for this site, and reload.';
       error.classList.remove('hidden');
     }
   }, true);
 
+  // Soft fallback: only show a gentle notice if completely unresponsive after 35 seconds
   _bootWatchdog = setTimeout(() => {
     _bootWatchdog = null;
     if (window.__cmmModuleReady) return;
     if (auth) auth.classList.remove('hidden');
-    if (label) label.textContent = 'Cloud module is taking longer than expected.';
-    if (error) {
-      error.textContent = 'Loading is delayed. Use Ctrl+F5 to refresh. If the message remains, check whether gstatic.com and jsdelivr.net are allowed on this network.';
-      error.classList.remove('hidden');
-    }
-  }, 18000);
+    if (label) label.textContent = 'Connecting is taking longer than usual…';
+  }, 35000);
 })();
