@@ -28,7 +28,7 @@ window.dispatchEvent(new CustomEvent('cmm-module-ready'));
       - In-memory cache: `toolsCache`
       - Purpose: Master catalog and inventory tracking of physical tools/equipment,
         unique auto-incrementing serial IDs (`CMM/SMS/[TOOLNAME]/[SEQ]`), quantities,
-        shelf locations, conditions/statuses (Available, In Use, In Maintenance, Damaged, Lost), and notes.
+        shelf locations, conditions/statuses (Available, In Maintenance, Damaged, Lost), and notes.
       - Key Views: 'tools-dashboard', 'add-tool', 'edit-tool'.
       - Roles: 'tools_admin', 'tools_viewer', 'admin'.
 
@@ -59,9 +59,11 @@ const firebaseConfig = {
 let currentUser = null;
 let issuesCache = []; // Material Issue & Return Register records ('issues/')
 let toolsCache = [];  // Physical Tool Master Catalog records ('tools/')
+let toolDeletionRequestsCache = []; // Pending Tool Deletion Requests ('toolDeletionRequests/')
 let unsubIssues = null;
 let unsubTools = null;
 let unsubRequests = null;
+let unsubToolDeletionRequests = null;
 let currentView = 'dashboard';
 
 // Explicit public bridge: the error logger lives in a classic <script> outside
@@ -252,6 +254,8 @@ async function refreshFromCloudDatabase() {
     const snapTools = await get(ref(db, 'tools'));
     toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
+    const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
+    toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
     cloudConnected = true;
     lastSyncedAt = new Date();
     updateLoginSyncIndicator(true);
@@ -1039,6 +1043,7 @@ $('#logoutBtn').addEventListener('click', () => {
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
   if (unsubTools) { unsubTools(); unsubTools = null; }
   if (unsubRequests) { unsubRequests(); unsubRequests = null; }
+  if (unsubToolDeletionRequests) { unsubToolDeletionRequests(); unsubToolDeletionRequests = null; }
 
   // Bug D fix: unsubscribe the login-screen KPI listener to prevent memory
   // leak from accumulating Firebase listeners across login/logout cycles.
@@ -1342,16 +1347,24 @@ const FORM_VIEWS = new Set(['issue-new', 'return-record', 'edit-issue', 'edit-re
 function listenToCollections() {
   if (unsubIssues) unsubIssues();
   if (unsubTools) unsubTools();
+  if (unsubToolDeletionRequests) unsubToolDeletionRequests();
 
   unsubIssues = onValue(ref(db, 'issues'), (snap) => {
     issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     issuesLoaded = true;
+    updateOverdueTopbarBadge();
+    checkAndNotifyOverdueIssues();
     if (!FORM_VIEWS.has(currentView)) render();
   });
   
   unsubTools = onValue(ref(db, 'tools'), (snap) => {
     toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
+    if (!FORM_VIEWS.has(currentView)) render();
+  });
+
+  unsubToolDeletionRequests = onValue(ref(db, 'toolDeletionRequests'), (snap) => {
+    toolDeletionRequestsCache = snapshotToArray(snap);
     if (!FORM_VIEWS.has(currentView)) render();
   });
 }
@@ -1363,6 +1376,269 @@ function enrichedIssues() {
     const displayName = i.materialName || '(unnamed)';
     return { ...i, materialName: displayName, status: statusOf(i) };
   });
+}
+
+// =========================================================================
+// OVERDUE FOLLOW-UP & DEVICE NOTIFICATION ENGINE (> 7 DAYS)
+// =========================================================================
+function getOverdueIssues(thresholdDays = 7) {
+  const now = Date.now();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const thresholdMs = thresholdDays * oneDayMs;
+  const all = enrichedIssues();
+  return all.filter((issue) => {
+    if (issue.status === 'Returned') return false;
+    let issueTime = 0;
+    if (issue.issueDate) {
+      const parts = String(issue.issueDate).split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        issueTime = d.getTime();
+      }
+    }
+    if (!issueTime && issue.createdAt) {
+      issueTime = Number(issue.createdAt);
+    }
+    if (!issueTime) return false;
+    return (now - issueTime) >= thresholdMs;
+  }).map(issue => {
+    let issueTime = 0;
+    if (issue.issueDate) {
+      const parts = String(issue.issueDate).split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        issueTime = d.getTime();
+      }
+    }
+    if (!issueTime && issue.createdAt) issueTime = Number(issue.createdAt);
+    const daysAgo = Math.max(1, Math.floor((now - issueTime) / oneDayMs));
+    const daysOverdue = Math.max(0, daysAgo - thresholdDays);
+    const qtyIssued = Number(issue.qtyIssued) || 0;
+    const qtyReturned = Number(issue.qtyReturned) || 0;
+    return {
+      ...issue,
+      daysAgo,
+      daysOverdue,
+      qtyRemaining: Math.max(0, qtyIssued - qtyReturned)
+    };
+  }).sort((a, b) => b.daysAgo - a.daysAgo);
+}
+
+function getNotificationPermissionLabel() {
+  if (!('Notification' in window)) return 'Not Supported';
+  const p = Notification.permission;
+  if (p === 'granted') return 'Active & Allowed';
+  if (p === 'denied') return 'Blocked / Denied';
+  return 'Not Enabled (Tap to enable)';
+}
+
+function getNotificationPermissionColor() {
+  if (!('Notification' in window)) return 'var(--text-muted)';
+  const p = Notification.permission;
+  if (p === 'granted') return 'var(--good, #10b981)';
+  if (p === 'denied') return 'var(--bad, #ef4444)';
+  return 'var(--warn-dark, #b45309)';
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    await appAlert('This browser or device does not support Web Notifications.', { title: 'Not Supported', type: 'warn' });
+    return false;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      showToast('Device notifications enabled. You will receive alerts for overdue items.', { title: 'Notifications Allowed', type: 'success' });
+      checkAndNotifyOverdueIssues(true);
+      render();
+      return true;
+    } else if (permission === 'denied') {
+      await appAlert('Notification permission is blocked. You can enable notifications in your browser or mobile site settings.', { title: 'Permission Denied', type: 'warn' });
+      render();
+      return false;
+    }
+  } catch (err) {
+    console.warn('Notification permission error:', err);
+  }
+  return false;
+}
+
+function showNativeNotification(title, options = {}) {
+  const defaultOpts = {
+    icon: './icon-192.png',
+    badge: './icon.svg',
+    vibrate: [200, 100, 200],
+    ...options
+  };
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, defaultOpts);
+    }).catch(() => {
+      try { new Notification(title, defaultOpts); } catch (_) {}
+    });
+  } else if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, defaultOpts); } catch (_) {}
+  }
+}
+
+async function checkAndNotifyOverdueIssues(force = false) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const overdue = getOverdueIssues(7);
+  if (overdue.length === 0) {
+    if (force) {
+      showNativeNotification('Store Follow-up: All Up to Date', {
+        body: 'No issued tools or materials are overdue past 7 days right now!',
+        tag: 'cmm-overdue-clean'
+      });
+    }
+    return;
+  }
+
+  const lastNotifyTime = Number(localStorage.getItem('cmm_last_overdue_notify_time') || 0);
+  const now = Date.now();
+  // Auto-alert throttle: at most once every 12 hours unless triggered manually
+  if (!force && (now - lastNotifyTime < 12 * 60 * 60 * 1000)) return;
+
+  const topItem = overdue[0];
+  const othersCount = overdue.length - 1;
+  const title = `⚠️ ${overdue.length} Overdue Store ${overdue.length === 1 ? 'Item' : 'Items'} (>7 Days)`;
+  const body = `${topItem.materialName} (${topItem.supervisorName ? `Issued to ${topItem.supervisorName} ` : ''}${topItem.daysAgo}d ago)${othersCount > 0 ? ` and ${othersCount} other items pending return.` : ' is pending return. Tap to review.'}`;
+
+  showNativeNotification(title, {
+    body,
+    tag: 'cmm-overdue-followup',
+    data: { action: 'open-overdue', url: './#overdue' }
+  });
+  localStorage.setItem('cmm_last_overdue_notify_time', String(now));
+}
+
+function updateOverdueTopbarBadge() {
+  const overdue = getOverdueIssues(7);
+  const btn = $('#topbarOverdueBtn');
+  const countEl = $('#topbarOverdueCount');
+  if (!btn || !countEl) return;
+  if (overdue.length > 0) {
+    btn.classList.remove('hidden');
+    countEl.textContent = overdue.length > 99 ? '99+' : overdue.length;
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+function renderOverdueBannerHtml() {
+  const overdue = getOverdueIssues(7);
+  if (!overdue.length) return '';
+  return `
+    <div class="overdue-alert-banner">
+      <div class="overdue-alert-icon">⚠️</div>
+      <div class="overdue-alert-content">
+        <strong>${overdue.length} ${overdue.length === 1 ? 'Item' : 'Items'} Overdue for Return (> 7 Days)</strong>
+        <p>Issued items have not been returned for more than a week. Follow up with supervisors to confirm return status.</p>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm overdue-banner-action" id="overdueBannerFollowUpBtn">
+        Follow Up Now (${overdue.length}) →
+      </button>
+    </div>
+  `;
+}
+
+function openOverdueFollowUpModal() {
+  const overdue = getOverdueIssues(7);
+  const listEl = $('#overdueFollowUpList');
+  const subEl = $('#overdueModalSubtitle');
+  if (subEl) subEl.textContent = `${overdue.length} ${overdue.length === 1 ? 'item' : 'items'} issued over 7 days ago pending return.`;
+  if (listEl) {
+    if (overdue.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state" style="padding: 28px 10px; text-align:center;">
+          <div style="font-size: 36px; margin-bottom: 8px;">✅</div>
+          <strong style="font-size:15px; color:var(--text-strong); display:block;">All issued items are up to date!</strong>
+          <p style="color:var(--text-muted); font-size:13px; margin:4px 0 0;">No materials or tools are currently pending return past the 7-day threshold.</p>
+        </div>
+      `;
+    } else {
+      listEl.innerHTML = overdue.map(item => `
+        <div class="overdue-card">
+          <div class="overdue-card-head">
+            <div>
+              <strong class="overdue-item-name">${escapeHtml(item.materialName)}</strong>
+              <div class="overdue-meta">
+                <span>Qty Remaining: <strong>${item.qtyRemaining}</strong> / ${item.qtyIssued}</span>
+                &bull;
+                <span>Area: ${escapeHtml(item.area || '—')}</span>
+                &bull;
+                <span>Issued: ${escapeHtml(item.issueDate || '—')}</span>
+              </div>
+            </div>
+            <span class="badge bad" style="font-size:11.5px; font-weight:700; flex-shrink:0;">${item.daysAgo}d ago (${item.daysOverdue}d overdue)</span>
+          </div>
+          <div class="overdue-card-body">
+            <div class="overdue-person-row">
+              <div class="overdue-person-info">
+                <span class="overdue-person-label">Issued To:</span>
+                <strong>${escapeHtml(item.supervisorName || '—')}</strong>
+                ${item.vendor ? `<span class="overdue-vendor">(${escapeHtml(item.vendor)})</span>` : ''}
+              </div>
+              ${item.supervisorContact ? `
+                <a href="tel:${escapeHtml(item.supervisorContact)}" class="btn btn-primary btn-sm overdue-call-btn" title="Call ${escapeHtml(item.supervisorName)}">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                  Call Supervisor
+                </a>
+              ` : '<span class="muted" style="font-size:11.5px;">No phone number</span>'}
+            </div>
+            <div class="overdue-card-actions">
+              <button type="button" class="btn btn-ghost btn-sm" data-overdue-view-issue="${item.id}">View Details</button>
+              ${(!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('admin')) ? `
+                <button type="button" class="btn btn-dark btn-sm" data-overdue-record-return="${item.id}">Record Return</button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Wire inner card buttons
+  $$('[data-overdue-view-issue]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.overdueViewIssue;
+      closeOverdueFollowUpModal();
+      registerFilterState.q = '';
+      registerFilterState.status = 'all';
+      registerFilterState.page = 1;
+      registerExpandedRows.add(id);
+      saveRegisterPreferences();
+      navigateTo('register');
+      setTimeout(() => {
+        const row = document.querySelector(`tr[data-register-id="${CSS.escape(id)}"]`);
+        if (row) {
+          row.classList.add('mobile-expanded');
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+    });
+  });
+
+  $$('[data-overdue-record-return]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.overdueRecordReturn;
+      closeOverdueFollowUpModal();
+      returnFormTargetId = id;
+      returnFormError = '';
+      navigateTo('return-record');
+    });
+  });
+
+  $('#overdueFollowUpDialog')?.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+function closeOverdueFollowUpModal() {
+  $('#overdueFollowUpDialog')?.classList.add('hidden');
+  document.body.classList.remove('modal-open');
 }
 
 function render() {
@@ -1441,6 +1717,7 @@ function renderUserDashboard() {
         <div class="page-sub">Live status of the material issue &amp; return register.</div>
       </div>
     </div>
+    ${renderOverdueBannerHtml()}
     <div class="kpi-grid">
       <button type="button" class="kpi kpi-button" data-kpi-status="all" aria-label="Show all ${s.total} register entries"><div class="kpi-label">Total Entries</div><div class="kpi-value">${kpiValue(s.total)}</div><span class="kpi-open-hint">View records →</span></button>
       <button type="button" class="kpi warn kpi-button" data-kpi-status="pending" aria-label="Show ${s.pending} pending return entries"><div class="kpi-label">Pending Return</div><div class="kpi-value">${kpiValue(s.pending)}</div><span class="kpi-open-hint">View records →</span></button>
@@ -1490,6 +1767,27 @@ function renderProfile() {
           <button type="submit" class="btn btn-primary" id="profileSubmitBtn">Save Profile Photo</button>
         </div>
       </form>
+    </div>
+
+    <div class="panel panel-pad" style="max-width:600px; margin-top:24px;">
+      <h2 style="margin-top:0;">Mobile &amp; Overdue Notifications</h2>
+      <p style="margin:0 0 14px; font-size:13.5px; color:var(--text-muted);">
+        Receive push and device alerts for tools and materials issued more than 7 days ago that remain unreturned.
+      </p>
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; padding:12px 14px; background:var(--surface-sunken, #f1f5f9); border-radius:var(--radius-md, 8px);">
+        <div>
+          <span style="font-size:12px; font-weight:600; color:var(--text-muted); display:block;">Device Notification Status</span>
+          <strong style="font-size:14px; color:${getNotificationPermissionColor()};">${getNotificationPermissionLabel()}</strong>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-primary btn-sm" id="enableNotificationsBtn">
+            ${('Notification' in window && Notification.permission === 'granted') ? 'Re-check Permission' : 'Enable Notifications'}
+          </button>
+          ${('Notification' in window && Notification.permission === 'granted') ? `
+            <button type="button" class="btn btn-ghost btn-sm" id="testNotificationBtn">Send Test Alert</button>
+          ` : ''}
+        </div>
+      </div>
     </div>
 
     <div class="panel panel-pad" style="max-width:600px; margin-top:24px;">
@@ -1563,6 +1861,7 @@ function renderAdminDashboard() {
         <div class="page-sub">Store-wide overview and management tools.</div>
       </div>
     </div>
+    ${renderOverdueBannerHtml()}
     <div class="kpi-grid">
       <button type="button" class="kpi kpi-button" data-kpi-status="all" aria-label="Show all ${s.total} register entries"><div class="kpi-label">Total Entries</div><div class="kpi-value">${kpiValue(s.total)}</div><span class="kpi-open-hint">View records →</span></button>
       <button type="button" class="kpi warn kpi-button" data-kpi-status="pending" aria-label="Show ${s.pending} pending return entries"><div class="kpi-label">Pending Return</div><div class="kpi-value">${kpiValue(s.pending)}</div><span class="kpi-open-hint">View records →</span></button>
@@ -2291,14 +2590,106 @@ async function downloadRegisterExcel() {
   if (downloadBtn) { downloadBtn.disabled = false; downloadBtn.textContent = 'Download Excel Register'; }
   await appAlert(`${rows.length} register record${rows.length === 1 ? '' : 's'} exported successfully. Photos were excluded.`, { title: 'Excel Download Ready', type: 'success' });
 }
+async function downloadToolsExcel() {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can download the Tools Master List in Excel.', { title: 'Admin Access Required', type: 'danger' });
+    return;
+  }
+  if (!window.XLSX) {
+    await appAlert('The Excel export module is not ready. Please verify your internet connection.', { title: 'Excel Unavailable', type: 'danger' });
+    return;
+  }
+
+  const categoryFilter = $('#toolsExcelCategory')?.value || 'all';
+  const statusFilter = $('#toolsExcelStatus')?.value || 'all';
+
+  let filtered = toolsCache.filter(t => {
+    if (categoryFilter !== 'all' && (t.category || '').trim() !== categoryFilter) return false;
+    if (statusFilter !== 'all' && (t.status || 'Available') !== statusFilter) return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    await appAlert('No tool records found matching the chosen filters.', { title: 'Nothing to Export', type: 'info' });
+    return;
+  }
+
+  const rows = filtered.map((t, index) => {
+    const historyText = Array.isArray(t.statusHistory) && t.statusHistory.length
+      ? t.statusHistory.map(h => `${h.dateStr || (h.timestamp ? new Date(h.timestamp).toLocaleString() : '')}: [${h.status || ''}] by ${h.changedBy || h.changedByUsername || ''}${h.notes ? ' - ' + h.notes : ''}`).join(' | ')
+      : '';
+
+    return {
+      'Sl No.': index + 1,
+      'Tool ID': t.uniqueId || '',
+      'Tool Name': t.toolName || '',
+      'Category': t.category || 'General',
+      'Quantity': Number(t.quantity) || 0,
+      'Location / Shelf': t.location || '',
+      'Current Status': t.status || 'Available',
+      'Notes': t.notes || '',
+      'Created By': t.createdBy || '',
+      'Created Date': t.createdAt ? new Date(t.createdAt) : '',
+      'Last Updated By': t.updatedBy || '',
+      'Last Updated Date': t.updatedAt ? new Date(t.updatedAt) : '',
+      'Latest Status Note': t.lastStatusNote || '',
+      'Status History': historyText
+    };
+  });
+
+  const ws = window.XLSX.utils.json_to_sheet(rows, { cellDates: true });
+  ws['!autofilter'] = { ref: ws['!ref'] };
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  ws['!cols'] = [
+    { wch: 8 },  // Sl No.
+    { wch: 26 }, // Tool ID
+    { wch: 32 }, // Tool Name
+    { wch: 18 }, // Category
+    { wch: 10 }, // Quantity
+    { wch: 18 }, // Location
+    { wch: 18 }, // Current Status
+    { wch: 30 }, // Notes
+    { wch: 18 }, // Created By
+    { wch: 20 }, // Created Date
+    { wch: 18 }, // Last Updated By
+    { wch: 20 }, // Last Updated Date
+    { wch: 25 }, // Latest Status Note
+    { wch: 50 }  // Status History
+  ];
+
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, ws, 'Tools Master');
+  wb.Props = {
+    Title: `CMM SMS Tools Master List`,
+    Subject: 'Physical Tool Asset Master Register',
+    Author: currentUser.fullName || currentUser.username,
+    CreatedDate: new Date()
+  };
+
+  const btn = $('#downloadToolsExcelBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Preparing Excel…'; }
+
+  const today = todayStr();
+  const fileName = `CMM_SMS_Tools_Master_${today}.xlsx`;
+  window.XLSX.writeFile(wb, fileName, { compression: true, cellDates: true });
+
+  await writeAudit('tools-master-exported', null, { categoryFilter, statusFilter, recordCount: rows.length, fileName });
+  showToast(`${rows.length} tools exported as ${fileName}`, { title: 'Tools Excel Downloaded' });
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Download Tools Excel (.xlsx)'; }
+  await appAlert(`${rows.length} tool record${rows.length === 1 ? '' : 's'} exported successfully.`, { title: 'Excel Download Ready', type: 'success' });
+}
+
 function renderSettingsAdmin() {
   const dbUrl = firebaseConfig.databaseURL || '(not set)';
+  const toolCategories = Array.from(new Set(toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+
   return `
     <div class="page-head">
       <div>
         <span class="eyebrow">Administrator</span>
         <h1>Settings</h1>
-        <div class="page-sub">Cloud sync status and database storage usage.</div>
+        <div class="page-sub">Cloud sync status, database payload analytics, and data management.</div>
       </div>
     </div>
 
@@ -2340,6 +2731,8 @@ function renderSettingsAdmin() {
           <div class="kv-row"><span class="kv-key">Database URL</span><span class="kv-val mono" style="word-break:break-all;">${escapeHtml(dbUrl)}</span></div>
           <div class="kv-row"><span class="kv-key">Project ID</span><span class="kv-val mono">${escapeHtml(firebaseConfig.projectId || '—')}</span></div>
           <div class="kv-row"><span class="kv-key">Issue records cached</span><span class="kv-val mono">${issuesCache.length}</span></div>
+          <div class="kv-row"><span class="kv-key">Tools cached</span><span class="kv-val mono">${toolsCache.length}</span></div>
+          <div class="kv-row"><span class="kv-key">Pending tool deletion requests</span><span class="kv-val mono">${toolDeletionRequestsCache.length}</span></div>
         </div>
         <div class="actions-row">
           <button class="btn btn-ghost btn-sm" id="refreshSyncStatusBtn">Refresh Status</button>
@@ -2347,12 +2740,13 @@ function renderSettingsAdmin() {
       </div>
     </div>
 
+    <!-- Download Register Excel (Issues Collection) -->
     <div class="panel excel-export-card" style="margin-bottom:32px;">
-      <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="export" aria-expanded="true"><h2>Download Register in Excel</h2><span>⌄</span></button></div>
+      <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="export" aria-expanded="true"><h2>Download Material Issue Register in Excel</h2><span>⌄</span></button></div>
       <div class="panel-pad settings-section-body" data-settings-body="export">
         <div class="excel-export-grid">
           <div class="excel-presets"><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="this-month">This Month</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="last-month">Last Month</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="30-days">Last 30 Days</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="this-year">This Year</button><button type="button" class="btn btn-ghost btn-sm" data-excel-preset="all">All Records</button></div>
-          <p class="excel-export-note">Select an inclusive <strong>Issue Date</strong> range. The Excel workbook includes register details and return information, but deliberately excludes all issue/return photos, photo URLs and storage paths.</p>
+          <p class="excel-export-note">Select an inclusive <strong>Issue Date</strong> range. The Excel workbook includes material issue details and return information, but deliberately excludes all issue/return photos, photo URLs and storage paths.</p>
           <div class="field"><label for="excelDateFrom">Issue Date From</label><input type="date" id="excelDateFrom" max="${excelDateTo || todayStr()}" value="${excelDateFrom}" /></div>
           <div class="field"><label for="excelDateTo">Issue Date To</label><input type="date" id="excelDateTo" min="${excelDateFrom}" max="${todayStr()}" value="${excelDateTo}" /></div>
           <div class="field excel-status-filter">
@@ -2366,6 +2760,35 @@ function renderSettingsAdmin() {
           </div>
           <div class="excel-export-summary" id="excelExportSummary">Choose both dates to prepare the register download.</div><div id="excelReadiness" class="export-readiness"><span class="export-readiness-dot"></span><span>Checking Excel module…</span></div><button type="button" class="btn btn-ghost btn-sm hidden" id="retryExcelModuleBtn">Retry Excel Module</button>
           <button type="button" class="btn btn-primary" id="downloadRegisterExcelBtn">Download Excel Register</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Download Tools Master List Excel (Tools Collection) -->
+    <div class="panel excel-export-card" style="margin-bottom:32px;">
+      <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="tools-export" aria-expanded="true"><h2>Download Tools Master List in Excel</h2><span>⌄</span></button></div>
+      <div class="panel-pad settings-section-body" data-settings-body="tools-export">
+        <div class="excel-export-grid">
+          <p class="excel-export-note">Export the complete <strong>Physical Tool Master Register</strong> to Excel (.xlsx). Includes tool IDs, categories, quantities, locations, current conditions, notes, creator timestamps, and formatted status update history log.</p>
+          <div class="field">
+            <label for="toolsExcelCategory">Category Filter</label>
+            <select id="toolsExcelCategory">
+              <option value="all">All Categories</option>
+              ${toolCategories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label for="toolsExcelStatus">Status Filter</label>
+            <select id="toolsExcelStatus">
+              <option value="all">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="In Maintenance">Under Maintenance</option>
+              <option value="Damaged">Damage Declared</option>
+              <option value="Lost">Lost</option>
+            </select>
+          </div>
+          <div class="excel-export-summary" id="toolsExcelSummary">Total tools in master register: <strong>${toolsCache.length}</strong></div>
+          <button type="button" class="btn btn-primary" id="downloadToolsExcelBtn">Download Tools Excel (.xlsx)</button>
         </div>
       </div>
     </div>
@@ -2400,25 +2823,30 @@ function renderStorageUsage() {
   const holder = $('#storageUsageHolder');
   if (!holder) return;
 
-  const LIMIT_KB = 1024 * 1024;
+  const LIMIT_KB = 1024 * 1024; // 1 GB reference quota
 
-  const sections = [
-    { label: 'Issues', data: issuesCache, color: '#3b82f6' },
-  ];
+  const snapUsersPromise = get(ref(db, 'users')).catch(() => null);
+  const snapAccessReqPromise = get(ref(db, 'accessRequests')).catch(() => null);
+  const snapToolDelReqPromise = get(ref(db, 'toolDeletionRequests')).catch(() => null);
+  const snapAuditPromise = get(ref(db, 'auditLog')).catch(() => null);
 
-  let usersKB = 0;
-  const usersSizePromise = get(ref(db, 'users')).then((snap) => {
-    const val = snap.val();
-    usersKB = val ? new Blob([JSON.stringify(val)]).size / 1024 : 0;
-  }).catch(() => { usersKB = 0; });
-
-  usersSizePromise.then(() => {
+  Promise.all([snapUsersPromise, snapAccessReqPromise, snapToolDelReqPromise, snapAuditPromise]).then(([snapUsers, snapAccess, snapToolDel, snapAudit]) => {
     if (!document.contains(holder)) return;
 
-    const breakdown = sections.map((s) => ({
-      ...s, kb: new Blob([JSON.stringify(s.data)]).size / 1024,
-    }));
-    breakdown.push({ label: 'Users', kb: usersKB, color: '#8b5cf6' });
+    const issuesKB = new Blob([JSON.stringify(issuesCache)]).size / 1024;
+    const toolsKB = new Blob([JSON.stringify(toolsCache)]).size / 1024;
+    const usersKB = snapUsers?.val() ? new Blob([JSON.stringify(snapUsers.val())]).size / 1024 : 0;
+    const reqData = { access: snapAccess?.val() || null, toolDeletions: snapToolDel?.val() || null };
+    const reqKB = new Blob([JSON.stringify(reqData)]).size / 1024;
+    const auditKB = snapAudit?.val() ? new Blob([JSON.stringify(snapAudit.val())]).size / 1024 : 0;
+
+    const breakdown = [
+      { label: 'Issues Register', kb: issuesKB, color: '#3b82f6' },
+      { label: 'Tools Master List', kb: toolsKB, color: '#f59e0b' },
+      { label: 'User Accounts', kb: usersKB, color: '#8b5cf6' },
+      { label: 'Pending Requests', kb: reqKB, color: '#ec4899' },
+      { label: 'Audit Trail', kb: auditKB, color: '#10b981' }
+    ];
 
     const usedKB = breakdown.reduce((sum, s) => sum + s.kb, 0);
     const freeKB = Math.max(0, LIMIT_KB - usedKB);
@@ -2427,11 +2855,11 @@ function renderStorageUsage() {
     holder.innerHTML = `
       <div class="storage-bar-wrap">
         <div class="storage-bar-track">
-          <div class="storage-bar-fill" style="width:${pct.toFixed(3)}%; background:${pct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#10b981,#f59e0b)'};"></div>
+          <div class="storage-bar-fill" style="width:${Math.max(pct, 0.05).toFixed(3)}%; background:${pct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#10b981,#f59e0b)'};"></div>
         </div>
         <div class="storage-bar-caption">
-          <span>${usedKB.toFixed(2)} KB used</span>
-          <span>Estimated JSON payload only</span>
+          <span>${usedKB.toFixed(2)} KB total used</span>
+          <span>Estimated JSON database size</span>
         </div>
       </div>
       <div class="storage-legend">
@@ -2443,13 +2871,17 @@ function renderStorageUsage() {
           </div>`).join('')}
         <div class="storage-legend-row storage-legend-free">
           <span class="storage-dot" style="background:var(--steel-100); border:1px solid var(--steel-300);"></span>
-          <span class="storage-legend-label">Free</span>
+          <span class="storage-legend-label">Available Quota</span>
           <span class="storage-legend-val mono">${freeKB.toFixed(2)} KB</span>
         </div>
       </div>
       <div class="muted" style="font-size:12.5px; margin-top:16px;">
-        Estimated Realtime Database JSON only. Uploaded image storage is not included.
+        Estimated Realtime Database JSON payloads across all collections. Uploaded photo storage is tracked separately in Firebase Storage.
       </div>`;
+  }).catch((err) => {
+    if (document.contains(holder)) {
+      holder.innerHTML = `<div class="empty-state"><p style="color:var(--bad);">Storage estimate calculation error: ${escapeHtml(err.message)}</p></div>`;
+    }
   });
 }
 
@@ -2458,6 +2890,12 @@ function renderStorageUsage() {
    EVENT WIRING
    ========================================================================= */
 function wireViewEvents(viewId) {
+  if (viewId === 'dashboard' || viewId === 'admin-dashboard') {
+    $('#overdueBannerFollowUpBtn')?.addEventListener('click', () => {
+      openOverdueFollowUpModal();
+    });
+  }
+
   if (viewId === 'register') {
     $('#regSearch')?.addEventListener('input', (e) => {
       const value = e.target.value;
@@ -2575,6 +3013,17 @@ function wireViewEvents(viewId) {
     $('#profileForm').addEventListener('submit', handleProfileSubmit);
     $('#profilePasswordForm').addEventListener('submit', handleProfilePasswordSubmit);
 
+    $('#enableNotificationsBtn')?.addEventListener('click', async () => {
+      await requestNotificationPermission();
+    });
+    $('#testNotificationBtn')?.addEventListener('click', () => {
+      showNativeNotification('Store Follow-up Test', {
+        body: 'Overdue notifications are enabled and working properly on your device!',
+        tag: 'cmm-test-alert'
+      });
+      showToast('Test notification sent to device.', { title: 'Test Alert Sent' });
+    });
+
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     const pwaStatus = $('#profilePwaStatusArea');
     if (pwaStatus) {
@@ -2649,6 +3098,7 @@ function wireViewEvents(viewId) {
     $('#excelDateFrom')?.addEventListener('change', () => { const from = $('#excelDateFrom').value; excelDateFrom = from; if ($('#excelDateTo')) $('#excelDateTo').min = from; updateExcelExportSummary(); });
     $('#excelDateTo')?.addEventListener('change', () => { const to = $('#excelDateTo').value; excelDateTo = to; if ($('#excelDateFrom')) $('#excelDateFrom').max = to || todayStr(); updateExcelExportSummary(); });
     $('#downloadRegisterExcelBtn')?.addEventListener('click', downloadRegisterExcel);
+    $('#downloadToolsExcelBtn')?.addEventListener('click', downloadToolsExcel);
     $$('[data-excel-preset]').forEach(btn => btn.addEventListener('click', () => { const range = excelPresetRange(btn.dataset.excelPreset); excelDateFrom = range.from; excelDateTo = range.to; $('#excelDateFrom').value = range.from; $('#excelDateTo').value = range.to; updateExcelExportSummary(); }));
     $$('[data-excel-status]').forEach(btn => btn.addEventListener('click', () => {
       excelStatusFilter = btn.dataset.excelStatus;
@@ -2669,7 +3119,8 @@ function wireViewEvents(viewId) {
   }
 
   if (viewId === 'tools-dashboard') {
-    const canEdit = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
+    const isAdmin = currentUser.roles.includes('admin');
+    const canManageTools = isAdmin || currentUser.roles.includes('tools_admin');
     const main = $('#appMain');
 
     const searchInput = main.querySelector('#toolsSearchInput');
@@ -2728,7 +3179,42 @@ function wireViewEvents(viewId) {
       });
     });
 
-    if (canEdit) {
+    // Wire Status Update & History modal triggers
+    main.querySelectorAll('[data-update-status], [data-tool-history]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        triggerHaptic(10);
+        const toolId = btn.dataset.updateStatus || btn.dataset.toolHistory;
+        openToolStatusModal(toolId);
+      });
+    });
+
+    // Wire Deletion Request modal trigger (Non-admin users)
+    main.querySelectorAll('[data-request-delete-tool]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        triggerHaptic(12);
+        const toolId = btn.dataset.requestDeleteTool;
+        openToolDeletionRequestModal(toolId);
+      });
+    });
+
+    // Wire Admin Approve & Reject for Pending Deletion Requests
+    if (isAdmin) {
+      main.querySelectorAll('[data-approve-tool-deletion]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(14);
+          handleApproveToolDeletion(btn.dataset.approveToolDeletion);
+        });
+      });
+      main.querySelectorAll('[data-reject-tool-deletion]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(10);
+          handleRejectToolDeletion(btn.dataset.rejectToolDeletion);
+        });
+      });
+    }
+
+    // Wire Edit Tool
+    if (canManageTools) {
       main.querySelectorAll('[data-edit-tool]').forEach(btn => {
         btn.addEventListener('click', () => {
           triggerHaptic(10);
@@ -2736,15 +3222,20 @@ function wireViewEvents(viewId) {
           navigateTo('edit-tool');
         });
       });
+    }
+
+    // Wire Direct Delete Tool (Admin only)
+    if (isAdmin) {
       main.querySelectorAll('[data-delete-tool]').forEach(btn => {
         btn.addEventListener('click', async () => {
           triggerHaptic(18);
           const id = btn.dataset.deleteTool;
           const tool = toolsCache.find(t => t.id === id);
-          if (await appConfirm(`Are you sure you want to delete tool "${tool?.toolName || id}"?`, { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
+          if (await appConfirm(`Are you sure you want to permanently delete tool "${tool?.toolName || id}" from the master register?`, { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
             try {
               setSyncingState(true, 'Deleting tool...');
               await remove(ref(db, 'tools/' + id));
+              await remove(ref(db, 'toolDeletionRequests/' + id)).catch(() => {});
               await writeAudit('tool-deleted', id, { toolName: tool?.toolName, uniqueId: tool?.uniqueId });
               showToast('Tool deleted successfully.', { title: 'Tool Deleted' });
             } catch (e) {
@@ -3256,6 +3747,318 @@ document.addEventListener('keydown', (event) => {
   }, { passive: true });
 })();
 
+/* =========================================================================
+   TOOL STATUS & DELETION REQUEST MODAL CONTROLLERS
+   ========================================================================= */
+function openToolStatusModal(toolId) {
+  const tool = toolsCache.find(t => t.id === toolId);
+  if (!tool) return;
+  const toolIdInput = $('#statusModalToolId');
+  if (toolIdInput) toolIdInput.value = toolId;
+
+  const titleEl = $('#toolStatusTitle');
+  if (titleEl) titleEl.textContent = `Status: ${tool.toolName}`;
+
+  const subEl = $('#toolStatusSubtitle');
+  if (subEl) subEl.innerHTML = `ID: <span class="mono">${escapeHtml(tool.uniqueId || '—')}</span> &bull; Location: ${escapeHtml(tool.location || '—')} &bull; Qty: ${escapeHtml(tool.quantity ?? 0)}`;
+
+  const selectEl = $('#statusModalNewStatus');
+  if (selectEl) selectEl.value = tool.status || 'Available';
+
+  const notesEl = $('#statusModalNotes');
+  if (notesEl) notesEl.value = '';
+
+  const timelineEl = $('#toolStatusHistoryTimeline');
+  if (timelineEl) {
+    const history = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : [];
+    if (!history.length && tool.status) {
+      history.push({
+        status: tool.status,
+        previousStatus: null,
+        changedBy: tool.createdBy || 'Initial System Record',
+        changedByUsername: tool.createdBy || 'system',
+        timestamp: tool.createdAt || Date.now(),
+        dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : new Date().toLocaleString(),
+        notes: tool.notes || 'Initial registration'
+      });
+    }
+    history.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    if (!history.length) {
+      timelineEl.innerHTML = '<div class="empty-state" style="padding:16px 0;"><p style="margin:0; font-size:12.5px; color:var(--text-muted);">No status updates recorded yet.</p></div>';
+    } else {
+      timelineEl.innerHTML = history.map(item => {
+        let badgeClass = 'good';
+        if (item.status === 'Lost' || item.status === 'Damaged') badgeClass = 'bad';
+        else if (item.status === 'In Maintenance') badgeClass = 'warn';
+        return `
+          <div class="tool-timeline-item">
+            <span class="tool-timeline-dot"></span>
+            <div class="tool-timeline-top">
+              <span class="badge ${badgeClass}">${escapeHtml(item.status || 'Available')}</span>
+              <div class="tool-timeline-meta">
+                <span>${escapeHtml(item.changedBy || item.changedByUsername || 'User')}</span>
+                &bull;
+                <span class="mono">${escapeHtml(item.dateStr || (item.timestamp ? new Date(item.timestamp).toLocaleString() : '—'))}</span>
+              </div>
+            </div>
+            ${item.previousStatus && item.previousStatus !== item.status ? `<div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Changed from: <em>${escapeHtml(item.previousStatus)}</em></div>` : ''}
+            ${item.notes ? `<div class="tool-timeline-note">${escapeHtml(item.notes)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  $('#toolStatusDialog')?.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+function closeToolStatusModal() {
+  $('#toolStatusDialog')?.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+function openToolDeletionRequestModal(toolId) {
+  const tool = toolsCache.find(t => t.id === toolId);
+  if (!tool) return;
+  const toolIdInput = $('#deletionReqToolId');
+  if (toolIdInput) toolIdInput.value = toolId;
+
+  const infoEl = $('#deletionReqToolInfo');
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <strong>${escapeHtml(tool.toolName)}</strong> <span class="mono">(${escapeHtml(tool.uniqueId || '—')})</span><br/>
+      <span style="color:var(--text-muted); font-size:12.5px;">Category: ${escapeHtml(tool.category || 'General')} &bull; Location: ${escapeHtml(tool.location || '—')} &bull; Qty: ${escapeHtml(tool.quantity ?? 0)} &bull; Status: ${escapeHtml(tool.status || 'Available')}</span>
+    `;
+  }
+
+  const reasonEl = $('#deletionReqReason');
+  if (reasonEl) reasonEl.value = '';
+
+  $('#toolDeletionRequestDialog')?.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+function closeToolDeletionRequestModal() {
+  $('#toolDeletionRequestDialog')?.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+async function handleToolStatusSubmit(e) {
+  e.preventDefault();
+  const toolId = $('#statusModalToolId')?.value;
+  const tool = toolsCache.find(t => t.id === toolId);
+  if (!tool) { await appAlert('Tool record not found.', { type: 'danger' }); return; }
+
+  const newStatus = $('#statusModalNewStatus')?.value || 'Available';
+  const notes = ($('#statusModalNotes')?.value || '').trim();
+  const btn = $('#statusModalSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  try {
+    setSyncingState(true, 'Updating tool status...');
+    const now = Date.now();
+    const dateStr = new Date().toLocaleString();
+    const historyEntry = {
+      status: newStatus,
+      previousStatus: tool.status || 'Available',
+      changedBy: currentUser.fullName || currentUser.username,
+      changedByUsername: currentUser.username,
+      timestamp: now,
+      dateStr: dateStr,
+      notes: notes
+    };
+
+    const currentHistory = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : (tool.status ? [{
+      status: tool.status,
+      previousStatus: null,
+      changedBy: tool.createdBy || 'Initial System Record',
+      changedByUsername: tool.createdBy || 'system',
+      timestamp: tool.createdAt || now,
+      dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : dateStr,
+      notes: tool.notes || 'Initial registration'
+    }] : []);
+    const updatedHistory = [...currentHistory, historyEntry];
+
+    await update(ref(db, 'tools/' + toolId), {
+      status: newStatus,
+      statusHistory: updatedHistory,
+      updatedAt: serverTimestamp(),
+      updatedBy: currentUser.username,
+      lastStatusNote: notes
+    });
+
+    await writeAudit('tool-status-updated', toolId, {
+      toolName: tool.toolName,
+      uniqueId: tool.uniqueId,
+      fromStatus: tool.status || 'Available',
+      toStatus: newStatus,
+      notes
+    });
+
+    showToast(`Tool status updated to "${newStatus}"`, { title: 'Status Updated' });
+    closeToolStatusModal();
+  } catch (err) {
+    await appAlert('Could not update tool status: ' + err.message, { type: 'danger' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Status Update'; }
+    setSyncingState(false);
+  }
+}
+
+async function handleToolDeletionRequestSubmit(e) {
+  e.preventDefault();
+  const toolId = $('#deletionReqToolId')?.value;
+  const reason = ($('#deletionReqReason')?.value || '').trim();
+  if (!reason) { await appAlert('Please provide a reason for the deletion request.', { type: 'warn' }); return; }
+  const tool = toolsCache.find(t => t.id === toolId);
+  if (!tool) { await appAlert('Tool record not found.', { type: 'danger' }); return; }
+
+  const btn = $('#deletionReqSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+
+  try {
+    setSyncingState(true, 'Submitting deletion request...');
+    await set(ref(db, 'toolDeletionRequests/' + toolId), {
+      toolId: toolId,
+      toolName: tool.toolName,
+      uniqueId: tool.uniqueId || '',
+      category: tool.category || '',
+      quantity: tool.quantity ?? 0,
+      status: tool.status || 'Available',
+      reason: reason,
+      requestedBy: currentUser.username,
+      requestedByName: currentUser.fullName || currentUser.username,
+      requestedAt: Date.now()
+    });
+
+    await writeAudit('tool-deletion-requested', toolId, {
+      toolName: tool.toolName,
+      uniqueId: tool.uniqueId,
+      reason
+    });
+
+    showToast('Deletion request submitted to Administrator', { title: 'Request Sent' });
+    closeToolDeletionRequestModal();
+  } catch (err) {
+    await appAlert('Could not submit deletion request: ' + err.message, { type: 'danger' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Deletion Request'; }
+    setSyncingState(false);
+  }
+}
+
+async function handleApproveToolDeletion(reqId) {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can approve tool deletions.', { type: 'danger' });
+    return;
+  }
+  const req = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === reqId);
+  const toolId = req?.toolId || reqId;
+  const toolName = req?.toolName || 'this tool';
+
+  if (await appConfirm(`Permanently delete tool "${toolName}" per the deletion request? This will remove the tool from the Master Register.`, {
+    title: 'Approve & Delete Tool',
+    type: 'danger',
+    confirmText: 'Approve & Delete'
+  })) {
+    try {
+      setSyncingState(true, 'Deleting tool...');
+      await remove(ref(db, 'tools/' + toolId));
+      await remove(ref(db, 'toolDeletionRequests/' + (req?.id || toolId)));
+      await writeAudit('tool-deletion-approved', toolId, {
+        toolName,
+        uniqueId: req?.uniqueId || '',
+        reason: req?.reason || '',
+        requestedBy: req?.requestedBy || '',
+        approvedBy: currentUser.username
+      });
+      showToast(`Tool "${toolName}" deleted successfully.`, { title: 'Tool Deleted' });
+    } catch (err) {
+      await appAlert('Could not delete tool: ' + err.message, { type: 'danger' });
+    } finally {
+      setSyncingState(false);
+    }
+  }
+}
+
+async function handleRejectToolDeletion(reqId) {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can reject deletion requests.', { type: 'danger' });
+    return;
+  }
+  const req = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === reqId);
+  const toolName = req?.toolName || 'tool';
+
+  if (await appConfirm(`Reject the deletion request for "${toolName}"? The tool will remain in the master register.`, {
+    title: 'Reject Deletion Request',
+    type: 'warn',
+    confirmText: 'Reject Request'
+  })) {
+    try {
+      setSyncingState(true, 'Rejecting request...');
+      await remove(ref(db, 'toolDeletionRequests/' + (req?.id || reqId)));
+      await writeAudit('tool-deletion-rejected', reqId, {
+        toolName,
+        requestedBy: req?.requestedBy || '',
+        rejectedBy: currentUser.username
+      });
+      showToast('Deletion request rejected.', { title: 'Request Rejected' });
+    } catch (err) {
+      await appAlert('Could not reject request: ' + err.message, { type: 'danger' });
+    } finally {
+      setSyncingState(false);
+    }
+  }
+}
+
+// Wire Dialog Modal Event Listeners
+$('#toolStatusCloseBtn')?.addEventListener('click', closeToolStatusModal);
+$('#statusModalCancelBtn')?.addEventListener('click', closeToolStatusModal);
+$('#toolStatusForm')?.addEventListener('submit', handleToolStatusSubmit);
+$('#toolStatusDialog')?.addEventListener('click', (event) => { if (event.target.id === 'toolStatusDialog') closeToolStatusModal(); });
+
+$('#toolDeletionRequestCloseBtn')?.addEventListener('click', closeToolDeletionRequestModal);
+$('#deletionReqCancelBtn')?.addEventListener('click', closeToolDeletionRequestModal);
+$('#toolDeletionRequestForm')?.addEventListener('submit', handleToolDeletionRequestSubmit);
+$('#toolDeletionRequestDialog')?.addEventListener('click', (event) => { if (event.target.id === 'toolDeletionRequestDialog') closeToolDeletionRequestModal(); });
+
+// Overdue Follow-up Modal Event Listeners
+$('#topbarOverdueBtn')?.addEventListener('click', openOverdueFollowUpModal);
+$('#overdueFollowUpCloseBtn')?.addEventListener('click', closeOverdueFollowUpModal);
+$('#overdueModalDoneBtn')?.addEventListener('click', closeOverdueFollowUpModal);
+$('#overdueFollowUpDialog')?.addEventListener('click', (event) => { if (event.target.id === 'overdueFollowUpDialog') closeOverdueFollowUpModal(); });
+$('#overdueViewAllRegisterBtn')?.addEventListener('click', () => {
+  closeOverdueFollowUpModal();
+  registerFilterState.q = '';
+  registerFilterState.status = 'Issued';
+  registerFilterState.page = 1;
+  saveRegisterPreferences();
+  navigateTo('register');
+});
+
+// Service Worker message receiver for mobile notification clicks
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && (event.data.action === 'open-overdue' || event.data.action === 'open-register')) {
+      if (event.data.action === 'open-overdue') {
+        openOverdueFollowUpModal();
+      } else {
+        navigateTo('register');
+      }
+    }
+  });
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (!$('#toolStatusDialog')?.classList.contains('hidden')) closeToolStatusModal();
+    if (!$('#toolDeletionRequestDialog')?.classList.contains('hidden')) closeToolDeletionRequestModal();
+    if (!$('#overdueFollowUpDialog')?.classList.contains('hidden')) closeOverdueFollowUpModal();
+  }
+});
+
 async function handleCleanupOldRecords() {
   const cutoffDate = new Date();
   cutoffDate.setMonth(cutoffDate.getMonth() - 6);
@@ -3637,7 +4440,8 @@ document.addEventListener('click', (e) => {
 // =========================================================================
 function renderToolsDashboard() {
   const main = $('#appMain');
-  const canEdit = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
+  const isAdmin = currentUser.roles.includes('admin');
+  const canManageTools = isAdmin || currentUser.roles.includes('tools_admin');
 
   if (!toolsLoaded) {
     return `
@@ -3682,7 +4486,7 @@ function renderToolsDashboard() {
   const getStatusBadge = (status) => {
     let badgeClass = 'good';
     if (status === 'Lost' || status === 'Damaged') badgeClass = 'bad';
-    else if (status === 'In Use' || status === 'In Maintenance') badgeClass = 'warn';
+    else if (status === 'In Maintenance') badgeClass = 'warn';
     return `<span class="badge ${badgeClass}">${escapeHtml(status || 'Available')}</span>`;
   };
 
@@ -3694,10 +4498,58 @@ function renderToolsDashboard() {
           <span class="tools-count-pill">${filteredTools.length} ${filteredTools.length === 1 ? 'tool' : 'tools'}</span>
         </div>
         <div class="tools-head-actions">
-          ${canEdit ? '<button type="button" class="btn btn-primary" data-nav="add-tool"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add New Tool</button>' : ''}
+          ${canManageTools ? '<button type="button" class="btn btn-primary" data-nav="add-tool"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;vertical-align:-2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add New Tool</button>' : ''}
         </div>
       </div>
       <div class="panel-pad">
+  `;
+
+  // Admin View: Pending Tool Deletion Requests Banner/Table
+  if (isAdmin && toolDeletionRequestsCache.length > 0) {
+    html += `
+      <div class="pending-deletion-requests-card" style="margin-bottom:24px; background:rgba(239, 68, 68, 0.05); border:1px solid rgba(239, 68, 68, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--danger)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <strong style="color:var(--danger); font-size:14px;">Pending Tool Deletion Requests</strong>
+            <span class="badge warn" style="font-size:11px; font-weight:700;">${toolDeletionRequestsCache.length} pending</span>
+          </div>
+          <span style="font-size:12px; color:var(--text-muted);">Users cannot delete tools directly. Review requests below:</span>
+        </div>
+        <div class="table-wrap" style="overflow-x:auto;">
+          <table class="tools-master-table" style="font-size:12.5px; width:100%; background:var(--surface);">
+            <thead>
+              <tr>
+                <th style="width:130px;">Tool ID</th>
+                <th>Tool Name</th>
+                <th>Requested By</th>
+                <th>Reason for Deletion</th>
+                <th style="width:130px;">Requested Date</th>
+                <th style="width:160px; text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${toolDeletionRequestsCache.map(req => `
+                <tr>
+                  <td class="tool-id-cell mono">${escapeHtml(req.uniqueId || req.toolId || '—')}</td>
+                  <td><strong>${escapeHtml(req.toolName || '—')}</strong></td>
+                  <td>${escapeHtml(req.requestedByName || req.requestedBy || 'User')}</td>
+                  <td style="max-width:240px; word-break:break-word;"><em>${escapeHtml(req.reason || 'No reason provided')}</em></td>
+                  <td class="mono" style="font-size:11.5px;">${req.requestedAt ? new Date(req.requestedAt).toLocaleDateString() : '—'}</td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    <button type="button" class="btn btn-danger btn-sm" data-approve-tool-deletion="${escapeHtml(req.id || req.toolId)}" title="Approve and permanently delete tool">Approve Delete</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-reject-tool-deletion="${escapeHtml(req.id || req.toolId)}" title="Reject deletion request" style="margin-left:4px;">Reject</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
         <div class="tools-filter-bar">
           <div class="tools-search-wrap">
             <svg class="tools-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -3708,7 +4560,6 @@ function renderToolsDashboard() {
             <select id="toolsStatusFilter" class="input-select tools-filter-select">
               <option value="all"${activeStatus === 'all' ? ' selected' : ''}>All Statuses</option>
               <option value="Available"${activeStatus === 'Available' ? ' selected' : ''}>Available</option>
-              <option value="In Use"${activeStatus === 'In Use' ? ' selected' : ''}>In Use</option>
               <option value="In Maintenance"${activeStatus === 'In Maintenance' ? ' selected' : ''}>Under Maintenance</option>
               <option value="Damaged"${activeStatus === 'Damaged' ? ' selected' : ''}>Damage Declared</option>
               <option value="Lost"${activeStatus === 'Lost' ? ' selected' : ''}>Lost</option>
@@ -3731,9 +4582,9 @@ function renderToolsDashboard() {
                   <th scope="col" style="width:130px;">Category</th>
                   <th scope="col" style="width:90px; text-align:center;">Quantity</th>
                   <th scope="col" style="width:120px;">Location</th>
-                  <th scope="col" style="width:130px; text-align:center;">Status</th>
+                  <th scope="col" style="width:140px; text-align:center;">Status & History</th>
                   <th scope="col">Notes</th>
-                  ${canEdit ? '<th scope="col" style="width:140px; text-align:right;">Actions</th>' : ''}
+                  <th scope="col" style="width:180px; text-align:right;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -3742,30 +4593,48 @@ function renderToolsDashboard() {
   if (filteredTools.length === 0) {
     html += `
       <tr>
-        <td colspan="${canEdit ? 8 : 7}" style="text-align:center; padding: 48px 16px;">
+        <td colspan="8" style="text-align:center; padding: 48px 16px;">
           <div class="empty-state" style="padding:0;">
             <div class="display" style="font-size:16px; margin-bottom:6px;">${toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
             <p style="margin:0 0 16px; font-size:13.5px; color:var(--text-muted);">${toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
-            ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtn">Clear Filters</button>' : (canEdit ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
+            ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtn">Clear Filters</button>' : (canManageTools ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
           </div>
         </td>
       </tr>
     `;
   } else {
     filteredTools.forEach(t => {
+      const pendingReq = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === t.id);
+      const historyCount = Array.isArray(t.statusHistory) ? t.statusHistory.length : 0;
+
       html += `
         <tr>
           <td class="tool-id-cell">${escapeHtml(t.uniqueId || '—')}</td>
-          <td class="tool-name-cell"><strong>${escapeHtml(t.toolName)}</strong></td>
+          <td class="tool-name-cell">
+            <strong>${escapeHtml(t.toolName)}</strong>
+            ${pendingReq ? '<br/><span class="badge warn" style="font-size:10.5px; margin-top:3px; display:inline-block;" title="Deletion requested by ' + escapeHtml(pendingReq.requestedByName || pendingReq.requestedBy || 'user') + '">Deletion Pending</span>' : ''}
+          </td>
           <td><span class="tool-cat-badge">${escapeHtml(t.category || 'General')}</span></td>
           <td style="text-align:center;"><span class="tool-qty-pill">${String(t.quantity ?? 0)}</span></td>
           <td><span class="tool-loc-badge"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(t.location || '—')}</span></td>
-          <td style="text-align:center;">${getStatusBadge(t.status)}</td>
+          <td style="text-align:center;">
+            <button type="button" class="btn-clean" data-update-status="${escapeHtml(t.id)}" title="Click to view history or update status" style="cursor:pointer; display:inline-flex; flex-direction:column; align-items:center; gap:3px;">
+              ${getStatusBadge(t.status)}
+              <span style="font-size:10.5px; color:var(--text-muted); text-decoration:underline;">${historyCount > 0 ? historyCount + ' logs' : 'Update'}</span>
+            </button>
+          </td>
           <td class="tool-notes-cell" title="${escapeHtml(t.notes || '')}">${escapeHtml(t.notes || '—')}</td>
-          ${canEdit ? `<td class="tool-actions-cell">
-            <button type="button" class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}" title="Edit Tool">Edit</button>
-            <button type="button" class="btn btn-danger btn-sm" data-delete-tool="${escapeHtml(t.id)}" title="Delete Tool">Delete</button>
-          </td>` : ''}
+          <td class="tool-actions-cell" style="text-align:right; white-space:nowrap;">
+            <button type="button" class="btn btn-ghost btn-sm" data-update-status="${escapeHtml(t.id)}" title="Update Status & View Timeline">Status</button>
+            ${canManageTools ? `<button type="button" class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}" title="Edit Tool Details">Edit</button>` : ''}
+            ${isAdmin ? `
+              <button type="button" class="btn btn-danger btn-sm" data-delete-tool="${escapeHtml(t.id)}" title="Permanently Delete Tool">Delete</button>
+            ` : (pendingReq ? `
+              <span class="badge warn" style="font-size:10.5px; vertical-align:middle;" title="Deletion request submitted">Req Pending</span>
+            ` : `
+              <button type="button" class="btn btn-ghost btn-sm" data-request-delete-tool="${escapeHtml(t.id)}" title="Request Admin to delete this tool" style="color:var(--danger);">Request Delete</button>
+            `)}
+          </td>
         </tr>
       `;
     });
@@ -3780,36 +4649,56 @@ function renderToolsDashboard() {
       <div class="empty-state" style="padding:40px 16px; text-align:center;">
         <div class="display" style="font-size:16px; margin-bottom:6px;">${toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
         <p style="margin:0 0 16px; font-size:13px; color:var(--text-muted);">${toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
-        ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtnMobile">Clear Filters</button>' : (canEdit ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
+        ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtnMobile">Clear Filters</button>' : (canManageTools ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
       </div>
     `;
   } else {
     filteredTools.forEach(t => {
+      const pendingReq = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === t.id);
+      const historyCount = Array.isArray(t.statusHistory) ? t.statusHistory.length : 0;
+
       html += `
         <div class="tool-mobile-card anim-reveal is-visible">
           <div class="tool-card-top">
             <div class="tool-card-identity">
               <span class="tool-card-id">${escapeHtml(t.uniqueId || 'ID: —')}</span>
               <h3 class="tool-card-name">${escapeHtml(t.toolName)}</h3>
+              ${pendingReq ? '<span class="badge warn" style="font-size:10.5px; margin-top:2px;">Deletion Pending Review</span>' : ''}
             </div>
-            <div class="tool-card-status">${getStatusBadge(t.status)}</div>
+            <div class="tool-card-status">
+              <button type="button" class="btn-clean" data-update-status="${escapeHtml(t.id)}" style="cursor:pointer;">
+                ${getStatusBadge(t.status)}
+              </button>
+            </div>
           </div>
           <div class="tool-card-meta">
             ${t.category ? `<span class="tool-meta-chip"><span class="meta-icon">🏷</span>${escapeHtml(t.category)}</span>` : ''}
             ${t.location ? `<span class="tool-meta-chip"><span class="meta-icon">📍</span>${escapeHtml(t.location)}</span>` : ''}
             <span class="tool-meta-chip tool-qty-chip"><span class="meta-icon">📦</span>Qty: <strong>${escapeHtml(t.quantity || '0')}</strong></span>
+            <span class="tool-meta-chip" data-tool-history="${escapeHtml(t.id)}" style="cursor:pointer;"><span class="meta-icon">📜</span>${historyCount > 0 ? historyCount + ' logs' : 'History'}</span>
           </div>
           ${t.notes ? `<div class="tool-card-notes"><span class="notes-label">Notes:</span>${escapeHtml(t.notes)}</div>` : ''}
-          ${canEdit ? `
-            <div class="tool-card-actions">
+          <div class="tool-card-actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-update-status="${escapeHtml(t.id)}">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Status & History
+            </button>
+            ${canManageTools ? `
               <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-edit-tool="${escapeHtml(t.id)}">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
               </button>
+            ` : ''}
+            ${isAdmin ? `
               <button type="button" class="btn btn-danger btn-sm tool-action-btn" data-delete-tool="${escapeHtml(t.id)}">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete
               </button>
-            </div>
-          ` : ''}
+            ` : (pendingReq ? `
+              <span class="badge warn" style="font-size:11px; padding:6px 10px;">Deletion Pending</span>
+            ` : `
+              <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-request-delete-tool="${escapeHtml(t.id)}" style="color:var(--danger);">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Request Delete
+              </button>
+            `)}
+          </div>
         </div>
       `;
     });
@@ -3878,7 +4767,6 @@ function renderToolForm(title, tool) {
               <label for="t_status">Status</label>
               <select id="t_status">
                 <option value="Available" ${tool.status === 'Available' ? 'selected' : ''}>Available</option>
-                <option value="In Use" ${tool.status === 'In Use' ? 'selected' : ''}>In Use</option>
                 <option value="In Maintenance" ${tool.status === 'In Maintenance' ? 'selected' : ''}>In Maintenance</option>
                 <option value="Damaged" ${tool.status === 'Damaged' ? 'selected' : ''}>Damaged</option>
                 <option value="Lost" ${tool.status === 'Lost' ? 'selected' : ''}>Lost</option>
@@ -3925,7 +4813,30 @@ function renderToolForm(title, tool) {
     
     try {
       setSyncingState(true, 'Saving tool...');
+      const now = Date.now();
+      const dateStr = new Date().toLocaleString();
+
       if (isEdit) {
+        if (toolData.status !== tool.status) {
+          const currentHist = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : (tool.status ? [{
+            status: tool.status,
+            previousStatus: null,
+            changedBy: tool.createdBy || 'Initial System Record',
+            changedByUsername: tool.createdBy || 'system',
+            timestamp: tool.createdAt || now,
+            dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : dateStr,
+            notes: tool.notes || 'Initial registration'
+          }] : []);
+          toolData.statusHistory = [...currentHist, {
+            status: toolData.status,
+            previousStatus: tool.status || 'Available',
+            changedBy: currentUser.fullName || currentUser.username,
+            changedByUsername: currentUser.username,
+            timestamp: now,
+            dateStr: dateStr,
+            notes: toolData.notes || 'Status updated via tool editor'
+          }];
+        }
         await update(ref(db, 'tools/' + tool.id), toolData);
         await writeAudit('tool-edited', tool.id, { toolName, quantity: toolQty, status: toolData.status, uniqueId: tool.uniqueId });
       } else {
@@ -3947,6 +4858,15 @@ function renderToolForm(title, tool) {
         
         const nextSequence = String(maxSequence + 1).padStart(4, '0');
         toolData.uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
+        toolData.statusHistory = [{
+          status: toolData.status,
+          previousStatus: null,
+          changedBy: currentUser.fullName || currentUser.username,
+          changedByUsername: currentUser.username,
+          timestamp: now,
+          dateStr: dateStr,
+          notes: toolData.notes || 'Initial registration'
+        }];
         
         toolData.createdAt = serverTimestamp();
         toolData.createdBy = currentUser.username;

@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v2.0.0: Unified centered dialogs, robust PWA sync & cache invalidation
-const CACHE_NAME = 'cmm-sms-store-v2.0.0';
+// v2.1.0: Overdue Tools/Materials Mobile Notifications & Follow-up
+const CACHE_NAME = 'cmm-sms-store-v2.1.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -134,3 +134,25 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Notification Click: bring app window to focus and navigate to overdue/register view
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || './#overdue';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(location.origin) && 'focus' in client) {
+          if (event.notification.data?.action === 'open-overdue') {
+            client.postMessage({ type: 'NAVIGATE_VIEW', view: 'register', filter: 'overdue' });
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
