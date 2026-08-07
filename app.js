@@ -1415,7 +1415,13 @@ function listenToCollections() {
     checkAndNotifyOverdueIssues();
     if (!FORM_VIEWS.has(currentView)) render();
   }, (err) => {
-    console.warn('Issues sync listener notice:', err);
+    // Bug fix: was console.warn (silent) — .info/connected can report
+    // "connected" while THIS listener is denied (e.g. expired/edited
+    // Firebase rules), leaving the register empty with no visible error.
+    // console.error is captured into Admin > Settings > Detailed Error Log;
+    // the toast tells whoever is using the app right now, admin or not.
+    console.error('Issues sync listener error:', err);
+    if (typeof showToast === 'function') showToast('Material register failed to sync from the cloud: ' + (err.message || err.code || 'permission error'), { title: 'Cloud Sync Error', type: 'error', duration: 6000 });
   });
   
   unsubTools = onValue(ref(db, 'tools'), (snap) => {
@@ -1423,7 +1429,9 @@ function listenToCollections() {
     toolsLoaded = true;
     if (!FORM_VIEWS.has(currentView)) render();
   }, (err) => {
-    console.warn('Tools sync listener notice:', err);
+    // Bug fix: was console.warn (silent) — see note on the issues listener above.
+    console.error('Tools sync listener error:', err);
+    if (typeof showToast === 'function') showToast('Tool register failed to sync from the cloud: ' + (err.message || err.code || 'permission error'), { title: 'Cloud Sync Error', type: 'error', duration: 6000 });
   });
 
   if (currentUser?.roles?.includes('admin')) {
@@ -1431,7 +1439,8 @@ function listenToCollections() {
       toolDeletionRequestsCache = snapshotToArray(snap);
       if (!FORM_VIEWS.has(currentView)) render();
     }, (err) => {
-      console.warn('Tool deletion requests sync listener notice:', err);
+      // Bug fix: was console.warn (silent) — see note on the issues listener above.
+      console.error('Tool deletion requests sync listener error:', err);
       toolDeletionRequestsCache = [];
     });
   }
@@ -3807,96 +3816,15 @@ async function deleteIssue(id) {
   finally { setSyncingState(false); }
 }
 
-const CLEAR_DATA_PASSWORD_SHA256 = '96f8b71d0eea9131cddb6e2dd24c3bb47be69012edf943544b002fbd4afe2a4a';
-let clearDataDialogResolver = null;
-async function sha256Hex(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-function closeClearDataDialog(value) {
-  const dialog = $('#clearDataDialog');
-  if (!dialog || dialog.classList.contains('hidden')) return;
-  dialog.classList.add('hidden');
-  const resolver = clearDataDialogResolver;
-  clearDataDialogResolver = null;
-  $('#clearDataPassword').value = '';
-  $('#clearDataPasswordError').classList.add('hidden');
-  if (resolver) resolver(value);
-}
-function requestClearDataPassword() {
-  const dialog = $('#clearDataDialog');
-  const input = $('#clearDataPassword');
-  $('#clearDataPasswordError').classList.add('hidden');
-  input.value = '';
-  dialog.classList.remove('hidden');
-  setTimeout(() => input.focus(), 0);
-  return new Promise((resolve) => { clearDataDialogResolver = resolve; });
-}
-async function verifyClearDataPassword() {
-  const input = $('#clearDataPassword');
-  const error = $('#clearDataPasswordError');
-  const valid = await sha256Hex(input.value) === CLEAR_DATA_PASSWORD_SHA256;
-  if (!valid) {
-    error.textContent = 'Incorrect cleanup password.';
-    error.classList.remove('hidden');
-    input.select();
-    return;
-  }
-  closeClearDataDialog(true);
-}
-async function handleClearAllStoreData() {
-  if (!currentUser?.roles.includes('admin')) { await appAlert('Only the administrator can clear store data.', { title: 'Access denied', type: 'danger' }); return; }
-  const accepted = await appConfirm(
-    'This permanently deletes ALL issue and return records, linked photos, pending access requests, and audit history. User accounts are preserved. This action cannot be undone.',
-    { title: 'Clear all store data?', type: 'danger', confirmText: 'Continue' }
-  );
-  if (!accepted) return;
-  const verified = await requestClearDataPassword();
-  if (!verified) return;
-  const finalConfirm = await appConfirm(
-    'Final warning: all store register data will now be permanently deleted. Continue?',
-    { title: 'Permanent deletion', type: 'danger', confirmText: 'Delete all data' }
-  );
-  if (!finalConfirm) return;
-
-  const button = $('#clearAllStoreDataBtn');
-  if (button) { button.disabled = true; button.innerHTML = '<span class="spinner"></span> Clearing data…'; }
-  setSyncingState(true, 'Clearing all store data…');
-  try {
-    const issuesSnapshot = await get(ref(db, 'issues'));
-    const records = snapshotToArray(issuesSnapshot);
-    if (storage) {
-      const paths = new Set();
-      records.forEach((issue) => {
-        (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : [])).forEach((path) => path && paths.add(path));
-        (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : [])).forEach((path) => path && paths.add(path));
-      });
-      for (const path of paths) {
-        try { await deleteObject(storageRef(storage, path)); } catch (error) { console.warn('Could not delete linked photo:', path, error); }
-      }
-    }
-    await update(ref(db), { issues: null, accessRequests: null, auditLog: null });
-    issuesCache = [];
-    issuesLoaded = true;
-    resetRegisterFilters();
-    await appAlert('All store register data has been cleared. User accounts were preserved.', { title: 'Cleanup complete', type: 'success' });
-    navigateTo('admin-dashboard');
-  } catch (error) {
-    console.error('Clear all store data failed:', error);
-    await appAlert('Could not clear all store data: ' + (error.message || 'unknown error'), { title: 'Cleanup failed', type: 'danger' });
-  } finally {
-    if (button && document.contains(button)) { button.disabled = false; button.textContent = 'Clear All Store Data'; }
-    setSyncingState(false);
-  }
-}
-$('#clearDataCancelBtn')?.addEventListener('click', () => closeClearDataDialog(false));
-$('#clearDataVerifyBtn')?.addEventListener('click', verifyClearDataPassword);
-$('#clearDataPassword')?.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') { event.preventDefault(); void verifyClearDataPassword(); }
-  if (event.key === 'Escape') closeClearDataDialog(false);
-});
-$('#clearDataDialog')?.addEventListener('click', (event) => { if (event.target.id === 'clearDataDialog') closeClearDataDialog(false); });
+// Bug fix: removed a duplicate, orphaned "Clear All Store Data" implementation that
+// used to live here (its own closeClearDataDialog(), a SHA-256 password check, and its
+// own #clearDataCancelBtn / #clearDataVerifyBtn / #clearDataDialog listeners). It was
+// never wired to any button (handleClearAllStoreData() had zero callers) — the real,
+// UI-wired flow is openClearDataDialog()/closeClearDataDialog() below, bound to
+// #clearAllStoreDataBtn. Having two same-named top-level closeClearDataDialog()
+// functions is a SyntaxError in an ES module ("Identifier ... has already been
+// declared"), which silently killed the entire app.js module — nothing in this file
+// ran, which is why the app looked like cloud sync (and everything else) had stopped.
 document.addEventListener('click', (event) => { const trigger = event.target.closest?.('[data-photo-gallery]'); if (trigger) { event.preventDefault(); openPhotoGallery(trigger.dataset.photoGallery); } });
 $('#photoGalleryCloseBtn')?.addEventListener('click', () => { triggerHaptic(10); closePhotoGallery(); });
 $('#photoGalleryPrev')?.addEventListener('click', () => {
@@ -4662,7 +4590,8 @@ function setupLoginKPIs() {
         kpiGrid.style.display = 'flex';
         setTimeout(() => { kpiGrid.style.opacity = '1'; }, 50);
       }, (error) => {
-        console.warn('Login KPIs read error:', error);
+        // Bug fix: was console.warn (silent) — see note on the issues listener above.
+        console.error('Login KPIs read error:', error);
       });
     }
   } catch (e) {
