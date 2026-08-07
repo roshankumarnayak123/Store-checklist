@@ -713,6 +713,8 @@ $('#authThemeToggle')?.addEventListener('click', toggleTheme);
 function startApp() {
   clearAuthMessages();
   attemptFirebaseInit();
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
+  updateLoginSyncIndicator(isOnline);
   const saved = loadSession();
   if (saved) {
     currentUser = saved;

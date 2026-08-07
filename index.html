@@ -339,8 +339,8 @@
         <div class="auth-sub">Issue &amp; Return Register — Store Access</div>
 
         <div id="loginSyncStatus" class="login-sync-row">
-          <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
-          <span id="loginSyncLabel">Checking cloud connection…</span>
+          <span class="sync-dot sync-dot-good" id="loginSyncDot"></span>
+          <span id="loginSyncLabel">Cloud Sync ready</span>
         </div>
 
         <div id="authError" class="alert alert-error hidden" role="alert"></div>
@@ -359,7 +359,7 @@
                 aria-label="Show password" aria-pressed="false">Show</button>
             </div>
           </div>
-          <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
+          <button type="submit" id="loginBtn" class="btn btn-primary">Log In</button>
         </form>
 
         <form id="requestForm" class="hidden">
@@ -499,10 +499,10 @@
     </button>
   </div>
 
-  <script src="boot.js?v=24"></script>
+  <script src="boot.js?v=25"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script type="module" src="app.js?v=24"></script>
-  <script src="anim.js?v=24" defer></script>
+  <script type="module" src="app.js?v=25"></script>
+  <script src="anim.js?v=25" defer></script>
 
 
   <script>
@@ -738,7 +738,7 @@
       // 3. Register Service Worker reliably across HTTPS, localhost & local IPs
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then((reg) => {
+          navigator.serviceWorker.register('./sw.js?v=25').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);
             try { reg.update(); } catch (_) {}
             
@@ -749,13 +749,14 @@
               }
             });
 
-            // Check for updates
+            // Auto activate when new worker is discovered
             reg.addEventListener('updatefound', () => {
               const newWorker = reg.installing;
               if (newWorker) {
                 newWorker.addEventListener('statechange', () => {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('[PWA] New version installed and ready.');
+                    console.log('[PWA] New version installed. Activating…');
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
                   }
                 });
               }

@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v2.1.3: Clean Boot & Cloud Sync Optimization
-const CACHE_NAME = 'cmm-sms-store-v2.1.3';
+// v2.2.0: Cloud Connection Exclusions & Fast Update
+const CACHE_NAME = 'cmm-sms-store-v2.2.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -57,7 +57,10 @@ self.addEventListener('fetch', (event) => {
   // 1. Never cache Firebase RTDB, Firestore, Cloud Storage, or Auth API calls
   if (
     url.hostname.includes('firebaseio.com') ||
-    (url.hostname.includes('googleapis.com') && !url.hostname.includes('fonts.googleapis.com') && !url.hostname.includes('fonts.gstatic.com')) ||
+    url.hostname.includes('firebasedatabase.app') ||
+    url.hostname.includes('firebaseapp.com') ||
+    url.hostname.includes('gstatic.com') ||
+    (url.hostname.includes('googleapis.com') && !url.hostname.includes('fonts.googleapis.com')) ||
     url.hostname.includes('identitytoolkit') ||
     url.hostname.includes('securetoken') ||
     url.hostname.includes('firebasestorage.app') ||
