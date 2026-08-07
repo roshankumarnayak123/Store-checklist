@@ -64,7 +64,7 @@ let unsubIssues = null;
 let unsubTools = null;
 let unsubRequests = null;
 let unsubToolDeletionRequests = null;
-let currentView = 'dashboard';
+let currentView = null;
 
 // Explicit public bridge: the error logger lives in a classic <script> outside
 // this ES module, and module-scoped bindings never reach it, so mirror the
@@ -720,7 +720,7 @@ function startApp() {
     currentUser = saved;
     initTopbar();
     showScreen('appScreen');
-    navigateTo(getStartupView(currentUser), false);
+    navigateTo(getStartupView(currentUser), false, true);
   } else {
     showScreen('authScreen');
   }
@@ -1028,7 +1028,8 @@ $('#loginForm').addEventListener('submit', async (e) => {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Logging in…';
 
   try {
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    // 1. Admin login check (case-insensitive username)
+    if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase() && password === ADMIN_PASSWORD) {
       cloudConnected = true;
       updateLoginSyncIndicator(true);
       currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
@@ -1038,21 +1039,44 @@ $('#loginForm').addEventListener('submit', async (e) => {
       initTopbar();
       listenToCollections();
       showScreen('appScreen');
-      navigateTo(getStartupView(currentUser));
+      navigateTo(getStartupView(currentUser), true, true);
       return;
     }
 
     if (!db) throw new Error('Database is not initialized. Please check network.');
 
+    // 2. Lookup user record in Firebase
+    let record = null;
+    let resolvedUsername = username;
+
     const snap = await get(ref(db, 'users/' + username));
+    if (snap.exists()) {
+      record = snap.val();
+      resolvedUsername = username;
+    } else {
+      // Fallback: case-insensitive matching across users (helps with mobile auto-caps)
+      const allUsersSnap = await get(ref(db, 'users'));
+      if (allUsersSnap.exists()) {
+        const allUsers = allUsersSnap.val() || {};
+        const matchKey = Object.keys(allUsers).find(k => k.toLowerCase() === username.toLowerCase());
+        if (matchKey) {
+          record = allUsers[matchKey];
+          resolvedUsername = matchKey;
+        }
+      }
+    }
+
     cloudConnected = true;
     updateLoginSyncIndicator(true);
-    if (!snap.exists() || snap.val().password !== password) { showAuthError('Incorrect username or password.'); return; }
-    const record = snap.val();
+
+    if (!record || String(record.password).trim() !== String(password).trim()) {
+      showAuthError('Incorrect username or password.');
+      return;
+    }
 
     currentUser = {
-      username,
-      fullName: record.fullName || username,
+      username: resolvedUsername,
+      fullName: record.fullName || resolvedUsername,
       roles: Array.isArray(record.roles) ? record.roles : (record.role ? [record.role] : ['storekeeper']),
       profilePhotoUrl: record.profilePhotoUrl || null
     };
@@ -1062,9 +1086,9 @@ $('#loginForm').addEventListener('submit', async (e) => {
     initTopbar();
     listenToCollections();
     showScreen('appScreen');
-    navigateTo(getStartupView(currentUser));
+    navigateTo(getStartupView(currentUser), true, true);
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     showAuthError('Unable to log in: failed to sync with cloud. (' + (err.message || 'unknown error') + ')');
   } finally {
     btn.disabled = false; btn.textContent = 'Log In';
@@ -1097,6 +1121,7 @@ $('#logoutBtn').addEventListener('click', () => {
   window.toolsCategoryFilter = 'all';
 
   currentUser = null;
+  currentView = null;
   window.currentUser = null;
   window.currentView = null;
   clearSession();
@@ -1298,8 +1323,8 @@ function renderTransition() {
   swap();
 }
 
-async function navigateTo(viewId, updateHistory = true) {
-  if (viewId === currentView) return;
+async function navigateTo(viewId, updateHistory = true, force = false) {
+  if (!force && viewId === currentView) return;
   if (formDirty) {
     const leave = await appConfirm('You have unsaved changes. Leave this page and discard them?', { title: 'Unsaved Changes', confirmText: 'Leave Page', cancelText: 'Stay' });
     if (!leave) return;

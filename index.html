@@ -499,10 +499,10 @@
     </button>
   </div>
 
-  <script src="boot.js?v=25"></script>
+  <script src="boot.js?v=26"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script type="module" src="app.js?v=25"></script>
-  <script src="anim.js?v=25" defer></script>
+  <script type="module" src="app.js?v=26"></script>
+  <script src="anim.js?v=26" defer></script>
 
 
   <script>
@@ -738,7 +738,7 @@
       // 3. Register Service Worker reliably across HTTPS, localhost & local IPs
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js?v=25').then((reg) => {
+          navigator.serviceWorker.register('./sw.js?v=26').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);
             try { reg.update(); } catch (_) {}
             

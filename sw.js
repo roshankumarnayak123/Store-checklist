@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v2.2.0: Cloud Connection Exclusions & Fast Update
-const CACHE_NAME = 'cmm-sms-store-v2.2.0';
+// v2.2.1: Login Navigation & Rendering Fix
+const CACHE_NAME = 'cmm-sms-store-v2.2.1';
 const STATIC_ASSETS = [
   './',
   './index.html',
