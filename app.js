@@ -695,6 +695,7 @@ $('#authThemeToggle')?.addEventListener('click', toggleTheme);
 // APP BOOTSTRAPPING
 // =========================================================================
 function startApp() {
+  clearAuthMessages();
   attemptFirebaseInit();
   const saved = loadSession();
   if (saved) {
@@ -756,6 +757,14 @@ function updateLoginSyncIndicator(connected) {
     if (dot && label) {
       dot.className = 'sync-dot ' + (isConnected ? 'sync-dot-good' : 'sync-dot-bad');
       label.textContent = isConnected ? 'Cloud Sync ready — login enabled' : 'Cloud Sync offline — login disabled';
+    }
+
+    if (isConnected) {
+      const error = $('#authError');
+      if (error && error.textContent.includes('Loading is delayed')) {
+        error.textContent = '';
+        error.classList.add('hidden');
+      }
     }
 
     const loginBtn = $('#loginBtn');

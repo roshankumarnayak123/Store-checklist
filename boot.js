@@ -7,12 +7,21 @@
   if (auth && (!app || app.classList.contains('hidden'))) auth.classList.remove('hidden');
 
   window.__cmmModuleReady = false;
-  // Bug #8 fix: store the timer ID so it can be cleared if the module loads successfully,
-  // preventing a false 'loading is delayed' error message after a slow-but-successful load.
   let _bootWatchdog = null;
   window.addEventListener('cmm-module-ready', () => {
     window.__cmmModuleReady = true;
-    if (_bootWatchdog) { clearTimeout(_bootWatchdog); _bootWatchdog = null; }
+    if (_bootWatchdog) {
+      clearTimeout(_bootWatchdog);
+      _bootWatchdog = null;
+    }
+    // Cleanly dismiss delayed-load warning if the module loaded after watchdog triggered
+    if (error && error.textContent.includes('Loading is delayed')) {
+      error.textContent = '';
+      error.classList.add('hidden');
+    }
+    if (label && label.textContent === 'Cloud module is taking longer than expected.') {
+      label.textContent = 'Connecting to cloud database…';
+    }
   });
 
   window.addEventListener('error', (event) => {
@@ -36,5 +45,5 @@
       error.textContent = 'Loading is delayed. Use Ctrl+F5 to refresh. If the message remains, check whether gstatic.com and jsdelivr.net are allowed on this network.';
       error.classList.remove('hidden');
     }
-  }, 12000);
+  }, 18000);
 })();

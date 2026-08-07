@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v2.1.0: Overdue Tools/Materials Mobile Notifications & Follow-up
-const CACHE_NAME = 'cmm-sms-store-v2.1.0';
+// v2.1.1: Fast Boot & Startup Resilience
+const CACHE_NAME = 'cmm-sms-store-v2.1.1';
 const STATIC_ASSETS = [
   './',
   './index.html',
