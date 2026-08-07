@@ -499,10 +499,10 @@
     </button>
   </div>
 
-  <script src="boot.js?v=22"></script>
+  <script src="boot.js?v=23"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script type="module" src="app.js?v=22"></script>
-  <script src="anim.js?v=22" defer></script>
+  <script type="module" src="app.js?v=23"></script>
+  <script src="anim.js?v=23" defer></script>
 
 
   <script>
@@ -524,14 +524,16 @@
           failDebounceTimer = null;
         }
 
-        if (!isDisconnected) {
-          // Reconnected! Hide overlay immediately
+        const isAuthScreen = document.getElementById('authScreen') && !document.getElementById('authScreen').classList.contains('hidden');
+
+        if (!isDisconnected || isAuthScreen) {
+          // Reconnected or on login screen! Hide overlay immediately
           failed = false;
           overlay.classList.remove('is-active');
           document.body.classList.remove('cloud-sync-suspended');
           overlay.setAttribute('aria-hidden', 'true');
         } else {
-          // Disconnected: wait 3 seconds before showing blocking overlay
+          // Disconnected inside active app session: wait 3 seconds before showing blocking overlay
           // to absorb transient WiFi drops and Firebase reconnect cycles.
           failDebounceTimer = setTimeout(() => {
             failDebounceTimer = null;

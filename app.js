@@ -221,20 +221,36 @@ async function retryCloudSync() {
   hideCloudSyncRetry();
   setSyncingState(true, 'Retrying Cloud Sync…');
   try {
-    if (!db) attemptFirebaseInit();
+    attemptFirebaseInit();
     if (!db) throw new Error('Cloud service is not initialized');
-    const connectedSnap = await get(ref(db, '.info/connected'));
-    if (connectedSnap.val() !== true) throw new Error('Cloud connection is still unavailable');
+    // Fetch issues to verify database connectivity
+    const snap = await get(ref(db, 'issues'));
+    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+    issuesLoaded = true;
+
+    // Fetch tools to refresh tool cache
+    const snapTools = await get(ref(db, 'tools')).catch(() => null);
+    if (snapTools) {
+      toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+      toolsLoaded = true;
+    }
+
+    if (currentUser?.roles?.includes('admin')) {
+      const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
+      toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+    }
+
     cloudConnected = true;
     lastSyncedAt = new Date();
     if (currentUser) listenToCollections();
     updateLoginSyncIndicator(true);
+    if (!FORM_VIEWS.has(currentView)) render();
     setCloudSyncProgress(100);
     setTimeout(() => setCloudSyncProgress(null), 550);
   } catch (error) {
     cloudConnected = false;
     updateLoginSyncIndicator(false);
-    showCloudSyncRetry('Cloud Sync failed');
+    showCloudSyncRetry('Cloud Sync failed — click to retry');
     console.error('Cloud Sync retry failed:', error);
   } finally {
     if (retry) retry.textContent = 'Retry';
@@ -710,6 +726,7 @@ function startApp() {
 
 function attemptFirebaseInit() {
   if (configIsPlaceholder) return;
+  if (app && db) return;
   try {
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
@@ -1004,7 +1021,7 @@ function hideInlineError(alertId) {
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAuthMessages();
-  if (!cloudConnected) { showAuthError('Cloud sync is not connected. Login is disabled until the connection is restored.'); return; }
+  if (!db) attemptFirebaseInit();
   const username = $('#loginUsername').value.trim();
   const password = $('#loginPassword').value;
   const btn = $('#loginBtn');
@@ -1012,6 +1029,8 @@ $('#loginForm').addEventListener('submit', async (e) => {
 
   try {
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      cloudConnected = true;
+      updateLoginSyncIndicator(true);
       currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
       window.currentUser = currentUser;
       document.body.dataset.role = currentUser.roles.join(',');
@@ -1023,7 +1042,11 @@ $('#loginForm').addEventListener('submit', async (e) => {
       return;
     }
 
+    if (!db) throw new Error('Database is not initialized. Please check network.');
+
     const snap = await get(ref(db, 'users/' + username));
+    cloudConnected = true;
+    updateLoginSyncIndicator(true);
     if (!snap.exists() || snap.val().password !== password) { showAuthError('Incorrect username or password.'); return; }
     const record = snap.val();
 
@@ -1354,9 +1377,11 @@ const FORM_VIEWS = new Set(['issue-new', 'return-record', 'edit-issue', 'edit-re
 // There is NO joining, foreign key linking, or cross-dependency between them.
 // -------------------------------------------------------------------------
 function listenToCollections() {
-  if (unsubIssues) unsubIssues();
-  if (unsubTools) unsubTools();
-  if (unsubToolDeletionRequests) unsubToolDeletionRequests();
+  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  if (unsubTools) { unsubTools(); unsubTools = null; }
+  if (unsubToolDeletionRequests) { unsubToolDeletionRequests(); unsubToolDeletionRequests = null; }
+
+  if (!db) return;
 
   unsubIssues = onValue(ref(db, 'issues'), (snap) => {
     issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
@@ -1364,18 +1389,27 @@ function listenToCollections() {
     updateOverdueTopbarBadge();
     checkAndNotifyOverdueIssues();
     if (!FORM_VIEWS.has(currentView)) render();
+  }, (err) => {
+    console.warn('Issues sync listener notice:', err);
   });
   
   unsubTools = onValue(ref(db, 'tools'), (snap) => {
     toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
     if (!FORM_VIEWS.has(currentView)) render();
+  }, (err) => {
+    console.warn('Tools sync listener notice:', err);
   });
 
-  unsubToolDeletionRequests = onValue(ref(db, 'toolDeletionRequests'), (snap) => {
-    toolDeletionRequestsCache = snapshotToArray(snap);
-    if (!FORM_VIEWS.has(currentView)) render();
-  });
+  if (currentUser?.roles?.includes('admin')) {
+    unsubToolDeletionRequests = onValue(ref(db, 'toolDeletionRequests'), (snap) => {
+      toolDeletionRequestsCache = snapshotToArray(snap);
+      if (!FORM_VIEWS.has(currentView)) render();
+    }, (err) => {
+      console.warn('Tool deletion requests sync listener notice:', err);
+      toolDeletionRequestsCache = [];
+    });
+  }
 }
 
 function statusOf(issue) { const returned = issue.qtyReturned || 0; if (returned >= issue.qtyIssued) return 'Returned'; if (returned > 0) return 'Partially Returned'; return 'Issued'; }
