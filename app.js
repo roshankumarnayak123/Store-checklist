@@ -927,10 +927,8 @@ function navLinksForRoles(roles) {
   if (roles.includes('tools_admin') || roles.includes('tools_viewer')) {
     links.push(['tools-dashboard', 'Tools Master List']);
   }
-  if (roles.includes('user') || roles.includes('storekeeper')) {
+  if (roles.includes('user') || roles.includes('storekeeper') || roles.includes('viewer')) {
     links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
-  } else if (roles.includes('viewer')) {
-    links.push(['register', 'Register']);
   }
   
   links.push(['profile', 'My Profile']);
@@ -944,9 +942,8 @@ function getHomeView(user) {
   let fallback = 'dashboard';
   const roles = user?.roles || [];
   if (roles.includes('admin')) fallback = 'admin-dashboard';
-  else if (roles.includes('user') || roles.includes('storekeeper')) fallback = 'dashboard';
+  else if (roles.includes('user') || roles.includes('storekeeper') || roles.includes('viewer')) fallback = 'dashboard';
   else if (roles.includes('tools_admin') || roles.includes('tools_viewer')) fallback = 'tools-dashboard';
-  else if (roles.includes('viewer')) fallback = 'register';
   
   if (!user) return fallback;
   try {
@@ -1244,14 +1241,14 @@ function renderMobileBottomNav(roles = []) {
       links.push(['tools-dashboard', 'Tools']);
     }
     links.push(['profile', 'Profile']);
-  } else if (hasToolsAdmin || hasToolsViewer) {
-    links.push(['tools-dashboard', 'Tools'], ['profile', 'Profile']);
   } else if (hasViewer) {
-    links.push(['register', 'Register']);
+    links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
     if (hasToolsAccess) {
       links.push(['tools-dashboard', 'Tools']);
     }
     links.push(['profile', 'Profile']);
+  } else if (hasToolsAdmin || hasToolsViewer) {
+    links.push(['tools-dashboard', 'Tools'], ['profile', 'Profile']);
   } else {
     links.push(['profile', 'Profile']);
   }
@@ -1275,6 +1272,9 @@ function renderMobileBottomNav(roles = []) {
 }
 
 function initTopbar() {
+  document.body.dataset.role = currentUser.roles[0] || 'viewer';
+  document.body.dataset.roles = currentUser.roles.join(' ');
+
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
   $('#whoRole').textContent = currentUser.roles.join(', ');
   $('#whoRole').className = 'who-role role-' + currentUser.roles[0];
@@ -1814,10 +1814,11 @@ function render() {
   if (currentUser.roles.includes('admin')) {
     validViews.push('admin-dashboard', 'users-admin', 'settings-admin', 'edit-return', 'register', 'tools-dashboard', 'add-tool', 'edit-tool', 'dashboard');
   }
-  if (currentUser.roles.includes('user') || currentUser.roles.includes('storekeeper')) {
-    validViews.push('dashboard', 'register', 'issue-new', 'return-record', 'edit-issue', 'edit-return');
-  } else if (currentUser.roles.includes('viewer')) {
-    validViews.push('register');
+  if (currentUser.roles.includes('user') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('viewer')) {
+    validViews.push('dashboard', 'register');
+    if (!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper')) {
+      validViews.push('issue-new', 'return-record', 'edit-issue', 'edit-return');
+    }
   }
   if (currentUser.roles.includes('tools_admin')) {
     validViews.push('tools-dashboard', 'add-tool', 'edit-tool');
@@ -1876,6 +1877,9 @@ function kpiValue(n) {
 
 function renderUserDashboard() {
   const s = statsSummary();
+  const canIssue = currentUser.roles.includes('admin') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('user');
+  const canManageTools = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
+  const canViewTools = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin') || currentUser.roles.includes('tools_viewer');
   return `
     <div class="page-head">
       <div>
@@ -1893,9 +1897,9 @@ function renderUserDashboard() {
     <div class="panel panel-pad">
       <h2 style="margin-top:0;">Quick actions</h2>
       <div class="actions-row">
-        <button class="btn btn-dark" data-nav="issue-new">Log a New Issue</button>
+        ${canIssue ? `<button class="btn btn-dark" data-nav="issue-new">Log a New Issue</button>` : ''}
         <button class="btn btn-ghost" data-nav="register">View Full Register</button>
-        ${(currentUser.roles.includes('tools_admin') || currentUser.roles.includes('admin')) ? `<button class="btn btn-dark" data-nav="add-tool">Enter New Tool Details</button>` : ''}
+        ${canManageTools ? `<button class="btn btn-dark" data-nav="add-tool">Enter New Tool Details</button>` : (canViewTools ? `<button class="btn btn-ghost" data-nav="tools-dashboard">Tools Master List</button>` : '')}
       </div>
     </div>`;
 }
@@ -2857,6 +2861,9 @@ async function downloadToolsExcel() {
 function renderSettingsAdmin() {
   const dbUrl = firebaseConfig.databaseURL || '(not set)';
   const toolCategories = Array.from(new Set(toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+  const errorLogs = typeof window.getAdminErrorLogs === 'function' ? window.getAdminErrorLogs() : [];
+  const errorSummary = typeof window.renderAdminErrorSummary === 'function' ? window.renderAdminErrorSummary() : '';
+  const errorLogsHtml = typeof window.renderAdminErrorLogs === 'function' ? window.renderAdminErrorLogs() : '<div class="error-log-empty">No errors recorded.</div>';
 
   return `
     <div class="page-head">
@@ -2879,7 +2886,7 @@ function renderSettingsAdmin() {
     </div>
 
     <div class="panel" style="margin-bottom:32px;">
-      <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="errors" aria-expanded="true"><h2>Detailed Error Log <span id="adminErrorCount" class="error-log-chip">${getAdminErrorLogs().length}</span></h2><span>⌄</span></button></div>
+      <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="errors" aria-expanded="true"><h2>Detailed Error Log <span id="adminErrorCount" class="error-log-chip">${errorLogs.length}</span></h2><span>⌄</span></button></div>
       <div class="panel-pad settings-section-body" data-settings-body="errors">
         <div class="page-sub" style="margin-bottom:14px;">Browser, application, promise, network and Firebase errors recorded on this device. Logs are stored locally and limited to the latest 200 entries.</div>
         <div class="error-log-toolbar">
@@ -2889,8 +2896,8 @@ function renderSettingsAdmin() {
           <button class="btn btn-ghost btn-sm" id="exportErrorLogBtn">Export JSON</button>
           <button class="btn btn-danger btn-sm" id="clearErrorLogBtn">Clear Log</button>
         </div>
-        <div id="adminErrorLogSummary" class="error-log-summary">${renderAdminErrorSummary()}</div>
-        <div id="adminErrorLogList" class="error-log-list">${renderAdminErrorLogs()}</div>
+        <div id="adminErrorLogSummary" class="error-log-summary">${errorSummary}</div>
+        <div id="adminErrorLogList" class="error-log-list">${errorLogsHtml}</div>
       </div>
     </div>
     <div class="panel" style="margin-bottom:32px;">

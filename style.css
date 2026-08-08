@@ -4792,6 +4792,12 @@ html[data-theme="light"] .mobile-bottom-bar {
   .topbar .nav {
     display: none !important;
   }
+
+  /* Ensure anim-reveal elements are always visible on mobile/iOS screens */
+  .anim-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* ==========================================================================

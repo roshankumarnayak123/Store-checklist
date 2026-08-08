@@ -3,7 +3,12 @@
 let _io = null;
 
 const initReveal = () => {
-  if (window.innerWidth <= 768) return;
+  if (window.innerWidth <= 768) {
+    document.querySelectorAll('.anim-reveal').forEach((el) => {
+      el.classList.add('is-visible');
+    });
+    return;
+  }
   const selectors = '.kpi, .panel, .filter-bar, .reg-pagination, .request-card, .kv-row, .tool-mobile-card';
   const items = document.querySelectorAll(selectors);
 
@@ -15,7 +20,7 @@ const initReveal = () => {
           _io.unobserve(e.target);
         }
       });
-    }, { threshold: 0.12 });
+    }, { threshold: 0.05 });
   }
 
   items.forEach((el) => {
@@ -27,6 +32,13 @@ const initReveal = () => {
       el.classList.add('anim-reveal');
     }
     _io.observe(el);
+
+    // iOS WebKit safety fallback: ensure element is revealed if observer delays
+    setTimeout(() => {
+      if (el && !el.classList.contains('is-visible')) {
+        el.classList.add('is-visible');
+      }
+    }, 350);
   });
 
   // Stagger KPI grid children

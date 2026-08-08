@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 
 <body>
@@ -499,10 +499,10 @@
     </button>
   </div>
 
-  <script src="boot.js?v=26"></script>
+  <script src="boot.js?v=27"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script type="module" src="app.js?v=26"></script>
-  <script src="anim.js?v=26" defer></script>
+  <script type="module" src="app.js?v=27"></script>
+  <script src="anim.js?v=27" defer></script>
 
 
   <script>
@@ -681,7 +681,12 @@
         if (ok) { localStorage.removeItem(ADMIN_ERROR_LOG_KEY); refreshAdminErrorLogView(); }
       }
     });
-    // Bug #5 fix: expose on window so app.js module and future refactors can call it
+
+    // Expose on window so app.js module and future refactors can safely call them
+    window.getAdminErrorLogs = getAdminErrorLogs;
+    window.renderAdminErrorSummary = renderAdminErrorSummary;
+    window.renderAdminErrorLogs = renderAdminErrorLogs;
+    window.captureAdminError = captureAdminError;
     window.refreshAdminErrorLogView = refreshAdminErrorLogView;
 
   </script>
