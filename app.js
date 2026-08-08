@@ -525,7 +525,7 @@ function quickFillDatalist(id, values) {
 async function appendCameraPhoto(input, targetArrayName, previewSelector) {
   const file = input.files?.[0];
   if (!file) return;
-  if (!file.type.startsWith('image/')) { alert('Please take an image only.'); input.value = ''; return; }
+  if (!file.type.startsWith('image/')) { void appAlert('Please take an image only.', { title: 'Invalid File', type: 'danger' }); input.value = ''; return; }
   const issue = targetArrayName === 'edit-issue' ? issuesCache.find(i => i.id === editIssueTargetId) : targetArrayName === 'edit-return' ? issuesCache.find(i => i.id === editReturnTargetId) : targetArrayName === 'return' ? issuesCache.find(i => i.id === returnFormTargetId) : null;
   const existingCount = targetArrayName === 'edit-issue' ? normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length : 0;
   const selectedCount = targetArrayName === 'issue' ? selectedPhotoFiles.length : targetArrayName === 'return' ? returnSelectedPhotoFiles.length : targetArrayName === 'edit-issue' ? editIssueSelectedPhotoFiles.length : editReturnSelectedPhotoFiles.length;
@@ -1715,6 +1715,21 @@ function openOverdueFollowUpModal() {
             </div>
             <div class="overdue-contact-action">
               ${item.supervisorContact ? `
+                ${(() => {
+                  const rawDigits = String(item.supervisorContact || '').replace(/[^0-9]/g, '');
+                  if (!rawDigits) return '';
+                  const waPhone = rawDigits.length === 10 ? '91' + rawDigits : rawDigits;
+                  const waMsg = `Hello ${item.supervisorName || 'Sir/Madam'},\n\nThis is a reminder from CMM SMS Store regarding the following overdue item:\n📦 Material: ${item.materialName}\n🔢 Pending Qty: ${item.qtyRemaining} / ${item.qtyIssued}\n📅 Issued Date: ${formatShortDate(item.issueDate)} (${item.daysAgo} days ago)\n📍 Area: ${item.area || 'N/A'}\n\nPlease arrange for its return to the store at the earliest.\nThank you!`;
+                  const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMsg)}`;
+                  return `
+                    <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="overdue-wa-pill-btn" title="Send WhatsApp Reminder to ${escapeHtml(item.supervisorName)} (${escapeHtml(item.supervisorContact)})">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                        <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.41a8.21 8.21 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.01-1.24-.74-.66-1.24-1.48-1.39-1.73-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.78.6.26 1.07.41 1.44.53.6.19 1.15.16 1.59.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z"/>
+                      </svg>
+                      <span>WhatsApp</span>
+                    </a>
+                  `;
+                })()}
                 <a href="tel:${escapeHtml(item.supervisorContact)}" class="overdue-call-pill-btn" title="Call ${escapeHtml(item.supervisorName)} (${escapeHtml(item.supervisorContact)})">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -3192,7 +3207,7 @@ function wireViewEvents(viewId) {
     $('#p_photo').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) { profileSelectedPhotoFile = null; return; }
-      if (!file.type.startsWith('image/')) { alert('Please choose an image file.'); e.target.value = ''; return; }
+      if (!file.type.startsWith('image/')) { void appAlert('Please choose an image file.', { title: 'Invalid File', type: 'danger' }); e.target.value = ''; return; }
 
       const reader = new FileReader();
       reader.onload = () => { $('#p_avatarPreview').src = reader.result; };
@@ -3272,7 +3287,7 @@ function wireViewEvents(viewId) {
     $('#ei_choosePhotoBtn').addEventListener('click', () => $('#ei_photo').click());
     $('#ei_cameraBtn').addEventListener('click', () => $('#ei_camera').click());
     $('#ei_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'edit-issue', '#ei_photoPreview'));
-    $('#ei_photo').addEventListener('change', async e => { let files = Array.from(e.target.files || []); if (files.some(f => !f.type.startsWith('image/'))) { alert('Please choose image files only.'); e.target.value = ''; return; } const issue = issuesCache.find(i => i.id === editIssueTargetId); files = limitPhotoFiles(files, normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length); editIssueSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(editIssueSelectedPhotoFiles, '#ei_photoPreview'); });
+    $('#ei_photo').addEventListener('change', async e => { let files = Array.from(e.target.files || []); if (files.some(f => !f.type.startsWith('image/'))) { void appAlert('Please choose image files only.', { title: 'Invalid File', type: 'danger' }); e.target.value = ''; return; } const issue = issuesCache.find(i => i.id === editIssueTargetId); files = limitPhotoFiles(files, normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length); editIssueSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(editIssueSelectedPhotoFiles, '#ei_photoPreview'); });
     $('#ei_photoClear').addEventListener('click', () => { editIssueSelectedPhotoFiles = []; $('#ei_photo').value = ''; $('#ei_photoPreviewWrap').style.display = 'none'; $('#ei_photoPreview').innerHTML = ''; });
   }
   if (viewId === 'users-admin') {
@@ -3476,7 +3491,7 @@ function wireViewEvents(viewId) {
    ========================================================================= */
 async function handleProfileSubmit(e) {
   e.preventDefault();
-  if (!profileSelectedPhotoFile) { alert('No new photo selected.'); return; }
+  if (!profileSelectedPhotoFile) { showToast('No new photo selected.', { title: 'Photo Required', type: 'warning' }); return; }
 
   const btn = $('#profileSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving...';
@@ -3500,7 +3515,7 @@ async function handleProfileSubmit(e) {
     formDirty = false;
     render();
   } catch (err) {
-    alert('Could not upload photo: ' + (err.message || 'unknown error'));
+    void appAlert('Could not upload photo: ' + (err.message || 'unknown error'), { title: 'Upload Failed', type: 'danger' });
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Save Profile Photo'; }
     setSyncingState(false);
@@ -3559,7 +3574,7 @@ async function handleProfilePasswordSubmit(e) {
   }
 }
 
-async function handlePhotoSelected(e) { let files = Array.from(e.target.files || []); if (!files.length) { clearSelectedPhoto(); return; } if (files.some(f => !f.type.startsWith('image/'))) { alert('Please choose image files only.'); e.target.value = ''; return; } files = limitPhotoFiles(files, 0); selectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(selectedPhotoFiles, '#f_photoPreview'); }
+async function handlePhotoSelected(e) { let files = Array.from(e.target.files || []); if (!files.length) { clearSelectedPhoto(); return; } if (files.some(f => !f.type.startsWith('image/'))) { void appAlert('Please choose image files only.', { title: 'Invalid File', type: 'danger' }); e.target.value = ''; return; } files = limitPhotoFiles(files, 0); selectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(selectedPhotoFiles, '#f_photoPreview'); }
 function clearSelectedPhoto() { selectedPhotoFiles = []; const i = $('#f_photo'); if (i) i.value = ''; const w = $('#f_photoPreviewWrap'); if (w) w.style.display = 'none'; const p = $('#f_photoPreview'); if (p) p.innerHTML = ''; }
 async function handleIssueSubmit(e) {
   e.preventDefault();
@@ -3819,7 +3834,7 @@ async function deleteIssue(id) {
       for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
       for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
     }
-  } catch (err) { alert('Could not delete this record: ' + (err.message || 'unknown error')); }
+  } catch (err) { void appAlert('Could not delete this record: ' + (err.message || 'unknown error'), { title: 'Delete Failed', type: 'danger' }); }
   finally { setSyncingState(false); }
 }
 
@@ -4287,7 +4302,7 @@ async function handleCleanupOldRecords() {
   });
 
   if (toDelete.length === 0) {
-    alert('Your database is already clean! No completed records older than 6 months were found.');
+    void appAlert('Your database is already clean! No completed records older than 6 months were found.', { title: 'Database Clean', type: 'info' });
     return;
   }
 
@@ -4319,7 +4334,7 @@ async function handleCleanupOldRecords() {
   }
 
   setSyncingState(false);
-  alert(`Cleanup complete.\n\nSuccessfully deleted: ${successCount} record(s).\n${failCount > 0 ? `Failed to delete: ${failCount} record(s).` : ''}`);
+  void appAlert(`Cleanup complete.\n\nSuccessfully deleted: ${successCount} record(s).${failCount > 0 ? `\nFailed to delete: ${failCount} record(s).` : ''}`, { title: 'Cleanup Complete', type: failCount > 0 ? 'warning' : 'success' });
   render();
 }
 
@@ -4373,7 +4388,7 @@ async function handleApproveRequest(username) {
     const reqSnap = await get(ref(db, 'accessRequests/' + username));
     if (!reqSnap.exists()) { loadRequestsTable(); return; }
     const existing = await get(ref(db, 'users/' + username));
-    if (existing.exists()) { alert(`A user named "${username}" already exists. Reject this request or ask them to choose a different username.`); return; }
+    if (existing.exists()) { void appAlert(`A user named "${username}" already exists. Reject this request or ask them to choose a different username.`, { title: 'Username Taken', type: 'danger' }); return; }
     const { fullName, password } = reqSnap.val();
     // Bug fix: include default roles so the user record is complete from creation
     await set(ref(db, 'users/' + username), { fullName, password, roles: ['storekeeper'], createdAt: serverTimestamp() });
@@ -4381,7 +4396,7 @@ async function handleApproveRequest(username) {
     loadRequestsTable();
     loadUsersTable();
   } catch (err) {
-    alert('Could not approve this request: ' + (err.message || 'unknown error'));
+    void appAlert('Could not approve this request: ' + (err.message || 'unknown error'), { title: 'Approval Failed', type: 'danger' });
   } finally {
     setSyncingState(false);
   }
@@ -4394,7 +4409,7 @@ async function handleRejectRequest(username) {
     await remove(ref(db, 'accessRequests/' + username));
     loadRequestsTable();
   } catch (err) {
-    alert('Could not reject this request: ' + (err.message || 'unknown error'));
+    void appAlert('Could not reject this request: ' + (err.message || 'unknown error'), { title: 'Action Failed', type: 'danger' });
   } finally {
     setSyncingState(false);
   }
@@ -4465,12 +4480,12 @@ async function loadUsersTable() {
         const uid = group.dataset.userId;
         const checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
         if (checkedBoxes.length > 2) {
-          alert('A user can have a maximum of 2 roles.');
+          showToast('A user can have a maximum of 2 roles.', { title: 'Role Limit', type: 'warning' });
           e.target.checked = false;
           return;
         }
         if (checkedBoxes.length === 0) {
-          alert('A user must have at least 1 role.');
+          showToast('A user must have at least 1 role.', { title: 'Role Required', type: 'warning' });
           e.target.checked = true;
           return;
         }
@@ -4483,7 +4498,7 @@ async function loadUsersTable() {
         try {
           await update(ref(db, 'users/' + uid), { roles: newRoles });
         } catch (err) {
-          alert('Could not update role: ' + (err.message || 'unknown error'));
+          void appAlert('Could not update role: ' + (err.message || 'unknown error'), { title: 'Update Failed', type: 'danger' });
           loadUsersTable();
         } finally {
           setSyncingState(false);
@@ -4499,7 +4514,7 @@ async function loadUsersTable() {
           await remove(ref(db, 'users/' + btn.dataset.removeUser));
           loadUsersTable();
         } catch (err) {
-          alert('Could not delete this account: ' + (err.message || 'unknown error'));
+          void appAlert('Could not delete this account: ' + (err.message || 'unknown error'), { title: 'Delete Failed', type: 'danger' });
         } finally {
           setSyncingState(false);
         }

@@ -5945,6 +5945,35 @@ html[data-theme="dark"] .tool-timeline-note {
   margin-left: 4px;
 }
 
+.overdue-contact-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.overdue-wa-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+  flex-shrink: 0;
+}
+
+.overdue-wa-pill-btn:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.4);
+}
+
 .overdue-call-pill-btn {
   display: inline-flex;
   align-items: center;
@@ -6089,6 +6118,11 @@ html[data-theme="dark"] .tool-timeline-note {
   .overdue-card-item {
     padding: 14px;
     border-radius: 12px;
+  }
+
+  .overdue-contact-card {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .overdue-card-top {

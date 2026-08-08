@@ -413,7 +413,7 @@
             <img id="topbarAvatar" class="avatar hidden" alt="Avatar" />
             <span class="who-name" id="whoName"></span>
             <span class="who-role" id="whoRole"></span>
-            <button class="link-btn" id="logoutBtn">Log out</button>
+            <button type="button" class="link-btn" id="logoutBtn">Log out</button>
           </div>
         </div>
         <div class="status-bar">
@@ -499,10 +499,10 @@
     </button>
   </div>
 
-  <script src="boot.js?v=27"></script>
+  <script src="boot.js?v=28"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script type="module" src="app.js?v=27"></script>
-  <script src="anim.js?v=27" defer></script>
+  <script type="module" src="app.js?v=28"></script>
+  <script src="anim.js?v=28" defer></script>
 
 
   <script>
@@ -743,7 +743,7 @@
       // 3. Register Service Worker reliably across HTTPS, localhost & local IPs
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js?v=26').then((reg) => {
+          navigator.serviceWorker.register('./sw.js?v=28').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);
             try { reg.update(); } catch (_) {}
             

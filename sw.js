@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
-// v2.2.1: Login Navigation & Rendering Fix
-const CACHE_NAME = 'cmm-sms-store-v2.2.1';
+// v2.2.3: Overdue WhatsApp 1-Click Reminder Integration
+const CACHE_NAME = 'cmm-sms-store-v2.2.3';
 const STATIC_ASSETS = [
   './',
   './index.html',
