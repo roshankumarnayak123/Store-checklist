@@ -1099,10 +1099,21 @@ $('#loginForm').addEventListener('submit', async (e) => {
     cloudConnected = true;
     updateLoginSyncIndicator(true);
 
+    if (!record) {
+      loginAttempts.count++;
+      if (loginAttempts.count >= 5) {
+        loginAttempts.lockedUntil = Date.now() + 30000;
+        showAuthError('Too many failed attempts. Login locked for 30 seconds.');
+      } else {
+        showAuthError('Incorrect username or password.');
+      }
+      return;
+    }
+
     const isHashedMatch = record.password === hashedPwd;
     const isPlainMatch = String(record.password).trim() === String(password).trim();
 
-    if (!record || (!isHashedMatch && !isPlainMatch)) {
+    if (!isHashedMatch && !isPlainMatch) {
       loginAttempts.count++;
       if (loginAttempts.count >= 5) {
         loginAttempts.lockedUntil = Date.now() + 30000;
@@ -4550,8 +4561,8 @@ async function handleApproveRequest(username) {
     const existing = await get(ref(db, 'users/' + username));
     if (existing.exists()) { void appAlert(`A user named "${username}" already exists. Reject this request or ask them to choose a different username.`, { title: 'Username Taken', type: 'danger' }); return; }
     const { fullName, password } = reqSnap.val();
-    // Bug fix: include default roles so the user record is complete from creation
-    await set(ref(db, 'users/' + username), { fullName, password, roles: ['storekeeper'], createdAt: serverTimestamp() });
+    // Bug fix: include default roles so the user record is complete from creation. Default is 'user'.
+    await set(ref(db, 'users/' + username), { fullName, password, roles: ['user'], createdAt: serverTimestamp() });
     await remove(ref(db, 'accessRequests/' + username));
     loadRequestsTable();
     loadUsersTable();
