@@ -1272,7 +1272,12 @@ function renderMobileBottomNav(roles = []) {
 }
 
 function initTopbar() {
-  document.body.dataset.role = currentUser.roles[0] || 'viewer';
+  // Assign the highest-privilege role to data-role so that CSS viewer-only
+  // restrictions (e.g. hiding [data-nav="issue-new"]) never incorrectly fire
+  // for users who have storekeeper/admin/user in addition to viewer.
+  const ROLE_PRIORITY = ['admin', 'storekeeper', 'user', 'tools_admin', 'tools_viewer', 'viewer'];
+  const primaryRole = ROLE_PRIORITY.find(r => currentUser.roles.includes(r)) || currentUser.roles[0] || 'viewer';
+  document.body.dataset.role = primaryRole;
   document.body.dataset.roles = currentUser.roles.join(' ');
 
   $('#whoName').textContent = currentUser.fullName || currentUser.username;
