@@ -364,7 +364,7 @@ function init3DBackground() {
       const alpha = Math.max(0.1, (p.z + r) / (r * 2));
       ctx.fillStyle = `rgba(${color}, ${alpha * 0.6})`;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 2 * p.scale, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.max(0, 2 * p.scale), 0, Math.PI * 2);
       ctx.fill();
     });
   }

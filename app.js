@@ -92,6 +92,26 @@ function triggerHaptic(pattern = 12) {
   } catch (_) {}
 }
 
+async function hashPassword(password) {
+  const msgBuffer = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function calculatePasswordStrength(password) {
+  let score = 0;
+  if (!password) return { score: 0, text: '', color: 'transparent' };
+  if (password.length > 5) score += 1;
+  if (password.length > 8) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  if (score < 2) return { score, text: 'Weak', color: 'var(--bad)' };
+  if (score < 4) return { score, text: 'Fair', color: 'var(--warn)' };
+  return { score, text: 'Strong', color: 'var(--good)' };
+}
+
 const MOBILE_NAV_ICONS = {
   'dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
   'admin-dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
@@ -270,14 +290,16 @@ async function refreshFromCloudDatabase() {
     const snapTools = await get(ref(db, 'tools'));
     toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
-    const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
-    toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+    if (currentUser?.roles?.includes('admin')) {
+      const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
+      toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+    }
     cloudConnected = true;
     lastSyncedAt = new Date();
     updateLoginSyncIndicator(true);
     if (!FORM_VIEWS.has(currentView)) render();
     setCloudSyncProgress(100);
-    $('#appSyncLabel').textContent = 'Cloud Sync refreshed';
+    if ($('#appSyncLabel')) $('#appSyncLabel').textContent = 'Cloud Sync refreshed';
     setTimeout(() => { setCloudSyncProgress(null); if ($('#appSyncLabel')) $('#appSyncLabel').textContent = 'Cloud Sync'; }, 900);
   } catch (error) {
     cloudConnected = false;
@@ -671,7 +693,7 @@ let clockInterval = null;
 let sessionTimerStarted = false;
 let sessionTimerInterval = null;
 const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'admin321';
+const ADMIN_PASSWORD = '921443c5e72aac9f10321d52f095edd5ed04ab8deeca8cd0eb425ad46c135c14'; // SHA-256 of 'admin321'
 const SESSION_KEY = 'mechtools_session';
 
 // =========================================================================
@@ -1015,18 +1037,29 @@ function hideInlineError(alertId) {
 // =========================================================================
 // LOGIN FLOW
 // =========================================================================
+let loginAttempts = { count: 0, lockedUntil: 0 };
+
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAuthMessages();
   if (!db) attemptFirebaseInit();
+
+  if (Date.now() < loginAttempts.lockedUntil) {
+    showAuthError(`Too many failed attempts. Try again in ${Math.ceil((loginAttempts.lockedUntil - Date.now()) / 1000)} seconds.`);
+    return;
+  }
+
   const username = $('#loginUsername').value.trim();
   const password = $('#loginPassword').value;
   const btn = $('#loginBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Logging in…';
 
   try {
+    const hashedPwd = await hashPassword(password);
+    
     // 1. Admin login check (case-insensitive username)
-    if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase() && password === ADMIN_PASSWORD) {
+    if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase() && hashedPwd === ADMIN_PASSWORD) {
+      loginAttempts = { count: 0, lockedUntil: 0 };
       cloudConnected = true;
       updateLoginSyncIndicator(true);
       currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
@@ -1066,9 +1099,28 @@ $('#loginForm').addEventListener('submit', async (e) => {
     cloudConnected = true;
     updateLoginSyncIndicator(true);
 
-    if (!record || String(record.password).trim() !== String(password).trim()) {
-      showAuthError('Incorrect username or password.');
+    const isHashedMatch = record.password === hashedPwd;
+    const isPlainMatch = String(record.password).trim() === String(password).trim();
+
+    if (!record || (!isHashedMatch && !isPlainMatch)) {
+      loginAttempts.count++;
+      if (loginAttempts.count >= 5) {
+        loginAttempts.lockedUntil = Date.now() + 30000;
+        showAuthError('Too many failed attempts. Login locked for 30 seconds.');
+      } else {
+        showAuthError('Incorrect username or password.');
+      }
       return;
+    }
+    
+    loginAttempts = { count: 0, lockedUntil: 0 };
+    
+    if (isPlainMatch && !isHashedMatch) {
+      try {
+        await set(ref(db, 'users/' + resolvedUsername + '/password'), hashedPwd);
+      } catch (e) {
+        console.warn('Could not auto-migrate password to hash.');
+      }
     }
 
     currentUser = {
@@ -1155,7 +1207,9 @@ $('#requestForm').addEventListener('submit', async (e) => {
     if (existingUser.exists()) { showAuthError('That username is already taken.'); return; }
     const existingReq = await get(ref(db, 'accessRequests/' + username));
     if (existingReq.exists()) { showAuthError('A request for that username is already pending approval.'); return; }
-    await set(ref(db, 'accessRequests/' + username), { fullName, password, requestedAt: serverTimestamp() });
+    
+    const hashedPwd = await hashPassword(password);
+    await set(ref(db, 'accessRequests/' + username), { fullName, password: hashedPwd, requestedAt: serverTimestamp() });
 
     $('#requestForm').classList.add('hidden'); $('#showLoginForm').classList.add('hidden');
     $('#showRequestForm').classList.remove('hidden');
@@ -1180,6 +1234,24 @@ document.addEventListener('click', (event) => {
   button.textContent = showing ? 'Show' : 'Hide';
   button.setAttribute('aria-pressed', String(!showing));
   button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+});
+
+document.addEventListener('input', (event) => {
+  if (event.target.id === 'reqPassword') {
+    const strength = calculatePasswordStrength(event.target.value);
+    const indicator = $('#reqPasswordStrength');
+    if (indicator) {
+      indicator.textContent = strength.text;
+      indicator.style.color = strength.color;
+    }
+  } else if (event.target.id === 'p_newPassword') {
+    const strength = calculatePasswordStrength(event.target.value);
+    const indicator = $('#p_newPasswordStrength');
+    if (indicator) {
+      indicator.textContent = strength.text;
+      indicator.style.color = strength.color;
+    }
+  }
 });
 
 /* =========================================================================
@@ -1606,6 +1678,12 @@ function updateOverdueTopbarBadge() {
   const overdue = getOverdueIssues(7);
   const btn = $('#topbarOverdueBtn');
   const countEl = $('#topbarOverdueCount');
+  
+  if (navigator.setAppBadge) {
+    if (overdue.length > 0) navigator.setAppBadge(overdue.length).catch(() => {});
+    else navigator.clearAppBadge().catch(() => {});
+  }
+
   if (!btn || !countEl) return;
   if (overdue.length > 0) {
     btn.classList.remove('hidden');
@@ -2025,6 +2103,7 @@ function renderProfile() {
               <input type="password" id="p_newPassword" required minlength="4" autocomplete="new-password" />
               <button type="button" class="password-toggle-btn" data-password-target="p_newPassword" aria-label="Show password" aria-pressed="false">Show</button>
             </div>
+            <div class="password-strength" id="p_newPasswordStrength" style="margin-top:6px; font-size:12px; font-weight:600;"></div>
           </div>
           <div class="field full">
             <label for="p_confirmPassword">Confirm New Password</label>
@@ -2044,6 +2123,19 @@ function renderProfile() {
 
 function renderAdminDashboard() {
   const s = statsSummary();
+  const delReqCount = toolDeletionRequestsCache.length;
+  const delBanner = delReqCount > 0 ? 
+    `<div class="overdue-banner" style="background:var(--bad-light); border:1px solid var(--bad); color:var(--bad-dark); padding:12px 16px; border-radius:12px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <strong style="display:block; font-size:15px; margin-bottom:2px;">Tool Deletion Requests Pending</strong>
+          <span style="font-size:13px; opacity:0.9;">There ${delReqCount === 1 ? 'is' : 'are'} ${delReqCount} tool deletion request${delReqCount === 1 ? '' : 's'} awaiting admin approval.</span>
+        </div>
+      </div>
+      <button class="btn btn-dark btn-sm" data-nav="tools-dashboard">Review</button>
+    </div>` : '';
+
   return `
     <div class="page-head">
       <div>
@@ -2053,6 +2145,7 @@ function renderAdminDashboard() {
       </div>
     </div>
     ${renderOverdueBannerHtml()}
+    ${delBanner}
     <div class="kpi-grid">
       <button type="button" class="kpi kpi-button" data-kpi-status="all" aria-label="Show all ${s.total} register entries"><div class="kpi-label">Total Entries</div><div class="kpi-value">${kpiValue(s.total)}</div><span class="kpi-open-hint">View records →</span></button>
       <button type="button" class="kpi warn kpi-button" data-kpi-status="pending" aria-label="Show ${s.pending} pending return entries"><div class="kpi-label">Pending Return</div><div class="kpi-value">${kpiValue(s.pending)}</div><span class="kpi-open-hint">View records →</span></button>
@@ -2941,6 +3034,19 @@ function renderSettingsAdmin() {
       </div>
     </div>
 
+    <div class="panel" style="margin-bottom:32px;">
+      <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="audit" aria-expanded="false"><h2>System Audit Log</h2><span>⌄</span></button></div>
+      <div class="panel-pad settings-section-body hidden" data-settings-body="audit">
+        <div class="page-sub" style="margin-bottom:14px;">Review recent administrative and system actions. (Loads latest 100 entries on demand)</div>
+        <div class="actions-row" style="margin-bottom:16px;">
+          <button class="btn btn-dark btn-sm" id="loadAuditLogBtn">Load Audit Log</button>
+        </div>
+        <div id="auditLogContainer" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-alt); padding: 8px;">
+          <div style="padding: 12px; text-align: center; color: var(--text-light); font-size: 13px;">Click "Load Audit Log" to fetch records from the cloud.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Download Register Excel (Issues Collection) -->
     <div class="panel excel-export-card" style="margin-bottom:32px;">
       <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="export" aria-expanded="true"><h2>Download Material Issue Register in Excel</h2><span>⌄</span></button></div>
@@ -3316,6 +3422,40 @@ function wireViewEvents(viewId) {
         setSyncingState(false);
       }
     });
+
+    $('#loadAuditLogBtn')?.addEventListener('click', async (e) => {
+      const btn = e.target;
+      const container = $('#auditLogContainer');
+      if (!container) return;
+      btn.disabled = true; btn.textContent = 'Loading...';
+      try {
+        // We use query, orderByChild, and limitToLast from standard firebase imports
+        // Wait, the imports at top might not include query, limitToLast, orderByChild
+        // Since we don't know the exact imports, we can fetch all or just use standard get
+        const snap = await get(ref(db, 'auditLog'));
+        if (snap.exists()) {
+          const logs = snapshotToArray(snap).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 100);
+          if (logs.length === 0) {
+            container.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-light); font-size: 13px;">No audit logs found.</div>';
+          } else {
+            container.innerHTML = '<table class="data-table" style="font-size: 13px; width: 100%;"><thead><tr><th>Date</th><th>Action</th><th>Actor</th><th>Details</th></tr></thead><tbody>' +
+              logs.map(log => `<tr>
+                <td style="white-space: nowrap;">${log.createdAt ? new Date(log.createdAt).toLocaleString() : 'N/A'}</td>
+                <td><strong style="color: var(--primary);">${escapeHtml(log.action)}</strong></td>
+                <td>${escapeHtml(log.actorName || log.actorUsername)}</td>
+                <td><code style="background: none; padding: 0; color: var(--text-muted);">${escapeHtml(JSON.stringify(log.details || {}))}</code></td>
+              </tr>`).join('') +
+            '</tbody></table>';
+          }
+        } else {
+          container.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-light); font-size: 13px;">No audit logs found.</div>';
+        }
+      } catch (err) {
+        container.innerHTML = `<div style="padding: 12px; text-align: center; color: var(--danger); font-size: 13px;">Failed to load logs: ${escapeHtml(err.message)}</div>`;
+      } finally {
+        btn.disabled = false; btn.textContent = 'Load Audit Log';
+      }
+    });
     $('#cleanupOldRecordsBtn')?.addEventListener('click', handleCleanupOldRecords);
     $('#clearAllStoreDataBtn')?.addEventListener('click', openClearDataDialog);
     $('#excelDateFrom')?.addEventListener('change', () => { const from = $('#excelDateFrom').value; excelDateFrom = from; if ($('#excelDateTo')) $('#excelDateTo').min = from; updateExcelExportSummary(); });
@@ -3556,16 +3696,31 @@ async function handleProfilePasswordSubmit(e) {
   const btn = $('#profilePasswordSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Updating...';
   setSyncingState(true, 'Updating password...');
-
+  
   try {
-    const snap = await get(ref(db, 'users/' + currentUser.username));
-    if (!snap.exists() || snap.val().password !== currentPassword) {
+    const hashedCurrentPwd = await hashPassword(currentPassword);
+    const hashedNewPwd = await hashPassword(newPassword);
+
+    const userSnap = await get(ref(db, 'users/' + currentUser.username));
+    if (!userSnap.exists()) {
+      profilePasswordError = 'User record not found.';
+      showInlineError('profilePasswordAlert', profilePasswordError);
+      return;
+    }
+
+    const userData = userSnap.val();
+    const isHashedMatch = userData.password === hashedCurrentPwd;
+    const isPlainMatch = String(userData.password).trim() === String(currentPassword).trim();
+
+    if (!isHashedMatch && !isPlainMatch) {
       profilePasswordError = 'Current password is incorrect.';
       showInlineError('profilePasswordAlert', profilePasswordError);
       return;
     }
 
-    await update(ref(db, 'users/' + currentUser.username), { password: newPassword });
+    await set(ref(db, 'users/' + currentUser.username + '/password'), hashedNewPwd);
+    $('#profilePasswordAlert').className = 'alert alert-info';
+    
     await writeAudit('profile-password-changed', null, {});
 
     $('#profilePasswordForm').reset();
@@ -5126,4 +5281,13 @@ function renderToolForm(title, tool) {
 
 // START APP AFTER ALL MODULE DEFINITIONS & HANDLERS ARE LOADED
 loadRegisterPreferences();
+
+window.addEventListener('beforeunload', (e) => {
+  if (formDirty) {
+    const msg = 'You have unsaved changes. Are you sure you want to leave?';
+    e.returnValue = msg;
+    return msg;
+  }
+});
+
 startApp();

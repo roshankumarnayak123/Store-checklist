@@ -1,6 +1,6 @@
 // CMM SMS Store - Progressive Web App Service Worker
 // v2.2.4: Fix Log New Issue button hidden on iOS for multi-role users
-const CACHE_NAME = 'cmm-sms-store-v2.2.4';
+const CACHE_NAME = 'cmm-sms-store-v3.0.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
