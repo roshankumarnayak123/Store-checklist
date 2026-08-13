@@ -400,6 +400,13 @@ html[data-theme="light"] #timerText { color: var(--steel-800); }
   border-top: 3px solid var(--amber);
   animation: authCardIn 0.6s var(--ease-spring); 
 }
+.tool-mobile-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 18px 16px;
+  box-shadow: var(--shadow-sm);
+}
 @keyframes authCardIn { 
   0% { opacity: 0; transform: translateY(24px) scale(0.95); } 
   100% { opacity: 1; transform: translateY(0) scale(1); } 

@@ -291,6 +291,33 @@
     </section>
   </div>
 
+  <!-- Tool Quantity Request Dialog -->
+  <div id="toolQtyRequestDialog" class="app-dialog-backdrop hidden" role="presentation">
+    <section class="tool-deletion-dialog" role="dialog" aria-modal="true" aria-labelledby="toolQtyRequestTitle">
+      <div class="tool-modal-head">
+        <div>
+          <h2 id="toolQtyRequestTitle" style="margin:0; font-size:18px; font-weight:700;">Request Quantity Update</h2>
+          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Submit a request to change the total quantity of this tool.</div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="toolQtyRequestCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+      </div>
+      <div class="tool-modal-body" style="padding:16px 20px 20px;">
+        <form id="toolQtyRequestForm">
+          <input type="hidden" id="qtyReqToolId" />
+          <div class="tool-deletion-target-info" id="qtyReqToolInfo" style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;"></div>
+          <div class="field" style="margin-top:10px;">
+            <label for="qtyReqNewQuantity">New Total Quantity *</label>
+            <input type="number" id="qtyReqNewQuantity" min="0" required />
+          </div>
+          <div class="actions-row" style="margin-top:18px; justify-content:flex-end;">
+            <button type="button" class="btn btn-ghost" id="qtyReqCancelBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="qtyReqSubmitBtn">Submit Request</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
   <!-- Overdue Items Follow-up Dialog -->
   <div id="overdueFollowUpDialog" class="app-dialog-backdrop hidden" role="presentation">
     <section class="overdue-modal-container" role="dialog" aria-modal="true" aria-labelledby="overdueModalTitle">

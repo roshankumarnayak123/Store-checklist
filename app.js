@@ -4482,23 +4482,54 @@ async function handleRejectToolDeletion(reqId) {
   }
 }
 
-async function handleRequestTotalQuantityChange(toolId) {
+function closeToolQtyRequestModal() {
+  $('#toolQtyRequestDialog')?.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+function handleRequestTotalQuantityChange(toolId) {
   const tool = toolsCache.find(t => t.id === toolId);
   if (!tool) return;
   
   const currentQty = tool.quantity || 0;
-  let newQtyStr = prompt(`Request Total Quantity Update for ${tool.toolName}\n\nCurrent Total: ${currentQty}\n\nEnter the requested new total quantity:`, currentQty);
-  if (newQtyStr === null) return;
   
-  const newQty = parseInt(newQtyStr, 10);
+  const toolIdInput = $('#qtyReqToolId');
+  const toolInfo = $('#qtyReqToolInfo');
+  const newQtyInput = $('#qtyReqNewQuantity');
+  
+  if (toolIdInput) toolIdInput.value = toolId;
+  if (toolInfo) toolInfo.innerHTML = `<strong>Tool:</strong> ${escapeHtml(tool.toolName)}<br><strong>Current Total:</strong> ${currentQty}`;
+  if (newQtyInput) newQtyInput.value = currentQty;
+  
+  $('#toolQtyRequestDialog')?.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+async function handleQtyRequestSubmit(e) {
+  e.preventDefault();
+  
+  const toolId = $('#qtyReqToolId')?.value;
+  const tool = toolsCache.find(t => t.id === toolId);
+  if (!tool) {
+    await appAlert('Tool record not found.', { type: 'danger' });
+    return;
+  }
+  
+  const currentQty = tool.quantity || 0;
+  const newQty = parseInt($('#qtyReqNewQuantity')?.value, 10);
+  
   if (isNaN(newQty) || newQty < 0) {
-    appAlert('Invalid quantity entered.', { type: 'warn' });
+    await appAlert('Invalid quantity entered.', { type: 'warn' });
     return;
   }
+  
   if (newQty === currentQty) {
-    appAlert('The requested quantity is the same as the current quantity.', { type: 'info' });
+    await appAlert('The requested quantity is the same as the current quantity.', { type: 'info' });
     return;
   }
+  
+  const btn = $('#qtyReqSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
   
   try {
     setSyncingState(true, 'Submitting quantity update request...');
@@ -4513,9 +4544,11 @@ async function handleRequestTotalQuantityChange(toolId) {
       createdAt: serverTimestamp()
     });
     showToast('Quantity update request submitted to admin.', { title: 'Request Sent' });
+    closeToolQtyRequestModal();
   } catch (err) {
-    appAlert('Could not submit request: ' + err.message, { type: 'danger' });
+    await appAlert('Could not submit request: ' + err.message, { type: 'danger' });
   } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit Request'; }
     setSyncingState(false);
   }
 }
@@ -4694,6 +4727,11 @@ $('#toolDeletionRequestCloseBtn')?.addEventListener('click', closeToolDeletionRe
 $('#deletionReqCancelBtn')?.addEventListener('click', closeToolDeletionRequestModal);
 $('#toolDeletionRequestForm')?.addEventListener('submit', handleToolDeletionRequestSubmit);
 $('#toolDeletionRequestDialog')?.addEventListener('click', (event) => { if (event.target.id === 'toolDeletionRequestDialog') closeToolDeletionRequestModal(); });
+
+$('#toolQtyRequestCloseBtn')?.addEventListener('click', closeToolQtyRequestModal);
+$('#qtyReqCancelBtn')?.addEventListener('click', closeToolQtyRequestModal);
+$('#toolQtyRequestForm')?.addEventListener('submit', handleQtyRequestSubmit);
+$('#toolQtyRequestDialog')?.addEventListener('click', (event) => { if (event.target.id === 'toolQtyRequestDialog') closeToolQtyRequestModal(); });
 
 // Overdue Follow-up Modal Event Listeners
 $('#topbarOverdueBtn')?.addEventListener('click', openOverdueFollowUpModal);
@@ -5638,26 +5676,28 @@ function renderToolsDashboard() {
             <span class="tool-meta-chip" data-tool-history="${escapeHtml(t.id)}" style="cursor:pointer;"><span class="meta-icon">📜</span>${historyCount > 0 ? historyCount + ' logs' : 'History'}</span>
           </div>
           ${t.notes ? `<div class="tool-card-notes"><span class="notes-label">Notes:</span>${escapeHtml(t.notes)}</div>` : ''}
-          <div class="tool-card-actions" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-update-status="${escapeHtml(t.id)}">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Status & History
+          <div class="tool-card-actions">
+            <button type="button" class="btn btn-dark btn-sm tool-action-btn tool-action-primary" data-update-status="${escapeHtml(t.id)}">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Status & History
             </button>
-            ${isAdmin ? `
-              <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-edit-tool="${escapeHtml(t.id)}">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
-              </button>
-            ` : ''}
-            ${isAdmin ? `
-              <button type="button" class="btn btn-danger btn-sm tool-action-btn" data-delete-tool="${escapeHtml(t.id)}">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete
-              </button>
-            ` : (pendingReq ? `
-              <span class="badge warn" style="font-size:11px; padding:6px 10px;">Deletion Pending</span>
-            ` : `
-              <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-request-delete-tool="${escapeHtml(t.id)}" style="color:var(--danger);">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Request Delete
-              </button>
-            `)}
+            <div class="tool-card-actions-secondary">
+              ${isAdmin ? `
+                <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-edit-tool="${escapeHtml(t.id)}">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
+                </button>
+              ` : ''}
+              ${isAdmin ? `
+                <button type="button" class="btn btn-danger btn-sm tool-action-btn" data-delete-tool="${escapeHtml(t.id)}">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete
+                </button>
+              ` : (pendingReq ? `
+                <span class="badge warn" style="display:flex; justify-content:center; align-items:center; font-size:11px; padding:6px 10px; border-radius:10px;">Deletion Pending</span>
+              ` : `
+                <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-request-delete-tool="${escapeHtml(t.id)}" style="color:var(--danger);">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Request Delete
+                </button>
+              `)}
+            </div>
           </div>
         </div>
       `;
