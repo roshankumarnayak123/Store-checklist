@@ -4,7 +4,9 @@
   "description": "Welcome to the **CMM SMS STORE Checklist** application! This is a robust web-based application built to handle the tracking, issuing, and returning of store equipment and tools.",
   "main": "anim.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
@@ -13,12 +15,22 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/roshankumarnayak123/Store-checklist/issues"
   },
   "homepage": "https://github.com/roshankumarnayak123/Store-checklist#readme",
   "devDependencies": {
-    "eslint": "^10.8.1"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "globals": "^17.11.0",
+    "qrcode": "^1.5.4",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "firebase": "^12.17.1",
+    "js-sha256": "^1.0.0",
+    "jsdom": "^30.0.1",
+    "puppeteer": "^25.6.0"
   }
 }

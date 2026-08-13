@@ -1,10 +1,11 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { initializeApp } from "firebase/app";
 import {
-  getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+  getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment, query, orderByChild, equalTo
+} from "firebase/database";
 import {
-  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata
+} from "firebase/storage";
+import { $, $$, escapeHtml, todayStr, triggerHaptic, hashPassword, calculatePasswordStrength, MOBILE_NAV_ICONS } from './src/utils.js';
 
 // Bug fix: import statements must come before any executable code in an ES module.
 // Moved these two lines from the top of the file to after all imports.
@@ -40,18 +41,7 @@ window.dispatchEvent(new CustomEvent('cmm-module-ready'));
      the Material Issue Register, and vice-versa. They operate in complete isolation.
    ========================================================================= */
 
-/* =========================================================================
-   FIREBASE CONFIG
-   ========================================================================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyARRGKgQ_R_RFi40KXnhdmt6VZrVHVHgc0",
-  authDomain: "store-issue-register.firebaseapp.com",
-  databaseURL: "https://store-issue-register-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "store-issue-register",
-  storageBucket: "store-issue-register.firebasestorage.app",
-  messagingSenderId: "184487310656",
-  appId: "1:184487310656:web:58be210595a80dfdbdf6a5"
-};
+import { firebaseConfig } from './src/firebase-config.js';
 
 /* =========================================================================
    STATE (Independent Caches for Issues and Tools)
@@ -60,10 +50,14 @@ let currentUser = null;
 let issuesCache = []; // Material Issue & Return Register records ('issues/')
 let toolsCache = [];  // Physical Tool Master Catalog records ('tools/')
 let toolDeletionRequestsCache = []; // Pending Tool Deletion Requests ('toolDeletionRequests/')
+let toolAdditionRequestsCache = []; // Pending Tool Addition Requests
+let toolQuantityRequestsCache = []; // Pending Tool Quantity Update Requests
 let unsubIssues = null;
 let unsubTools = null;
 let unsubRequests = null;
 let unsubToolDeletionRequests = null;
+let unsubToolAdditionRequests = null;
+let unsubToolQuantityRequests = null;
 let currentView = null;
 
 // Explicit public bridge: the error logger lives in a classic <script> outside
@@ -72,57 +66,7 @@ let currentView = null;
 window.currentView = currentView;
 window.currentUser = currentUser;
 
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-const escapeHtml = (s) => (s ?? '').toString().replace(/[&<>"']/g, (c) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-}[c]));
 
-const todayStr = () => {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
-};
-
-function triggerHaptic(pattern = 12) {
-  try {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(pattern);
-    }
-  } catch (_) {}
-}
-
-async function hashPassword(password) {
-  const msgBuffer = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function calculatePasswordStrength(password) {
-  let score = 0;
-  if (!password) return { score: 0, text: '', color: 'transparent' };
-  if (password.length > 5) score += 1;
-  if (password.length > 8) score += 1;
-  if (/[A-Z]/.test(password)) score += 1;
-  if (/[0-9]/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
-  if (score < 2) return { score, text: 'Weak', color: 'var(--bad)' };
-  if (score < 4) return { score, text: 'Fair', color: 'var(--warn)' };
-  return { score, text: 'Strong', color: 'var(--good)' };
-}
-
-const MOBILE_NAV_ICONS = {
-  'dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
-  'admin-dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>`,
-  'register': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
-  'issue-new': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
-  'tools-dashboard': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
-  'add-tool': `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
-  'users-admin': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-  'settings-admin': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
-  'profile': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
-};
 
 // Unified custom dialogs replace native alert/confirm popups.
 let appDialogResolver = null;
@@ -151,7 +95,7 @@ function showAppDialog(message, options = {}) {
   $('#appDialogCancel').classList.toggle('hidden', !showCancel);
   document.body.classList.add('modal-open');
   backdrop.classList.remove('hidden');
-  try { if (navigator.vibrate) navigator.vibrate(type === 'danger' ? [30, 40, 30] : 20); } catch (_) {}
+  triggerHaptic(type === 'danger' ? [30, 40, 30] : 20);
   setTimeout(() => $('#appDialogConfirm').focus(), 0);
   return new Promise((resolve) => { appDialogResolver = resolve; });
 }
@@ -172,6 +116,13 @@ window.addEventListener('keydown', (event) => {
     if (backdrop && !backdrop.classList.contains('hidden')) {
       event.preventDefault();
       closeAppDialog(false);
+      return;
+    }
+    const cleanupPreview = $('#cleanupPreviewDialog');
+    if (cleanupPreview && !cleanupPreview.classList.contains('hidden')) {
+      event.preventDefault();
+      cleanupPreview.classList.add('hidden');
+      pendingCleanupRecords = [];
     }
   }
 });
@@ -258,6 +209,10 @@ async function retryCloudSync() {
     if (currentUser?.roles?.includes('admin')) {
       const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
       toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+      const snapToolAddRequests = await get(ref(db, 'toolAdditionRequests')).catch(() => null);
+      toolAdditionRequestsCache = snapToolAddRequests ? snapshotToArray(snapToolAddRequests) : [];
+      const snapToolQtyRequests = await get(ref(db, 'toolQuantityRequests')).catch(() => null);
+      toolQuantityRequestsCache = snapToolQtyRequests ? snapshotToArray(snapToolQtyRequests) : [];
     }
 
     cloudConnected = true;
@@ -293,6 +248,10 @@ async function refreshFromCloudDatabase() {
     if (currentUser?.roles?.includes('admin')) {
       const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
       toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+      const snapToolAddRequests = await get(ref(db, 'toolAdditionRequests')).catch(() => null);
+      toolAdditionRequestsCache = snapToolAddRequests ? snapshotToArray(snapToolAddRequests) : [];
+      const snapToolQtyRequests = await get(ref(db, 'toolQuantityRequests')).catch(() => null);
+      toolQuantityRequestsCache = snapToolQtyRequests ? snapshotToArray(snapToolQtyRequests) : [];
     }
     cloudConnected = true;
     lastSyncedAt = new Date();
@@ -439,7 +398,7 @@ async function uploadWithProgress(path, file, btnEl) {
       stallTimer = setTimeout(() => {
         if (settled) return;
         settled = true;
-        try { uploadTask.cancel(); } catch (_) { }
+        try { uploadTask.cancel(); } catch { /* ignore */ }
         finish();
         showCloudSyncRetry('Cloud Sync upload failed');
         reject(new Error('Upload stalled with no progress for 30 seconds. Check your connection, or ask an admin.'));
@@ -704,7 +663,7 @@ function preferredTheme() {
   try {
     const saved = localStorage.getItem(THEME_KEY);
     if (saved === 'dark' || saved === 'light') return saved;
-  } catch (_) { }
+  } catch { /* ignore */ }
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 function applyTheme(theme, persist = false) {
@@ -719,7 +678,7 @@ function applyTheme(theme, persist = false) {
     toggle.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
   });
   if (persist) {
-    try { localStorage.setItem(THEME_KEY, resolved); } catch (_) { }
+    try { localStorage.setItem(THEME_KEY, resolved); } catch { /* ignore */ }
   }
 }
 function toggleTheme() {
@@ -928,14 +887,14 @@ function loadSession() {
     return user;
   } catch (e) {
     console.warn('Stored session was corrupted and has been cleared:', e);
-    try { localStorage.removeItem(SESSION_KEY); } catch (_) { }
-    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) { }
+    try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
     return null;
   }
 }
 function clearSession() {
-  try { localStorage.removeItem(SESSION_KEY); } catch (e) { }
-  try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { }
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
 }
 
 // Which nav destinations exist for each role, in display order. Shared by the
@@ -999,7 +958,7 @@ function setHomeView(user, viewId) {
     const map = JSON.parse(localStorage.getItem(HOME_VIEW_KEY) || '{}');
     map[user.username] = viewId;
     localStorage.setItem(HOME_VIEW_KEY, JSON.stringify(map));
-  } catch (_) { }
+  } catch { /* ignore */ }
 }
 function homeViewSelectHtml() {
   return navLinksForRoles(currentUser.roles).map(([id, label]) =>
@@ -1437,7 +1396,7 @@ async function navigateTo(viewId, updateHistory = true, force = false) {
   if (updateHistory && window.location.hash !== '#' + viewId) {
     try {
       history.pushState({ view: viewId }, '', '#' + viewId);
-    } catch (_) { }
+    } catch { /* ignore */ }
   }
   $$('.navlink').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId));
   $$('.mobile-nav-item').forEach((btn) => btn.classList.toggle('active', btn.dataset.view === viewId));
@@ -1527,9 +1486,26 @@ function listenToCollections() {
       toolDeletionRequestsCache = snapshotToArray(snap);
       if (!FORM_VIEWS.has(currentView)) render();
     }, (err) => {
-      // Bug fix: was console.warn (silent) — see note on the issues listener above.
       console.error('Tool deletion requests sync listener error:', err);
       toolDeletionRequestsCache = [];
+    });
+    
+    if (unsubToolAdditionRequests) { unsubToolAdditionRequests(); unsubToolAdditionRequests = null; }
+    unsubToolAdditionRequests = onValue(ref(db, 'toolAdditionRequests'), (snap) => {
+      toolAdditionRequestsCache = snapshotToArray(snap);
+      if (!FORM_VIEWS.has(currentView)) render();
+    }, (err) => {
+      console.error('Tool addition requests sync listener error:', err);
+      toolAdditionRequestsCache = [];
+    });
+
+    if (unsubToolQuantityRequests) { unsubToolQuantityRequests(); unsubToolQuantityRequests = null; }
+    unsubToolQuantityRequests = onValue(ref(db, 'toolQuantityRequests'), (snap) => {
+      toolQuantityRequestsCache = snapshotToArray(snap);
+      if (!FORM_VIEWS.has(currentView)) render();
+    }, (err) => {
+      console.error('Tool quantity requests sync listener error:', err);
+      toolQuantityRequestsCache = [];
     });
   }
 }
@@ -1645,12 +1621,12 @@ function showNativeNotification(title, options = {}) {
       if (reg && typeof reg.showNotification === 'function') {
         return reg.showNotification(title, defaultOpts);
       }
-      try { new Notification(title, defaultOpts); } catch (_) {}
+      try { new Notification(title, defaultOpts); } catch { /* ignore */ }
     }).catch(() => {
-      try { new Notification(title, defaultOpts); } catch (_) {}
+      try { new Notification(title, defaultOpts); } catch { /* ignore */ }
     });
   } else if ('Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(title, defaultOpts); } catch (_) {}
+    try { new Notification(title, defaultOpts); } catch { /* ignore */ }
   }
 }
 
@@ -1699,6 +1675,41 @@ function updateOverdueTopbarBadge() {
   if (overdue.length > 0) {
     btn.classList.remove('hidden');
     countEl.textContent = overdue.length > 99 ? '99+' : overdue.length;
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+function updateRequestsTopbarBadge() {
+  const btn = $('#topbarRequestsBtn');
+  const countEl = $('#topbarRequestsCount');
+  if (!btn || !countEl || !currentUser) return;
+
+  const isAdmin = currentUser.roles.includes('admin');
+  const isToolsAdmin = currentUser.roles.includes('tools_admin') && !isAdmin;
+
+  if (!isAdmin && !isToolsAdmin) {
+    btn.classList.add('hidden');
+    return;
+  }
+
+  let addReqs = 0, qtyReqs = 0, delReqs = 0;
+
+  if (isAdmin) {
+    addReqs = toolAdditionRequestsCache.length;
+    qtyReqs = toolQuantityRequestsCache.length;
+    delReqs = toolDeletionRequestsCache.length;
+  } else {
+    addReqs = toolAdditionRequestsCache.filter(r => r.requestedBy === currentUser.username || r.createdBy === currentUser.username).length;
+    qtyReqs = toolQuantityRequestsCache.filter(r => r.requestedBy === currentUser.username).length;
+    delReqs = toolDeletionRequestsCache.filter(r => r.requestedBy === currentUser.username).length;
+  }
+
+  const total = addReqs + qtyReqs + delReqs;
+
+  if (total > 0) {
+    btn.classList.remove('hidden');
+    countEl.textContent = total > 99 ? '99+' : total;
   } else {
     btn.classList.add('hidden');
   }
@@ -1962,6 +1973,7 @@ function render() {
   if (typeof html === 'string') main.innerHTML = html;
   wireViewEvents(currentView);
   updateOverdueTopbarBadge();
+  updateRequestsTopbarBadge();
 }
 
 function statsSummary() {
@@ -2179,9 +2191,9 @@ function formatTimestamp(ms) {
   });
 }
 
-function saveRegisterPreferences() { try { localStorage.setItem(REGISTER_PREFS_KEY, JSON.stringify({ filters: registerFilterState, expanded: registerViewExpanded, more: registerMoreFiltersOpen, filtersOpen: registerFiltersOpen })); } catch (_) { } }
-function loadRegisterPreferences() { try { const p = JSON.parse(localStorage.getItem(REGISTER_PREFS_KEY) || 'null'); if (p?.filters) registerFilterState = { ...registerFilterState, ...p.filters, page: 1 }; if (typeof p?.expanded === 'boolean') registerViewExpanded = p.expanded; if (typeof p?.more === 'boolean') registerMoreFiltersOpen = p.more; if (typeof p?.filtersOpen === 'boolean') registerFiltersOpen = p.filtersOpen; } catch (_) { } }
-function resetRegisterPreferences() { try { localStorage.removeItem(REGISTER_PREFS_KEY); } catch (_) { } resetRegisterFilters(); registerViewExpanded = false; registerMoreFiltersOpen = false; registerFiltersOpen = false; registerExpandedRows.clear(); }
+function saveRegisterPreferences() { try { localStorage.setItem(REGISTER_PREFS_KEY, JSON.stringify({ filters: registerFilterState, expanded: registerViewExpanded, more: registerMoreFiltersOpen, filtersOpen: registerFiltersOpen })); } catch { /* ignore */ } }
+function loadRegisterPreferences() { try { const p = JSON.parse(localStorage.getItem(REGISTER_PREFS_KEY) || 'null'); if (p?.filters) registerFilterState = { ...registerFilterState, ...p.filters, page: 1 }; if (typeof p?.expanded === 'boolean') registerViewExpanded = p.expanded; if (typeof p?.more === 'boolean') registerMoreFiltersOpen = p.more; if (typeof p?.filtersOpen === 'boolean') registerFiltersOpen = p.filtersOpen; } catch { /* ignore */ } }
+function resetRegisterPreferences() { try { localStorage.removeItem(REGISTER_PREFS_KEY); } catch { /* ignore */ } resetRegisterFilters(); registerViewExpanded = false; registerMoreFiltersOpen = false; registerFiltersOpen = false; registerExpandedRows.clear(); }
 function showToast(message, { title = 'Done', type = 'success', duration = 3500, actionText = '', onAction = null } = {}) {
   const region = $('#toastRegion'); if (!region) return;
   const icons = {
@@ -2227,7 +2239,7 @@ function showToast(message, { title = 'Done', type = 'success', duration = 3500,
     isTouching = false;
     resumeIfReady();
   }, { passive: true });
-  try { if (navigator.vibrate) navigator.vibrate(normType === 'danger' ? [20, 30, 20] : 15); } catch (_) {}
+  try { if (navigator.vibrate) navigator.vibrate(normType === 'danger' ? [20, 30, 20] : 15); } catch { /* ignore */ }
   region.appendChild(el);
   const activeToasts = Array.from(region.querySelectorAll('.toast:not(.is-leaving)'));
   if (activeToasts.length > 3) {
@@ -2537,7 +2549,7 @@ function renderIssueForm() {
           </div>
           <div class="field">
             <label for="f_qty">Quantity Issued</label>
-            <input type="number" inputmode="numeric" min="1" id="f_qty" required />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" min="1" id="f_qty" required />
           </div>
           <div class="field">
             <label for="f_vendor">Vendor</label>
@@ -2607,7 +2619,7 @@ function renderEditIssueForm() {
           </div>
           <div class="field">
             <label for="ei_qty">Quantity Issued</label>
-            <input type="number" inputmode="numeric" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" min="${issue.qtyReturned || 1}" id="ei_qty" value="${issue.qtyIssued}" required />
           </div>
           <div class="field">
             <label for="ei_vendor">Vendor</label>
@@ -2686,7 +2698,7 @@ function renderReturnForm() {
           </div>
           <div class="field">
             <label for="r_qty">Qty Returning Now (max ${remaining})</label>
-            <input type="number" inputmode="numeric" min="1" max="${remaining}" id="r_qty" value="${remaining}" required />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" min="1" max="${remaining}" id="r_qty" value="${remaining}" required />
           </div>
           <div class="field">
             <label for="r_date">Return Date</label>
@@ -2742,7 +2754,7 @@ function renderEditReturnForm() {
           </div>
           <div class="field">
             <label for="er_qty">Qty Returned</label>
-            <input type="number" inputmode="numeric" min="0" max="${issue.qtyIssued}" id="er_qty" value="${issue.qtyReturned || 0}" required />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="${issue.qtyIssued}" id="er_qty" value="${issue.qtyReturned || 0}" required />
           </div>
           <div class="field">
             <label for="er_date">Return Date</label>
@@ -3118,7 +3130,7 @@ function renderSettingsAdmin() {
           Keep your database fast and free up cloud storage by permanently removing old, fully returned records.
         </p>
         <div class="actions-row">
-          <button class="btn btn-danger" id="cleanupOldRecordsBtn">Delete Returned Records Older Than 6 Months</button>
+          <button class="btn btn-danger" id="cleanupOldRecordsBtn">Delete Returned Records Older Than 3 Months</button>
         </div>
       </div>
     </div>
@@ -3468,6 +3480,13 @@ function wireViewEvents(viewId) {
       }
     });
     $('#cleanupOldRecordsBtn')?.addEventListener('click', handleCleanupOldRecords);
+    $('#cleanupPreviewConfirmBtn')?.addEventListener('click', executeCleanupOldRecords);
+    const closeCleanupPreview = () => { $('#cleanupPreviewDialog')?.classList.add('hidden'); pendingCleanupRecords = []; };
+    $('#cleanupPreviewCancelBtn')?.addEventListener('click', closeCleanupPreview);
+    $('#cleanupPreviewCloseBtn')?.addEventListener('click', closeCleanupPreview);
+    $('#cleanupPreviewDialog')?.addEventListener('click', (e) => {
+      if (e.target.id === 'cleanupPreviewDialog') closeCleanupPreview();
+    });
     $('#clearAllStoreDataBtn')?.addEventListener('click', openClearDataDialog);
     $('#excelDateFrom')?.addEventListener('change', () => { const from = $('#excelDateFrom').value; excelDateFrom = from; if ($('#excelDateTo')) $('#excelDateTo').min = from; updateExcelExportSummary(); });
     $('#excelDateTo')?.addEventListener('change', () => { const to = $('#excelDateTo').value; excelDateTo = to; if ($('#excelDateFrom')) $('#excelDateFrom').max = to || todayStr(); updateExcelExportSummary(); });
@@ -3589,7 +3608,7 @@ function wireViewEvents(viewId) {
       });
     });
 
-    // Wire Admin Approve & Reject for Pending Deletion Requests
+    // Admin Request Handlers
     if (isAdmin) {
       main.querySelectorAll('[data-approve-tool-deletion]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3599,8 +3618,32 @@ function wireViewEvents(viewId) {
       });
       main.querySelectorAll('[data-reject-tool-deletion]').forEach(btn => {
         btn.addEventListener('click', () => {
-          triggerHaptic(10);
+          triggerHaptic(14);
           handleRejectToolDeletion(btn.dataset.rejectToolDeletion);
+        });
+      });
+      main.querySelectorAll('[data-approve-tool-addition]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(14);
+          handleApproveToolAddition(btn.dataset.approveToolAddition);
+        });
+      });
+      main.querySelectorAll('[data-reject-tool-addition]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(14);
+          handleRejectToolAddition(btn.dataset.rejectToolAddition);
+        });
+      });
+      main.querySelectorAll('[data-approve-tool-qty]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(14);
+          handleApproveToolQty(btn.dataset.approveToolQty);
+        });
+      });
+      main.querySelectorAll('[data-reject-tool-qty]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          triggerHaptic(14);
+          handleRejectToolQty(btn.dataset.rejectToolQty);
         });
       });
     }
@@ -3976,7 +4019,7 @@ async function handleEditReturnSubmit(e) {
       updates.returnPhotoPaths = [...oldPaths, ...u.paths];
     }
     try { await update(ref(db, 'issues/' + issue.id), updates); } catch (databaseError) { await cleanupUploadedPaths(newlyUploadedPaths); newlyUploadedPaths = []; throw databaseError; }
-    if (qty === 0 && storage) for (const p of oldPaths) try { await deleteObject(storageRef(storage, p)); } catch (_) { }
+    if (qty === 0 && storage) for (const p of oldPaths) try { await deleteObject(storageRef(storage, p)); } catch { /* ignore */ }
     await writeAudit('return-edited', issue.id, { previousQtyReturned: issue.qtyReturned || 0, newQtyReturned: qty, returnDate: qty === 0 ? null : returnDate });
     editReturnSelectedPhotoFiles = [];
     const editPhotoNote = uploadedEditUrls.length ? ` ${uploadedEditUrls.length} return photo${uploadedEditUrls.length === 1 ? '' : 's'} uploaded.` : '';
@@ -4002,8 +4045,8 @@ async function deleteIssue(id) {
     await remove(ref(db, 'issues/' + id));
 
     if (storage && issue) {
-      for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
-      for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
+      for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
+      for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
     }
   } catch (err) { void appAlert('Could not delete this record: ' + (err.message || 'unknown error'), { title: 'Delete Failed', type: 'danger' }); }
   finally { setSyncingState(false); }
@@ -4076,6 +4119,54 @@ document.addEventListener('keydown', (event) => {
 /* =========================================================================
    TOOL STATUS & DELETION REQUEST MODAL CONTROLLERS
    ========================================================================= */
+function getToolStatusQuantities(tool) {
+  if (tool.statusQuantities) return tool.statusQuantities;
+  const legacyStatus = tool.status || 'Available';
+  return {
+    'Available': legacyStatus === 'Available' ? (tool.quantity || 0) : 0,
+    'In Maintenance': legacyStatus === 'In Maintenance' ? (tool.quantity || 0) : 0,
+    'Damaged': legacyStatus === 'Damaged' ? (tool.quantity || 0) : 0,
+    'Lost': legacyStatus === 'Lost' ? (tool.quantity || 0) : 0
+  };
+}
+
+function updateStatusModalSum() {
+  const maintenance = parseInt($('#statusModalQtyMaintenance')?.value || '0', 10) || 0;
+  const damaged = parseInt($('#statusModalQtyDamaged')?.value || '0', 10) || 0;
+  const lost = parseInt($('#statusModalQtyLost')?.value || '0', 10) || 0;
+  
+  const totalSumEl = $('#statusModalTotalSum');
+  const targetTotal = parseInt(totalSumEl?.textContent || '0', 10) || 0;
+  
+  let available = targetTotal - (maintenance + damaged + lost);
+  // Optional: clamp to 0 if they type more than total
+  // But if we clamp, sum > targetTotal, triggering the warn/disabled save button!
+  
+  const availableInput = $('#statusModalQtyAvailable');
+  if (availableInput) {
+    // Show negative so user knows they over-allocated, or clamp to 0. Clamping to 0 is safer for UI.
+    availableInput.value = available < 0 ? 0 : available;
+    if (available < 0) available = 0;
+  }
+
+  const sum = available + maintenance + damaged + lost;
+  
+  const sumEl = $('#statusModalAllocatedSum');
+  if (sumEl) sumEl.textContent = sum;
+  
+  const warnEl = $('#statusModalAllocatedWarn');
+  const saveBtn = $('#statusModalSaveBtn');
+  if (sum !== targetTotal) {
+    if (sumEl) sumEl.style.color = 'var(--danger)';
+    if (warnEl) warnEl.style.display = 'inline';
+    if (saveBtn) saveBtn.disabled = true;
+  } else {
+    if (sumEl) sumEl.style.color = '';
+    if (warnEl) warnEl.style.display = 'none';
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
 function openToolStatusModal(toolId) {
   const tool = toolsCache.find(t => t.id === toolId);
   if (!tool) return;
@@ -4088,8 +4179,26 @@ function openToolStatusModal(toolId) {
   const subEl = $('#toolStatusSubtitle');
   if (subEl) subEl.innerHTML = `ID: <span class="mono">${escapeHtml(tool.uniqueId || '—')}</span> &bull; Location: ${escapeHtml(tool.location || '—')} &bull; Qty: ${escapeHtml(tool.quantity ?? 0)}`;
 
-  const selectEl = $('#statusModalNewStatus');
-  if (selectEl) selectEl.value = tool.status || 'Available';
+  const sq = getToolStatusQuantities(tool);
+  if ($('#statusModalQtyAvailable')) $('#statusModalQtyAvailable').value = sq['Available'] || 0;
+  if ($('#statusModalQtyMaintenance')) $('#statusModalQtyMaintenance').value = sq['In Maintenance'] || 0;
+  if ($('#statusModalQtyDamaged')) $('#statusModalQtyDamaged').value = sq['Damaged'] || 0;
+  if ($('#statusModalQtyLost')) $('#statusModalQtyLost').value = sq['Lost'] || 0;
+  
+  if ($('#statusModalTotalSum')) $('#statusModalTotalSum').textContent = tool.quantity || 0;
+  updateStatusModalSum();
+
+  const btnQty = $('#statusModalRequestQtyBtn');
+  if (btnQty) {
+    if (currentUser?.roles?.includes('tools_admin') && !currentUser?.roles?.includes('admin')) {
+      btnQty.style.display = 'inline-block';
+      btnQty.onclick = () => {
+        handleRequestTotalQuantityChange(toolId);
+      };
+    } else {
+      btnQty.style.display = 'none';
+    }
+  }
 
   const notesEl = $('#statusModalNotes');
   if (notesEl) notesEl.value = '';
@@ -4177,7 +4286,41 @@ async function handleToolStatusSubmit(e) {
   const tool = toolsCache.find(t => t.id === toolId);
   if (!tool) { await appAlert('Tool record not found.', { type: 'danger' }); return; }
 
-  const newStatus = $('#statusModalNewStatus')?.value || 'Available';
+  const available = parseInt($('#statusModalQtyAvailable')?.value || '0', 10) || 0;
+  const maintenance = parseInt($('#statusModalQtyMaintenance')?.value || '0', 10) || 0;
+  const damaged = parseInt($('#statusModalQtyDamaged')?.value || '0', 10) || 0;
+  const lost = parseInt($('#statusModalQtyLost')?.value || '0', 10) || 0;
+  const sum = available + maintenance + damaged + lost;
+  const total = parseInt(tool.quantity || 0, 10);
+  
+  if (sum !== total) {
+    await appAlert(`The allocated quantities (${sum}) must equal the tool's total quantity (${total}).`, { type: 'warn' });
+    return;
+  }
+  
+  const newStatusQuantities = {
+    'Available': available,
+    'In Maintenance': maintenance,
+    'Damaged': damaged,
+    'Lost': lost
+  };
+
+  // Determine a primary display status
+  let newPrimaryStatus = 'Available';
+  if (available < total) {
+    if (maintenance >= damaged && maintenance >= lost && maintenance > 0) newPrimaryStatus = 'In Maintenance';
+    else if (damaged >= lost && damaged > 0) newPrimaryStatus = 'Damaged';
+    else if (lost > 0) newPrimaryStatus = 'Lost';
+  }
+  
+  // Format history text
+  const parts = [];
+  if (available > 0) parts.push(`${available} Available`);
+  if (maintenance > 0) parts.push(`${maintenance} Maintenance`);
+  if (damaged > 0) parts.push(`${damaged} Damaged`);
+  if (lost > 0) parts.push(`${lost} Lost`);
+  const statusSnapshot = parts.join(', ') || '0 items';
+
   const notes = ($('#statusModalNotes')?.value || '').trim();
   const btn = $('#statusModalSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -4187,8 +4330,8 @@ async function handleToolStatusSubmit(e) {
     const now = Date.now();
     const dateStr = new Date().toLocaleString();
     const historyEntry = {
-      status: newStatus,
-      previousStatus: tool.status || 'Available',
+      status: statusSnapshot,
+      previousStatus: null,
       changedBy: currentUser.fullName || currentUser.username,
       changedByUsername: currentUser.username,
       timestamp: now,
@@ -4208,7 +4351,8 @@ async function handleToolStatusSubmit(e) {
     const updatedHistory = [...currentHistory, historyEntry];
 
     await update(ref(db, 'tools/' + toolId), {
-      status: newStatus,
+      status: newPrimaryStatus,
+      statusQuantities: newStatusQuantities,
       statusHistory: updatedHistory,
       updatedAt: serverTimestamp(),
       updatedBy: currentUser.username,
@@ -4218,8 +4362,7 @@ async function handleToolStatusSubmit(e) {
     await writeAudit('tool-status-updated', toolId, {
       toolName: tool.toolName,
       uniqueId: tool.uniqueId,
-      fromStatus: tool.status || 'Available',
-      toStatus: newStatus,
+      statusQuantities: newStatusQuantities,
       notes
     });
 
@@ -4339,11 +4482,213 @@ async function handleRejectToolDeletion(reqId) {
   }
 }
 
+async function handleRequestTotalQuantityChange(toolId) {
+  const tool = toolsCache.find(t => t.id === toolId);
+  if (!tool) return;
+  
+  const currentQty = tool.quantity || 0;
+  let newQtyStr = prompt(`Request Total Quantity Update for ${tool.toolName}\n\nCurrent Total: ${currentQty}\n\nEnter the requested new total quantity:`, currentQty);
+  if (newQtyStr === null) return;
+  
+  const newQty = parseInt(newQtyStr, 10);
+  if (isNaN(newQty) || newQty < 0) {
+    appAlert('Invalid quantity entered.', { type: 'warn' });
+    return;
+  }
+  if (newQty === currentQty) {
+    appAlert('The requested quantity is the same as the current quantity.', { type: 'info' });
+    return;
+  }
+  
+  try {
+    setSyncingState(true, 'Submitting quantity update request...');
+    await push(ref(db, 'toolQuantityRequests'), {
+      toolId: toolId,
+      toolName: tool.toolName,
+      uniqueId: tool.uniqueId || '',
+      oldQuantity: currentQty,
+      newQuantity: newQty,
+      requestedBy: currentUser.username,
+      requestedByName: currentUser.fullName || currentUser.username,
+      createdAt: serverTimestamp()
+    });
+    showToast('Quantity update request submitted to admin.', { title: 'Request Sent' });
+  } catch (err) {
+    appAlert('Could not submit request: ' + err.message, { type: 'danger' });
+  } finally {
+    setSyncingState(false);
+  }
+}
+
+async function handleApproveToolAddition(reqId) {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can approve tool additions.', { type: 'danger' });
+    return;
+  }
+  const req = toolAdditionRequestsCache.find(r => r.id === reqId || r.toolName === reqId);
+  if (!req) return;
+  const toolName = req.toolName || 'tool';
+
+  if (await appConfirm(`Approve the addition of "${toolName}" and add it to the Master Register?`, {
+    title: 'Approve Tool Addition',
+    confirmText: 'Approve & Add'
+  })) {
+    try {
+      setSyncingState(true, 'Adding tool...');
+      let maxSequence = 0;
+      const upperName = req.toolName.replace(/\//g, '-').trim().toUpperCase();
+      
+      toolsCache.forEach(t => {
+        const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
+        const prefix = `CMM/SMS/${upperName}/`;
+        if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
+          const match = (t.uniqueId || '').match(/(\d+)$/);
+          if (match) {
+            const seq = parseInt(match[1], 10);
+            if (seq > maxSequence) maxSequence = seq;
+          }
+        }
+      });
+      
+      const nextSequence = String(maxSequence + 1).padStart(4, '0');
+      const uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
+      
+      const newToolData = { ...req };
+      delete newToolData.id;
+      delete newToolData.requestedByName;
+      newToolData.uniqueId = uniqueId;
+      newToolData.statusHistory = [{
+        status: req.status || 'Available',
+        previousStatus: null,
+        changedBy: currentUser.fullName || currentUser.username,
+        changedByUsername: currentUser.username,
+        timestamp: Date.now(),
+        dateStr: new Date().toLocaleString(),
+        notes: req.notes || 'Approved tool addition'
+      }];
+      
+      const newRef = await push(ref(db, 'tools'), newToolData);
+      await remove(ref(db, 'toolAdditionRequests/' + (req.id || reqId)));
+      await writeAudit('tool-addition-approved', newRef.key, {
+        toolName,
+        uniqueId,
+        requestedBy: req.createdBy || '',
+        approvedBy: currentUser.username
+      });
+      showToast(`Tool "${toolName}" approved and added successfully.`, { title: 'Tool Added' });
+    } catch (err) {
+      await appAlert('Could not approve tool addition: ' + err.message, { type: 'danger' });
+    } finally {
+      setSyncingState(false);
+    }
+  }
+}
+
+async function handleRejectToolAddition(reqId) {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can reject tool additions.', { type: 'danger' });
+    return;
+  }
+  const req = toolAdditionRequestsCache.find(r => r.id === reqId || r.toolName === reqId);
+  const toolName = req?.toolName || 'tool';
+
+  if (await appConfirm(`Reject the addition request for "${toolName}"? This will permanently delete the request.`, {
+    title: 'Reject Tool Addition',
+    type: 'warn',
+    confirmText: 'Reject Request'
+  })) {
+    try {
+      setSyncingState(true, 'Rejecting request...');
+      await remove(ref(db, 'toolAdditionRequests/' + (req?.id || reqId)));
+      await writeAudit('tool-addition-rejected', reqId, {
+        toolName,
+        requestedBy: req?.createdBy || '',
+        rejectedBy: currentUser.username
+      });
+      showToast('Tool addition request rejected.', { title: 'Request Rejected' });
+    } catch (err) {
+      await appAlert('Could not reject request: ' + err.message, { type: 'danger' });
+    } finally {
+      setSyncingState(false);
+    }
+  }
+}
+
+async function handleApproveToolQty(reqId) {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can approve quantity changes.', { type: 'danger' });
+    return;
+  }
+  const req = toolQuantityRequestsCache.find(r => r.id === reqId || r.toolId === reqId);
+  if (!req) return;
+  const toolName = req.toolName || 'tool';
+
+  if (await appConfirm(`Approve changing the total quantity of "${toolName}" from ${req.oldQuantity} to ${req.newQuantity}?`, {
+    title: 'Approve Quantity Change',
+    confirmText: 'Approve'
+  })) {
+    try {
+      setSyncingState(true, 'Updating quantity...');
+      const tool = toolsCache.find(t => t.id === req.toolId);
+      if (tool) {
+        await update(ref(db, 'tools/' + tool.id), { quantity: req.newQuantity });
+      }
+      await remove(ref(db, 'toolQuantityRequests/' + (req.id || reqId)));
+      await writeAudit('tool-qty-change-approved', req.toolId, {
+        toolName,
+        oldQuantity: req.oldQuantity,
+        newQuantity: req.newQuantity,
+        requestedBy: req.requestedBy || '',
+        approvedBy: currentUser.username
+      });
+      showToast(`Quantity for "${toolName}" updated successfully.`, { title: 'Quantity Updated' });
+    } catch (err) {
+      await appAlert('Could not approve quantity change: ' + err.message, { type: 'danger' });
+    } finally {
+      setSyncingState(false);
+    }
+  }
+}
+
+async function handleRejectToolQty(reqId) {
+  if (!currentUser?.roles.includes('admin')) {
+    await appAlert('Only administrators can reject quantity changes.', { type: 'danger' });
+    return;
+  }
+  const req = toolQuantityRequestsCache.find(r => r.id === reqId || r.toolId === reqId);
+  const toolName = req?.toolName || 'tool';
+
+  if (await appConfirm(`Reject the total quantity change request for "${toolName}"?`, {
+    title: 'Reject Quantity Change',
+    type: 'warn',
+    confirmText: 'Reject Request'
+  })) {
+    try {
+      setSyncingState(true, 'Rejecting request...');
+      await remove(ref(db, 'toolQuantityRequests/' + (req?.id || reqId)));
+      await writeAudit('tool-qty-change-rejected', reqId, {
+        toolName,
+        requestedBy: req?.requestedBy || '',
+        rejectedBy: currentUser.username
+      });
+      showToast('Quantity change request rejected.', { title: 'Request Rejected' });
+    } catch (err) {
+      await appAlert('Could not reject request: ' + err.message, { type: 'danger' });
+    } finally {
+      setSyncingState(false);
+    }
+  }
+}
+
+
 // Wire Dialog Modal Event Listeners
 $('#toolStatusCloseBtn')?.addEventListener('click', closeToolStatusModal);
 $('#statusModalCancelBtn')?.addEventListener('click', closeToolStatusModal);
 $('#toolStatusForm')?.addEventListener('submit', handleToolStatusSubmit);
 $('#toolStatusDialog')?.addEventListener('click', (event) => { if (event.target.id === 'toolStatusDialog') closeToolStatusModal(); });
+['Available', 'Maintenance', 'Damaged', 'Lost'].forEach(st => {
+  $(`#statusModalQty${st}`)?.addEventListener('input', updateStatusModalSum);
+});
 
 $('#toolDeletionRequestCloseBtn')?.addEventListener('click', closeToolDeletionRequestModal);
 $('#deletionReqCancelBtn')?.addEventListener('click', closeToolDeletionRequestModal);
@@ -4352,6 +4697,7 @@ $('#toolDeletionRequestDialog')?.addEventListener('click', (event) => { if (even
 
 // Overdue Follow-up Modal Event Listeners
 $('#topbarOverdueBtn')?.addEventListener('click', openOverdueFollowUpModal);
+$('#topbarRequestsBtn')?.addEventListener('click', () => navigateTo('tools-dashboard'));
 $('#overdueFollowUpCloseBtn')?.addEventListener('click', closeOverdueFollowUpModal);
 $('#overdueModalDoneBtn')?.addEventListener('click', closeOverdueFollowUpModal);
 $('#overdueFollowUpDialog')?.addEventListener('click', (event) => { if (event.target.id === 'overdueFollowUpDialog') closeOverdueFollowUpModal(); });
@@ -4414,10 +4760,10 @@ $('#clearDataVerifyBtn')?.addEventListener('click', async () => {
     if (storage) {
       for (const issue of issuesCache) {
         for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) {
-          try { await deleteObject(storageRef(storage, path)); } catch (_) {}
+          try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
         }
         for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) {
-          try { await deleteObject(storageRef(storage, path)); } catch (_) {}
+          try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
         }
       }
     }
@@ -4462,9 +4808,11 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+let pendingCleanupRecords = [];
+
 async function handleCleanupOldRecords() {
   const cutoffDate = new Date();
-  cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+  cutoffDate.setMonth(cutoffDate.getMonth() - 3);
 
   const toDelete = issuesCache.filter(issue => {
     if (statusOf(issue) !== 'Returned') return false;
@@ -4473,18 +4821,76 @@ async function handleCleanupOldRecords() {
   });
 
   if (toDelete.length === 0) {
-    void appAlert('Your database is already clean! No completed records older than 6 months were found.', { title: 'Database Clean', type: 'info' });
+    void appAlert('Your database is already clean! No completed records older than 3 months were found.', { title: 'Database Clean', type: 'info' });
     return;
   }
 
-  if (!await appConfirm(`Are you sure you want to permanently delete ${toDelete.length} old returned record(s)?\n\nThis will also delete their attached photos to free up storage space. This action cannot be undone.`, { title: 'Delete old returned records', type: 'danger', confirmText: 'Delete records' })) {
-    return;
+  const btn = $('#cleanupOldRecordsBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Loading...'; }
+
+  pendingCleanupRecords = toDelete;
+
+  // Show modal
+  $('#cleanupPreviewDialog').classList.remove('hidden');
+  const tbody = $('#cleanupPreviewTableBody');
+  if (tbody) {
+    tbody.innerHTML = toDelete.map(issue => `
+      <tr>
+        <td class="mono">${escapeHtml(issue.id)}</td>
+        <td><strong>${escapeHtml(issue.materialName || '—')}</strong></td>
+        <td class="mono">${issue.returnedAt ? new Date(issue.returnedAt).toLocaleDateString() : (issue.returnDate || '—')}</td>
+      </tr>
+    `).join('');
   }
+
+  const banner = $('#cleanupPreviewStorageBanner');
+  if (banner) {
+    banner.style.background = 'var(--surface)';
+    banner.style.color = 'inherit';
+    banner.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Calculating storage space...`;
+  }
+
+  // Calculate total space
+  let totalBytes = 0;
+  if (storage) {
+    const allPaths = [];
+    for (const issue of toDelete) {
+      if (issue.photoPaths) allPaths.push(...issue.photoPaths);
+      else if (issue.photoPath) allPaths.push(issue.photoPath);
+
+      if (issue.returnPhotoPaths) allPaths.push(...issue.returnPhotoPaths);
+      else if (issue.returnPhotoPath) allPaths.push(issue.returnPhotoPath);
+    }
+    
+    // Batch getMetadata requests
+    const metadataPromises = allPaths.filter(Boolean).map(path => {
+      return getMetadata(storageRef(storage, path)).catch(() => ({ size: 0 }));
+    });
+    
+    const metadatas = await Promise.all(metadataPromises);
+    for (const meta of metadatas) {
+      totalBytes += Number(meta.size || 0);
+    }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Delete Returned Records Older Than 3 Months'; }
+  if (banner) {
+    const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+    banner.style.background = 'rgba(16, 185, 129, 0.1)';
+    banner.style.color = 'var(--success)';
+    banner.innerHTML = `<strong>${mb} MB</strong> of cloud storage will be freed from attached photos.`;
+  }
+}
+
+async function executeCleanupOldRecords() {
+  const toDelete = pendingCleanupRecords;
+  $('#cleanupPreviewDialog').classList.add('hidden');
+  pendingCleanupRecords = [];
+  
+  if (toDelete.length === 0) return;
 
   setSyncingState(true, `Deleting ${toDelete.length} records...`);
-  const btn = $('#cleanupOldRecordsBtn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Deleting...'; }
-
+  
   let successCount = 0;
   let failCount = 0;
 
@@ -4494,8 +4900,8 @@ async function handleCleanupOldRecords() {
       await remove(ref(db, 'issues/' + issue.id));
 
       if (storage) {
-        for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
-        for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch (_) { }
+        for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
+        for (const path of (issue.returnPhotoPaths || (issue.returnPhotoPath ? [issue.returnPhotoPath] : []))) try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
       }
       successCount++;
     } catch (e) {
@@ -4649,7 +5055,25 @@ async function loadUsersTable() {
       checkbox.addEventListener('change', async (e) => {
         const group = e.target.closest('.role-checkbox-group');
         const uid = group.dataset.userId;
-        const checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
+        let checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
+        let newRoles = checkedBoxes.map(cb => cb.value);
+        
+        if (e.target.checked) {
+          if (e.target.value === 'viewer') {
+            group.querySelectorAll('input:checked').forEach(cb => {
+              if (cb !== e.target) cb.checked = false;
+            });
+            checkedBoxes = [e.target];
+            newRoles = ['viewer'];
+            showToast('Viewer role selected. Other roles removed.', { title: 'Role Updated', type: 'info' });
+          } else if (newRoles.includes('viewer')) {
+            const viewerCb = group.querySelector('input[value="viewer"]');
+            if (viewerCb && viewerCb.checked) viewerCb.checked = false;
+            checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
+            newRoles = checkedBoxes.map(cb => cb.value);
+          }
+        }
+        
         if (checkedBoxes.length > 2) {
           showToast('A user can have a maximum of 2 roles.', { title: 'Role Limit', type: 'warning' });
           e.target.checked = false;
@@ -4663,8 +5087,7 @@ async function loadUsersTable() {
         const headerLabel = group.previousElementSibling?.querySelector('.ms-label');
         if (headerLabel) headerLabel.textContent = `${checkedBoxes.length} Role${checkedBoxes.length > 1 ? 's' : ''} Selected`;
 
-        const newRoles = checkedBoxes.map(cb => cb.value);
-        
+
         setSyncingState(true, 'Updating roles...');
         try {
           await update(ref(db, 'users/' + uid), { roles: newRoles });
@@ -4708,6 +5131,12 @@ async function handleNewUserSubmit(e) {
   const password = $('#nu_password').value;
   
   const checkedBoxes = Array.from(document.querySelectorAll('#nu_role_group input:checked'));
+  const roles = checkedBoxes.map(cb => cb.value);
+  if (roles.includes('viewer') && roles.length > 1) {
+    userFormError = 'A Viewer cannot have any other roles assigned.';
+    showInlineError('userFormAlert', userFormError);
+    return;
+  }
   if (checkedBoxes.length > 2) {
     userFormError = 'A user can have a maximum of 2 roles.';
     showInlineError('userFormAlert', userFormError);
@@ -4718,7 +5147,6 @@ async function handleNewUserSubmit(e) {
     showInlineError('userFormAlert', userFormError);
     return;
   }
-  const roles = checkedBoxes.map(cb => cb.value);
 
   if (!username || !fullName || !password) { userFormError = 'Please fill in username, full name, and password.'; showInlineError('userFormAlert', userFormError); return; }
   if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; showInlineError('userFormAlert', userFormError); return; }
@@ -4798,7 +5226,13 @@ setTimeout(setupLoginKPIs, 1000);
 // =========================================================================
 document.addEventListener('change', (e) => {
   if (e.target.closest('#nu_role_group')) {
-    const checkedBoxes = document.querySelectorAll('#nu_role_group input:checked');
+    const checkedBoxes = Array.from(document.querySelectorAll('#nu_role_group input:checked'));
+    const newRoles = checkedBoxes.map(cb => cb.value);
+    if (newRoles.includes('viewer') && newRoles.length > 1) {
+      showToast('A Viewer cannot have any other roles assigned.', { title: 'Role Conflict', type: 'warning' });
+      e.target.checked = false;
+      return;
+    }
     const headerLabel = document.querySelector('#nu_role_group').previousElementSibling?.querySelector('.ms-label');
     if (headerLabel) headerLabel.textContent = `${checkedBoxes.length} Role${checkedBoxes.length !== 1 ? 's' : ''} Selected`;
   }
@@ -4818,7 +5252,7 @@ document.addEventListener('click', (e) => {
 
   const navBtn = e.target.closest('[data-nav]');
   if (navBtn) {
-    if (typeof activeUploadTask !== 'undefined' && activeUploadTask) { try { activeUploadTask.cancel(); } catch (_) { } }
+    if (typeof activeUploadTask !== 'undefined' && activeUploadTask) { try { activeUploadTask.cancel(); } catch { /* ignore */ } }
     navigateTo(navBtn.dataset.nav);
     return;
   }
@@ -4874,7 +5308,10 @@ function renderToolsDashboard() {
   const hasActiveFilters = Boolean(activeSearch || activeStatus !== 'all' || activeCategory !== 'all');
 
   let filteredTools = toolsCache.filter(t => {
-    if (activeStatus !== 'all' && (t.status || 'Available') !== activeStatus) return false;
+    if (activeStatus !== 'all') {
+      const sq = getToolStatusQuantities(t);
+      if ((sq[activeStatus] || 0) <= 0) return false;
+    }
     if (activeCategory !== 'all' && (t.category || '').trim() !== activeCategory) return false;
     if (activeSearch) {
       const matchName = String(t.toolName || '').toLowerCase().includes(activeSearch);
@@ -4887,11 +5324,16 @@ function renderToolsDashboard() {
     return true;
   });
 
-  const getStatusBadge = (status) => {
-    let badgeClass = 'good';
-    if (status === 'Lost' || status === 'Damaged') badgeClass = 'bad';
-    else if (status === 'In Maintenance') badgeClass = 'warn';
-    return `<span class="badge ${badgeClass}">${escapeHtml(status || 'Available')}</span>`;
+  const getStatusBadge = (tool) => {
+    const sq = getToolStatusQuantities(tool);
+    let badges = [];
+    if (sq['Available'] > 0) badges.push(`<span class="badge good">${sq['Available']} Avail</span>`);
+    if (sq['In Maintenance'] > 0) badges.push(`<span class="badge warn">${sq['In Maintenance']} Maint</span>`);
+    if (sq['Damaged'] > 0) badges.push(`<span class="badge bad">${sq['Damaged']} Dmg</span>`);
+    if (sq['Lost'] > 0) badges.push(`<span class="badge bad">${sq['Lost']} Lost</span>`);
+    
+    if (badges.length === 0) return `<span class="badge good">0 Avail</span>`;
+    return `<div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">${badges.join('')}</div>`;
   };
 
   let html = `
@@ -4909,16 +5351,21 @@ function renderToolsDashboard() {
   `;
 
   // Admin View: Pending Tool Deletion Requests Banner/Table
-  if (isAdmin && toolDeletionRequestsCache.length > 0) {
+  const deletionRequestsToShow = isAdmin ? toolDeletionRequestsCache : toolDeletionRequestsCache.filter(r => r.requestedBy === currentUser.username);
+  
+  if ((isAdmin || isToolsAdmin) && deletionRequestsToShow.length > 0) {
+    let pendingDelTitle = isAdmin ? "Pending Tool Deletion Requests" : "Your Pending Deletion Requests";
+    let pendingDelSub = isAdmin ? "Users cannot delete tools directly. Review requests below:" : "Waiting for Admin approval:";
+    
     html += `
       <div class="pending-deletion-requests-card" style="margin-bottom:24px; background:rgba(239, 68, 68, 0.05); border:1px solid rgba(239, 68, 68, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--danger)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <strong style="color:var(--danger); font-size:14px;">Pending Tool Deletion Requests</strong>
-            <span class="badge warn" style="font-size:11px; font-weight:700;">${toolDeletionRequestsCache.length} pending</span>
+            <strong style="color:var(--danger); font-size:14px;">${pendingDelTitle}</strong>
+            <span class="badge warn" style="font-size:11px; font-weight:700;">${deletionRequestsToShow.length} pending</span>
           </div>
-          <span style="font-size:12px; color:var(--text-muted);">Users cannot delete tools directly. Review requests below:</span>
+          <span style="font-size:12px; color:var(--text-muted);">${pendingDelSub}</span>
         </div>
         <div class="table-wrap" style="overflow-x:auto;">
           <table class="tools-master-table" style="font-size:12.5px; width:100%; background:var(--surface);">
@@ -4929,11 +5376,11 @@ function renderToolsDashboard() {
                 <th>Requested By</th>
                 <th>Reason for Deletion</th>
                 <th style="width:130px;">Requested Date</th>
-                <th style="width:160px; text-align:right;">Actions</th>
+                <th style="width:160px; text-align:right;">Status/Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${toolDeletionRequestsCache.map(req => `
+              ${deletionRequestsToShow.map(req => `
                 <tr>
                   <td class="tool-id-cell mono">${escapeHtml(req.uniqueId || req.toolId || '—')}</td>
                   <td><strong>${escapeHtml(req.toolName || '—')}</strong></td>
@@ -4941,8 +5388,117 @@ function renderToolsDashboard() {
                   <td style="max-width:240px; word-break:break-word;"><em>${escapeHtml(req.reason || 'No reason provided')}</em></td>
                   <td class="mono" style="font-size:11.5px;">${req.requestedAt ? new Date(req.requestedAt).toLocaleDateString() : '—'}</td>
                   <td style="text-align:right; white-space:nowrap;">
-                    <button type="button" class="btn btn-danger btn-sm" data-approve-tool-deletion="${escapeHtml(req.id || req.toolId)}" title="Approve and permanently delete tool">Approve Delete</button>
-                    <button type="button" class="btn btn-ghost btn-sm" data-reject-tool-deletion="${escapeHtml(req.id || req.toolId)}" title="Reject deletion request" style="margin-left:4px;">Reject</button>
+                    ${isAdmin ? `
+                      <button type="button" class="btn btn-danger btn-sm" data-approve-tool-deletion="${escapeHtml(req.id || req.toolId)}" title="Approve and permanently delete tool">Approve Delete</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-reject-tool-deletion="${escapeHtml(req.id || req.toolId)}" title="Reject deletion request" style="margin-left:4px;">Reject</button>
+                    ` : `<span style="font-size:11px; color:var(--text-muted); font-style:italic;">Pending Approval</span>`}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // Admin View: Pending Tool Addition Requests Banner/Table
+  const isToolsAdmin = currentUser.roles.includes('tools_admin') && !isAdmin;
+  const additionRequestsToShow = isAdmin ? toolAdditionRequestsCache : toolAdditionRequestsCache.filter(r => r.requestedBy === currentUser.username || r.createdBy === currentUser.username);
+  
+  if ((isAdmin || isToolsAdmin) && additionRequestsToShow.length > 0) {
+    let pendingTitle = isAdmin ? "Pending Tool Additions" : "Your Pending Tool Additions";
+    let pendingSub = isAdmin ? "Review and approve new tools added by Tools Admins:" : "Waiting for Admin approval:";
+    
+    html += `
+      <div class="pending-addition-requests-card" style="margin-bottom:24px; background:rgba(16, 185, 129, 0.05); border:1px solid rgba(16, 185, 129, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            <strong style="color:var(--primary); font-size:14px;">${pendingTitle}</strong>
+            <span class="badge warn" style="font-size:11px; font-weight:700;">${additionRequestsToShow.length} pending</span>
+          </div>
+          <span style="font-size:12px; color:var(--text-muted);">${pendingSub}</span>
+        </div>
+        <div class="table-wrap" style="overflow-x:auto;">
+          <table class="tools-master-table" style="font-size:12.5px; width:100%; background:var(--surface);">
+            <thead>
+              <tr>
+                <th>Tool Name</th>
+                <th>Category</th>
+                <th>Requested Qty</th>
+                <th>Requested By</th>
+                <th style="width:130px;">Requested Date</th>
+                <th style="width:160px; text-align:right;">Status/Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${additionRequestsToShow.map(req => `
+                <tr>
+                  <td><strong>${escapeHtml(req.toolName || '—')}</strong></td>
+                  <td>${escapeHtml(req.category || '—')}</td>
+                  <td class="mono">${req.quantity || 0}</td>
+                  <td>${escapeHtml(req.requestedByName || req.requestedBy || 'User')}</td>
+                  <td class="mono" style="font-size:11.5px;">${req.createdAt ? new Date(req.createdAt).toLocaleDateString() : '—'}</td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    ${isAdmin ? `
+                      <button type="button" class="btn btn-primary btn-sm" data-approve-tool-addition="${escapeHtml(req.id || req.toolName)}" title="Approve and add to Master Register">Approve</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-reject-tool-addition="${escapeHtml(req.id || req.toolName)}" title="Reject addition request" style="margin-left:4px;">Reject</button>
+                    ` : `<span style="font-size:11px; color:var(--text-muted); font-style:italic;">Pending Approval</span>`}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // Admin View: Pending Tool Quantity Updates Banner/Table
+  const qtyRequestsToShow = isAdmin ? toolQuantityRequestsCache : toolQuantityRequestsCache.filter(r => r.requestedBy === currentUser.username);
+  
+  if ((isAdmin || isToolsAdmin) && qtyRequestsToShow.length > 0) {
+    let pendingQtyTitle = isAdmin ? "Pending Total Quantity Updates" : "Your Pending Quantity Updates";
+    let pendingQtySub = isAdmin ? "Review changes to tool total allocations:" : "Waiting for Admin approval:";
+    
+    html += `
+      <div class="pending-quantity-requests-card" style="margin-bottom:24px; background:rgba(245, 158, 11, 0.05); border:1px solid rgba(245, 158, 11, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--warn)" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+            <strong style="color:var(--warn); font-size:14px;">${pendingQtyTitle}</strong>
+            <span class="badge warn" style="font-size:11px; font-weight:700;">${qtyRequestsToShow.length} pending</span>
+          </div>
+          <span style="font-size:12px; color:var(--text-muted);">${pendingQtySub}</span>
+        </div>
+        <div class="table-wrap" style="overflow-x:auto;">
+          <table class="tools-master-table" style="font-size:12.5px; width:100%; background:var(--surface);">
+            <thead>
+              <tr>
+                <th style="width:130px;">Tool ID</th>
+                <th>Tool Name</th>
+                <th>Old Qty</th>
+                <th>New Qty</th>
+                <th>Requested By</th>
+                <th style="width:130px;">Requested Date</th>
+                <th style="width:160px; text-align:right;">Status/Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${qtyRequestsToShow.map(req => `
+                <tr>
+                  <td class="tool-id-cell mono">${escapeHtml(req.uniqueId || req.toolId || '—')}</td>
+                  <td><strong>${escapeHtml(req.toolName || '—')}</strong></td>
+                  <td class="mono">${req.oldQuantity || 0}</td>
+                  <td class="mono" style="color:var(--warn); font-weight:bold;">${req.newQuantity || 0}</td>
+                  <td>${escapeHtml(req.requestedByName || req.requestedBy || 'User')}</td>
+                  <td class="mono" style="font-size:11.5px;">${req.createdAt ? new Date(req.createdAt).toLocaleDateString() : '—'}</td>
+                  <td style="text-align:right; white-space:nowrap;">
+                    ${isAdmin ? `
+                      <button type="button" class="btn btn-warn btn-sm" data-approve-tool-qty="${escapeHtml(req.id || req.toolId)}" title="Approve quantity change">Approve</button>
+                      <button type="button" class="btn btn-ghost btn-sm" data-reject-tool-qty="${escapeHtml(req.id || req.toolId)}" title="Reject quantity change" style="margin-left:4px;">Reject</button>
+                    ` : `<span style="font-size:11px; color:var(--text-muted); font-style:italic;">Pending Approval</span>`}
                   </td>
                 </tr>
               `).join('')}
@@ -5023,14 +5579,14 @@ function renderToolsDashboard() {
           <td><span class="tool-loc-badge"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(t.location || '—')}</span></td>
           <td style="text-align:center;">
             <button type="button" class="btn-clean" data-update-status="${escapeHtml(t.id)}" title="Click to view history or update status" style="cursor:pointer; display:inline-flex; flex-direction:column; align-items:center; gap:3px;">
-              ${getStatusBadge(t.status)}
+              ${getStatusBadge(t)}
               <span style="font-size:10.5px; color:var(--text-muted); text-decoration:underline;">${historyCount > 0 ? historyCount + ' logs' : 'Update'}</span>
             </button>
           </td>
           <td class="tool-notes-cell" title="${escapeHtml(t.notes || '')}">${escapeHtml(t.notes || '—')}</td>
           <td class="tool-actions-cell" style="text-align:right; white-space:nowrap;">
             <button type="button" class="btn btn-ghost btn-sm" data-update-status="${escapeHtml(t.id)}" title="Update Status & View Timeline">Status</button>
-            ${canManageTools ? `<button type="button" class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}" title="Edit Tool Details">Edit</button>` : ''}
+            ${isAdmin ? `<button type="button" class="btn btn-ghost btn-sm" data-edit-tool="${escapeHtml(t.id)}" title="Edit Tool Details">Edit</button>` : ''}
             ${isAdmin ? `
               <button type="button" class="btn btn-danger btn-sm" data-delete-tool="${escapeHtml(t.id)}" title="Permanently Delete Tool">Delete</button>
             ` : (pendingReq ? `
@@ -5071,7 +5627,7 @@ function renderToolsDashboard() {
             </div>
             <div class="tool-card-status">
               <button type="button" class="btn-clean" data-update-status="${escapeHtml(t.id)}" style="cursor:pointer;">
-                ${getStatusBadge(t.status)}
+                ${getStatusBadge(t)}
               </button>
             </div>
           </div>
@@ -5086,7 +5642,7 @@ function renderToolsDashboard() {
             <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-update-status="${escapeHtml(t.id)}">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Status & History
             </button>
-            ${canManageTools ? `
+            ${isAdmin ? `
               <button type="button" class="btn btn-ghost btn-sm tool-action-btn" data-edit-tool="${escapeHtml(t.id)}">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit
               </button>
@@ -5161,7 +5717,7 @@ function renderToolForm(title, tool) {
             </div>
             <div class="field">
               <label for="t_qty">Quantity *</label>
-              <input type="number" inputmode="numeric" id="t_qty" min="0" value="${escapeHtml(tool.quantity !== undefined && tool.quantity !== null ? tool.quantity : '1')}" required />
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="t_qty" min="0" value="${escapeHtml(tool.quantity !== undefined && tool.quantity !== null ? tool.quantity : '1')}" required />
             </div>
             <div class="field">
               <label for="t_loc">Location / Shelf</label>
@@ -5240,46 +5796,57 @@ function renderToolForm(title, tool) {
             dateStr: dateStr,
             notes: toolData.notes || 'Status updated via tool editor'
           }];
+          toolData.statusQuantities = null;
         }
         await update(ref(db, 'tools/' + tool.id), toolData);
         await writeAudit('tool-edited', tool.id, { toolName, quantity: toolQty, status: toolData.status, uniqueId: tool.uniqueId });
       } else {
         const cleanName = toolName.replace(/\//g, '-').trim();
         const upperName = cleanName.toUpperCase();
-        let maxSequence = 0;
-        
-        toolsCache.forEach(t => {
-          const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
-          const prefix = `CMM/SMS/${upperName}/`;
-          if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
-            const match = (t.uniqueId || '').match(/(\d+)$/);
-            if (match) {
-              const seq = parseInt(match[1], 10);
-              if (seq > maxSequence) maxSequence = seq;
-            }
-          }
-        });
-        
-        const nextSequence = String(maxSequence + 1).padStart(4, '0');
-        toolData.uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
-        toolData.statusHistory = [{
-          status: toolData.status,
-          previousStatus: null,
-          changedBy: currentUser.fullName || currentUser.username,
-          changedByUsername: currentUser.username,
-          timestamp: now,
-          dateStr: dateStr,
-          notes: toolData.notes || 'Initial registration'
-        }];
         
         toolData.createdAt = serverTimestamp();
         toolData.createdBy = currentUser.username;
-        const newRef = await push(ref(db, 'tools'), toolData);
-        await writeAudit('tool-created', newRef.key, { toolName, quantity: toolQty, uniqueId: toolData.uniqueId });
+        toolData.requestedByName = currentUser.fullName || currentUser.username;
+
+        if (!currentUser.roles.includes('admin')) {
+          await push(ref(db, 'toolAdditionRequests'), toolData);
+          await writeAudit('tool-addition-requested', toolName, { toolName, quantity: toolQty });
+          showToast('Tool addition request submitted for admin approval.');
+        } else {
+          let maxSequence = 0;
+          
+          toolsCache.forEach(t => {
+            const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
+            const prefix = `CMM/SMS/${upperName}/`;
+            if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
+              const match = (t.uniqueId || '').match(/(\d+)$/);
+              if (match) {
+                const seq = parseInt(match[1], 10);
+                if (seq > maxSequence) maxSequence = seq;
+              }
+            }
+          });
+          
+          const nextSequence = String(maxSequence + 1).padStart(4, '0');
+          toolData.uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
+          toolData.statusHistory = [{
+            status: toolData.status,
+            previousStatus: null,
+            changedBy: currentUser.fullName || currentUser.username,
+            changedByUsername: currentUser.username,
+            timestamp: now,
+            dateStr: dateStr,
+            notes: toolData.notes || 'Initial registration'
+          }];
+          
+          const newRef = await push(ref(db, 'tools'), toolData);
+          await writeAudit('tool-created', newRef.key, { toolName, quantity: toolQty, uniqueId: toolData.uniqueId });
+          showToast('Tool saved successfully.');
+        }
       }
       formDirty = false;
       window.toolsStatusFilter = 'all';
-      showToast('Tool saved successfully.');
+      if (isEdit) showToast('Tool updated successfully.');
       navigateTo('tools-dashboard');
     } catch (err) {
       appAlert('Error saving tool: ' + err.message, { type: 'danger' });
@@ -5302,3 +5869,21 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 startApp();
+
+// ==========================================
+// Offline Banner Logic
+// ==========================================
+const offlineBanner = document.createElement('div');
+offlineBanner.id = 'offlineBanner';
+offlineBanner.className = 'hidden';
+offlineBanner.innerHTML = '&#9888; You are offline. Changes will sync when reconnected.';
+Object.assign(offlineBanner.style, {
+  position: 'fixed', top: '0', left: '0', width: '100%', backgroundColor: '#ef4444', 
+  color: 'white', textAlign: 'center', padding: '8px', fontSize: '13px', 
+  fontWeight: '600', zIndex: '1000000', transition: 'transform 0.3s'
+});
+document.body.appendChild(offlineBanner);
+
+window.addEventListener('offline', () => offlineBanner.classList.remove('hidden'));
+window.addEventListener('online', () => offlineBanner.classList.add('hidden'));
+if (!navigator.onLine) offlineBanner.classList.remove('hidden');

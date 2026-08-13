@@ -95,7 +95,7 @@ const _haptic = (ms = 10) => {
     } else if (navigator.vibrate) {
       navigator.vibrate(ms);
     }
-  } catch (_) {}
+  } catch { /* ignore */ }
 };
 
 // ── Global haptic on every interactive touch ──
@@ -396,12 +396,24 @@ function init3DBackground() {
 
   // Battery and background tab conservation
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
+    if (document.hidden || window.__bgAnimPaused) {
       stopAnimation();
     } else {
       startAnimation();
     }
   });
 
-  startAnimation();
+  window.stop3DBackground = () => {
+    window.__bgAnimPaused = true;
+    stopAnimation();
+  };
+  
+  window.start3DBackground = () => {
+    window.__bgAnimPaused = false;
+    if (!document.hidden) startAnimation();
+  };
+
+  if (!window.__bgAnimPaused) {
+    startAnimation();
+  }
 }

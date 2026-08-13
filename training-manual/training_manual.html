@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CMM SMS Store - Comprehensive Training Manual & Operating Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ==================== COVER PAGE ==================== -->
+  <header class="cover-page">
+    <div class="cover-header">
+      <div class="company-badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        CMM SMS STORE OPERATIONS
+      </div>
+      <h1 class="cover-title">Complete Application Training Manual</h1>
+      <p class="cover-subtitle">Standard Operating Procedures, Role Workflows, Material Issue/Return Lifecycle, Tool Asset Governance, and 1-Click WhatsApp Reminders.</p>
+    </div>
+
+    <div class="cover-hero-card">
+      <div class="cover-hero-grid">
+        <div class="hero-stat-box">
+          <div class="hero-stat-label">Architecture</div>
+          <div class="hero-stat-val">2 Independent DBs</div>
+        </div>
+        <div class="hero-stat-box">
+          <div class="hero-stat-label">Overdue Threshold</div>
+          <div class="hero-stat-val">&gt; 7 Days Active</div>
+        </div>
+        <div class="hero-stat-box">
+          <div class="hero-stat-label">Platform Edition</div>
+          <div class="hero-stat-val">v2.2.3 PWA Active</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-meta-grid">
+      <div class="meta-item">
+        <span class="meta-label">Target Roles</span>
+        <span class="meta-value">Storekeepers, Supervisors, Tool In-charges, Admins</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">System Build</span>
+        <span class="meta-value">Enterprise Web &amp; Mobile PWA (iOS / Android / Desktop)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Document Version</span>
+        <span class="meta-value">Manual Release v2.2.3 (Current Production)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Security Protocol</span>
+        <span class="meta-value">Role-Based Access Control + Request Governance</span>
+      </div>
+    </div>
+
+    <div class="footer-toc">
+      <h3 style="margin-top:0; margin-bottom:12px; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--gray-600);">Training Module Table of Contents</h3>
+      <div class="toc-grid">
+        <div class="toc-link"><span><strong>Module 1:</strong> System Overview &amp; 2-DB Separation</span> <span>Page 2</span></div>
+        <div class="toc-link"><span><strong>Module 2:</strong> User Roles &amp; Access Control Matrix</span> <span>Page 3</span></div>
+        <div class="toc-link"><span><strong>Module 3:</strong> Material Issue &amp; Return Register</span> <span>Page 4</span></div>
+        <div class="toc-link"><span><strong>Module 4:</strong> Overdue Follow-ups &amp; WhatsApp System</span> <span>Page 5</span></div>
+        <div class="toc-link"><span><strong>Module 5:</strong> Physical Tool Asset Master Register</span> <span>Page 6</span></div>
+        <div class="toc-link"><span><strong>Module 6:</strong> Dashboard KPI Analytics &amp; Reports</span> <span>Page 7</span></div>
+        <div class="toc-link"><span><strong>Module 7:</strong> PWA Installation &amp; Offline Sync</span> <span>Page 8</span></div>
+        <div class="toc-link"><span><strong>Module 8:</strong> Troubleshooting &amp; Operational FAQ</span> <span>Page 9</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+  <!-- ==================== MODULE 1 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-1">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Module X: System Overview &amp; Database Separation
+    </h1>
+    
+    <p>The <strong>CMM SMS Store Management System</strong> is an enterprise-grade Progressive Web Application designed for end-to-end management of engineering consumables, building materials, and master tool asset registers.</p>
+
+    <div class="callout callout-danger">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>CRITICAL ARCHITECTURAL RULE: Strict Database Separation</strong>
+        The system manages <strong>TWO COMPLETELY INDEPENDENT AND UNCONNECTED DATABASES</strong> in Firebase Realtime Database. Never attempt to merge, cross-link, or foreign-key records between them.
+      </div>
+    </div>
+
+    <div class="arch-grid">
+      <div class="arch-card arch-card-issues">
+        <div class="arch-card-title" style="color: #1e40af;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          1. Material Issue Register (<span class="code-tag">issues/</span>)
+        </div>
+        <p style="font-size:12px; margin-bottom:8px;">Logs daily transactional material disbursements, quantities, and return statuses.</p>
+        <ul style="font-size:12px; margin-bottom:0; padding-left:16px;">
+          <li><strong>Cache:</strong> <span class="code-tag">issuesCache</span></li>
+          <li><strong>Lifecycle:</strong> Issued &rarr; Partially Returned &rarr; Returned</li>
+          <li><strong>Features:</strong> Partial return logs, camera photo receipts, overdue follow-up dialog, 1-click WhatsApp alerts.</li>
+          <li><strong>Assigned Roles:</strong> Storekeeper, Viewer, Admin</li>
+        </ul>
+      </div>
+
+      <div class="arch-card arch-card-tools">
+        <div class="arch-card-title" style="color: #065f46;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          2. Tool Asset Register (<span class="code-tag">tools/</span>)
+        </div>
+        <p style="font-size:12px; margin-bottom:8px;">Master catalog of company physical capital equipment and tools.</p>
+        <ul style="font-size:12px; margin-bottom:0; padding-left:16px;">
+          <li><strong>Cache:</strong> <span class="code-tag">toolsCache</span></li>
+          <li><strong>Serial ID:</strong> <span class="code-tag">CMM/SMS/[TOOL]/[SEQ]</span></li>
+          <li><strong>Conditions:</strong> Available, In Maintenance, Damaged, Lost (No "In Use").</li>
+          <li><strong>Governance:</strong> Deletion requests queue (<span class="code-tag">toolDeletionRequests/</span>). Admin approval required.</li>
+          <li><strong>Assigned Roles:</strong> Tools Admin, Tools Viewer, Admin</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 2 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-2">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Module X: User Roles &amp; Access Control Matrix
+    </h1>
+    <p>The system enforces strict Role-Based Access Control (RBAC). When users register, they are placed in a pending state until reviewed and approved by an Administrator.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Material Issues</th>
+          <th>Material Returns</th>
+          <th>Tools Master</th>
+          <th>Tool Deletions</th>
+          <th>Admin Panel</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge" style="background:#dbeafe; color:#1e40af;">admin</span></td>
+          <td>Full Access</td>
+          <td>Full Access</td>
+          <td>Full Access</td>
+          <td>Direct Delete &amp; Approvals</td>
+          <td>Full Control</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#e0e7ff; color:#3730a3;">storekeeper</span></td>
+          <td>Create &amp; Edit</td>
+          <td>Record Returns</td>
+          <td>View Only</td>
+          <td>Request Only</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#d1fae5; color:#065f46;">tools_admin</span></td>
+          <td>View Only</td>
+          <td>No Access</td>
+          <td>Create &amp; Update</td>
+          <td>Request Only</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#fef3c7; color:#92400e;">tools_viewer</span></td>
+          <td>No Access</td>
+          <td>No Access</td>
+          <td>Read-Only View</td>
+          <td>No Access</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:#f1f5f9; color:#475569;">viewer</span></td>
+          <td>Read-Only View</td>
+          <td>No Access</td>
+          <td>No Access</td>
+          <td>No Access</td>
+          <td>No Access</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>New User Registration Workflow:</strong>
+        When a new team member creates an account, they select their intended role. An immediate pending access request is transmitted to the Admin Center. Administrators receive a live red notification badge and can Approve or Reject with 1 click.
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 3 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-3">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+      Module X: Material Issue &amp; Return Lifecycle
+    </h1>
+
+    <ol class="step-list">
+      <li class="step-item">
+        <h4>Step 1: Issuing Material / Consumable</h4>
+        <p>Navigate to <strong>Issue Material</strong>. Fill in Material Name, Category, Quantity Issued, and Unit (Nos, Meters, Kg, Sets). Select the Supervisor from the dropdown; their phone number auto-fills. Tag the work area/location and mark whether the item is returnable.</p>
+      </li>
+      <li class="step-item">
+        <h4>Step 2: Monitoring the Active Register</h4>
+        <p>Active disbursements appear in the <strong>Material Register</strong>. Dynamic badges indicate current state:</p>
+        <div style="display:flex; gap:12px; margin: 8px 0 12px;">
+          <span class="badge badge-issued">&bull; Issued (0% Returned)</span>
+          <span class="badge badge-partial">&bull; Partially Returned (1% - 99%)</span>
+          <span class="badge badge-returned">&bull; Returned (100% Complete)</span>
+        </div>
+      </li>
+      <li class="step-item">
+        <h4>Step 3: Recording Returns &amp; Photo Receipts</h4>
+        <p>Click <strong>Record Return</strong> on any active issue. Enter the quantity being returned. If less than total issued, system automatically transitions status to <span class="badge badge-partial">Partially Returned</span> and recalculates pending balance.</p>
+        <p>Attach photo proof directly using mobile camera or file picker. The system automatically compresses photos to save bandwidth while maintaining receipt clarity.</p>
+      </li>
+    </ol>
+
+    <div class="mock-container">
+      <div class="mock-header">
+        <span class="mock-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Material Register Item Simulation
+        </span>
+        <span class="badge badge-partial">Partially Returned</span>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; font-size:12px;">
+        <div><strong>Item:</strong> 2.5 sq mm Copper Cable</div>
+        <div><strong>Issued Qty:</strong> 100 Meters</div>
+        <div><strong>Returned:</strong> 40 Meters</div>
+        <div><strong>Pending Balance:</strong> <span style="color:#ef4444; font-weight:700;">60 Meters</span></div>
+      </div>
+      <div style="margin-top:10px; font-size:11.5px; color:var(--gray-600);">
+        Supervisor: <strong>Rajesh Kumar (+91 9876543210)</strong> &bull; Location: <strong>Block C - 4th Floor</strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 4 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-4">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Module X: Overdue Management &amp; 1-Click WhatsApp Follow-up
+    </h1>
+
+    <p>To eliminate misplaced items and minimize project losses, the system enforces an automated <strong>7-Day Overdue Rule</strong>. Any material issued &gt; 7 days ago with a pending balance triggers immediate follow-up alerts across the application.</p>
+
+    <div class="mock-container" style="border-color:#f59e0b; background:#fffdfa;">
+      <div class="mock-header">
+        <span class="mock-title" style="color:#92400e;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Overdue Follow-up Modal Interface (Live Simulation)
+        </span>
+        <span class="badge badge-danger">12 Days Overdue</span>
+      </div>
+
+      <div class="mock-overdue-card">
+        <div style="font-weight:700; font-size:13.5px; margin-bottom:4px;">Safety Harness Double Lanyard (Set)</div>
+        <div style="font-size:12px; color:var(--gray-600); margin-bottom:10px;">
+          Pending Qty: <strong>2 / 2 Sets</strong> &bull; Issued Date: <strong>27 Jul 2026</strong> &bull; Area: <strong>Tower Crane 1</strong>
+        </div>
+
+        <div class="mock-contact-bar">
+          <div style="font-size:12px; font-weight:600; color:var(--dark);">
+            👤 Vikram Singh (Site Supervisor)
+          </div>
+          <div style="display:flex; gap:8px;">
+            <a href="#" class="mock-wa-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/></svg>
+              WhatsApp
+            </a>
+            <a href="#" class="mock-call-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Call
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-success">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>1-Click Pre-formatted WhatsApp Message Template:</strong>
+        <pre style="background:rgba(0,0,0,0.05); padding:8px 12px; border-radius:6px; margin-top:6px; font-family:'Inter', sans-serif; font-size:12px; white-space:pre-wrap;">
+Hello Vikram Singh,
+This is a reminder from CMM SMS Store regarding the following overdue item:
+📦 Material: Safety Harness Double Lanyard (Set)
+🔢 Pending Qty: 2 / 2
+📅 Issued Date: 27/07/2026 (12 days ago)
+📍 Area: Tower Crane 1
+
+Please arrange for its return to the store at the earliest.
+Thank you!</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 5 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-5">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Module X: Tool Asset Master Register &amp; Governance
+    </h1>
+
+    <p>The <strong>Tools Master Register</strong> tracks all capital equipment, heavy power tools, measuring instruments, and machinery assets owned by the project.</p>
+
+    <h3>1. Standard Serial ID Tagging Format</h3>
+    <p>Every tool added receives a permanent unique serial identification code structured as:</p>
+    <div style="background:#f1f5f9; padding:10px 16px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:#334155; margin-bottom:14px; text-align:center; border:1px solid #cbd5e1;">
+      CMM / SMS / [TOOL_CODE] / [001, 002, ...]
+      <div style="font-size:11px; font-family:'Inter', sans-serif; font-weight:400; color:var(--gray-600); margin-top:4px;">Examples: CMM/SMS/GRINDER/001 &bull; CMM/SMS/DRILL/004 &bull; CMM/SMS/TOTALSTATION/001</div>
+    </div>
+
+    <h3>2. Physical Tool Condition States</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Condition Status</th>
+          <th>Description &amp; Operational Meaning</th>
+          <th>Action Required</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-returned">Available</span></td>
+          <td>Fully functional, calibrated, and ready in store rack.</td>
+          <td>Store ready for deployment.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-issued">In Maintenance</span></td>
+          <td>Under calibration, servicing, motor repair, or inspection.</td>
+          <td>Track service vendor ETA.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-danger">Damaged</span></td>
+          <td>Physically broken or unsafe for site operations.</td>
+          <td>Quarantine tool in scrap zone.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-danger">Lost</span></td>
+          <td>Unaccounted for during physical stock audit.</td>
+          <td>Trigger supervisor loss report.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>3. Tool Deletion Request Workflow (Strict Governance)</h3>
+    <div class="callout callout-warning">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>Tools Cannot Be Deleted Directly by Standard Users:</strong>
+        To prevent accidental loss of physical asset audit trails, non-admin users submit a <strong>Deletion Request</strong> with mandatory remarks. Administrators review and approve/reject deletion requests from the Admin Center.
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 6 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-6">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Module X: Dashboard KPI Analytics &amp; Reporting
+    </h1>
+
+    <p>The <strong>Live Dashboard</strong> provides immediate visibility into store operations, material turnover rate, tool asset health, and stock risks.</p>
+
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin: 16px 0;">
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Total Material Issues</div>
+        <div style="font-size:22px; font-weight:800; color:var(--primary); margin-top:4px;">1,248</div>
+      </div>
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Active Out on Site</div>
+        <div style="font-size:22px; font-weight:800; color:#f59e0b; margin-top:4px;">84</div>
+      </div>
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Overdue Follow-ups</div>
+        <div style="font-size:22px; font-weight:800; color:#ef4444; margin-top:4px;">12</div>
+      </div>
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Tools Availability</div>
+        <div style="font-size:22px; font-weight:800; color:#10b981; margin-top:4px;">94.2%</div>
+      </div>
+    </div>
+
+    <h3>One-Click Excel / CSV Export &amp; Audit Backups</h3>
+    <p>Export full transaction ledgers with 1 click for management reviews and billing reconciliations:</p>
+    <ul>
+      <li><strong>Material Issue Ledger Export:</strong> Includes Issue ID, Timestamp, Supervisor, Material, Qty Issued, Qty Returned, Balance, Area, and Photo Links.</li>
+      <li><strong>Tools Asset Inventory Export:</strong> Includes Serial Tag, Category, Shelf Location, Condition, Purchase Date, and Audit Log count.</li>
+    </ul>
+  </section>
+
+  <!-- ==================== MODULE 7 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-7">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      Module X: PWA Installation &amp; Offline Sync
+    </h1>
+
+    <p>CMM SMS Store functions as an installable <strong>Progressive Web App (PWA)</strong> on iOS iPhones/iPads, Android devices, and Windows/Mac desktops without needing App Store downloads.</p>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin: 16px 0;">
+      <div style="background:var(--gray-50); border:1px solid var(--border); border-radius:10px; padding:16px;">
+        <h4 style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/></svg>
+          iOS Safari Installation
+        </h4>
+        <ol style="font-size:12px; padding-left:16px; margin-bottom:0;">
+          <li>Open Safari and load the store URL.</li>
+          <li>Tap the <strong>Share</strong> button (box with upward arrow).</li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong>. Launch from your home screen.</li>
+        </ol>
+      </div>
+
+      <div style="background:var(--gray-50); border:1px solid var(--border); border-radius:10px; padding:16px;">
+        <h4 style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Android &amp; Desktop Installation
+        </h4>
+        <ol style="font-size:12px; padding-left:16px; margin-bottom:0;">
+          <li>Open in Chrome or Edge.</li>
+          <li>Click the <strong>Install App</strong> prompt in the address bar or bottom banner.</li>
+          <li>Confirm install. The app opens in dedicated full-screen window mode.</li>
+        </ol>
+      </div>
+    </div>
+
+    <h3>Offline Resilience &amp; Realtime Sync</h3>
+    <p>The app features an integrated Service Worker engine (<span class="code-tag">sw.js</span>) with client-side caching. If site internet drops, the app remains responsive, displaying an amber "Working Offline" status bar. When connectivity returns, pending records sync automatically with Firebase Realtime Database.</p>
+  </section>
+
+  <!-- ==================== MODULE 8 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-8">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Module X: Operational FAQ &amp; Troubleshooting
+    </h1>
+
+    <h3>Frequently Asked Questions</h3>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:700; color:var(--dark); font-size:13px;">Q: Why doesn't the WhatsApp reminder open the contact on desktop?</div>
+      <div style="font-size:12.5px; color:var(--gray-700); margin-top:2px;">
+        A: On desktop browsers, clicking WhatsApp directs to <strong>WhatsApp Web</strong> (<span class="code-tag">web.whatsapp.com</span>). Ensure you have scanned your WhatsApp Web QR code once. On mobile devices, it launches the native WhatsApp application directly.
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:700; color:var(--dark); font-size:13px;">Q: How do I change a supervisor's phone number after issue submission?</div>
+      <div style="font-size:12.5px; color:var(--gray-700); margin-top:2px;">
+        A: Storekeepers and Admins can click <strong>Edit Issue</strong> from the Material Register table to update contact numbers, work areas, or notes at any time.
+      </div>
+    </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/></svg>
+              WhatsApp
+            </a>
+            <a href="#" class="mock-call-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Call
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-success">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>1-Click Pre-formatted WhatsApp Message Template:</strong>
+        <pre style="background:rgba(0,0,0,0.05); padding:8px 12px; border-radius:6px; margin-top:6px; font-family:'Inter', sans-serif; font-size:12px; white-space:pre-wrap;">
+Hello Vikram Singh,
+This is a reminder from CMM SMS Store regarding the following overdue item:
+📦 Material: Safety Harness Double Lanyard (Set)
+🔢 Pending Qty: 2 / 2
+📅 Issued Date: 27/07/2026 (12 days ago)
+📍 Area: Tower Crane 1
+
+Please arrange for its return to the store at the earliest.
+Thank you!</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 5 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-5">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Module X: Tool Asset Master Register &amp; Governance
+    </h1>
+
+    <p>The <strong>Tools Master Register</strong> tracks all capital equipment, heavy power tools, measuring instruments, and machinery assets owned by the project.</p>
+
+    <h3>1. Standard Serial ID Tagging Format</h3>
+    <p>Every tool added receives a permanent unique serial identification code structured as:</p>
+    <div style="background:#f1f5f9; padding:10px 16px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:#334155; margin-bottom:14px; text-align:center; border:1px solid #cbd5e1;">
+      CMM / SMS / [TOOL_CODE] / [001, 002, ...]
+      <div style="font-size:11px; font-family:'Inter', sans-serif; font-weight:400; color:var(--gray-600); margin-top:4px;">Examples: CMM/SMS/GRINDER/001 &bull; CMM/SMS/DRILL/004 &bull; CMM/SMS/TOTALSTATION/001</div>
+    </div>
+
+    <h3>2. Physical Tool Condition States</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Condition Status</th>
+          <th>Description &amp; Operational Meaning</th>
+          <th>Action Required</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-returned">Available</span></td>
+          <td>Fully functional, calibrated, and ready in store rack.</td>
+          <td>Store ready for deployment.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-issued">In Maintenance</span></td>
+          <td>Under calibration, servicing, motor repair, or inspection.</td>
+          <td>Track service vendor ETA.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-danger">Damaged</span></td>
+          <td>Physically broken or unsafe for site operations.</td>
+          <td>Quarantine tool in scrap zone.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-danger">Lost</span></td>
+          <td>Unaccounted for during physical stock audit.</td>
+          <td>Trigger supervisor loss report.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>3. Tool Deletion Request Workflow (Strict Governance)</h3>
+    <div class="callout callout-warning">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>Tools Cannot Be Deleted Directly by Standard Users:</strong>
+        To prevent accidental loss of physical asset audit trails, non-admin users submit a <strong>Deletion Request</strong> with mandatory remarks. Administrators review and approve/reject deletion requests from the Admin Center.
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MODULE 6 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-6">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Module X: Dashboard KPI Analytics &amp; Reporting
+    </h1>
+
+    <p>The <strong>Live Dashboard</strong> provides immediate visibility into store operations, material turnover rate, tool asset health, and stock risks.</p>
+
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin: 16px 0;">
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Total Material Issues</div>
+        <div style="font-size:22px; font-weight:800; color:var(--primary); margin-top:4px;">1,248</div>
+      </div>
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Active Out on Site</div>
+        <div style="font-size:22px; font-weight:800; color:#f59e0b; margin-top:4px;">84</div>
+      </div>
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Overdue Follow-ups</div>
+        <div style="font-size:22px; font-weight:800; color:#ef4444; margin-top:4px;">12</div>
+      </div>
+      <div style="background:#f8fafc; border:1px solid var(--border); padding:14px; border-radius:10px; text-align:center;">
+        <div style="font-size:11px; color:var(--gray-600); text-transform:uppercase; font-weight:700;">Tools Availability</div>
+        <div style="font-size:22px; font-weight:800; color:#10b981; margin-top:4px;">94.2%</div>
+      </div>
+    </div>
+
+    <h3>One-Click Excel / CSV Export &amp; Audit Backups</h3>
+    <p>Export full transaction ledgers with 1 click for management reviews and billing reconciliations:</p>
+    <ul>
+      <li><strong>Material Issue Ledger Export:</strong> Includes Issue ID, Timestamp, Supervisor, Material, Qty Issued, Qty Returned, Balance, Area, and Photo Links.</li>
+      <li><strong>Tools Asset Inventory Export:</strong> Includes Serial Tag, Category, Shelf Location, Condition, Purchase Date, and Audit Log count.</li>
+    </ul>
+  </section>
+
+  <!-- ==================== MODULE 7 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-7">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      Module X: PWA Installation &amp; Offline Sync
+    </h1>
+
+    <p>CMM SMS Store functions as an installable <strong>Progressive Web App (PWA)</strong> on iOS iPhones/iPads, Android devices, and Windows/Mac desktops without needing App Store downloads.</p>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin: 16px 0;">
+      <div style="background:var(--gray-50); border:1px solid var(--border); border-radius:10px; padding:16px;">
+        <h4 style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/></svg>
+          iOS Safari Installation
+        </h4>
+        <ol style="font-size:12px; padding-left:16px; margin-bottom:0;">
+          <li>Open Safari and load the store URL.</li>
+          <li>Tap the <strong>Share</strong> button (box with upward arrow).</li>
+          <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+          <li>Tap <strong>Add</strong>. Launch from your home screen.</li>
+        </ol>
+      </div>
+
+      <div style="background:var(--gray-50); border:1px solid var(--border); border-radius:10px; padding:16px;">
+        <h4 style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Android &amp; Desktop Installation
+        </h4>
+        <ol style="font-size:12px; padding-left:16px; margin-bottom:0;">
+          <li>Open in Chrome or Edge.</li>
+          <li>Click the <strong>Install App</strong> prompt in the address bar or bottom banner.</li>
+          <li>Confirm install. The app opens in dedicated full-screen window mode.</li>
+        </ol>
+      </div>
+    </div>
+
+    <h3>Offline Resilience &amp; Realtime Sync</h3>
+    <p>The app features an integrated Service Worker engine (<span class="code-tag">sw.js</span>) with client-side caching. If site internet drops, the app remains responsive, displaying an amber "Working Offline" status bar. When connectivity returns, pending records sync automatically with Firebase Realtime Database.</p>
+  </section>
+
+  <!-- ==================== MODULE 8 ==================== -->
+  <div class="page-break"></div>
+  <section class="avoid-break" id="module-8">
+    <h1 class="module-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Module X: Operational FAQ &amp; Troubleshooting
+    </h1>
+
+    <h3>Frequently Asked Questions</h3>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:700; color:var(--dark); font-size:13px;">Q: Why doesn't the WhatsApp reminder open the contact on desktop?</div>
+      <div style="font-size:12.5px; color:var(--gray-700); margin-top:2px;">
+        A: On desktop browsers, clicking WhatsApp directs to <strong>WhatsApp Web</strong> (<span class="code-tag">web.whatsapp.com</span>). Ensure you have scanned your WhatsApp Web QR code once. On mobile devices, it launches the native WhatsApp application directly.
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:700; color:var(--dark); font-size:13px;">Q: How do I change a supervisor's phone number after issue submission?</div>
+      <div style="font-size:12.5px; color:var(--gray-700); margin-top:2px;">
+        A: Storekeepers and Admins can click <strong>Edit Issue</strong> from the Material Register table to update contact numbers, work areas, or notes at any time.
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:700; color:var(--dark); font-size:13px;">Q: A tool was scrapped. How do I delete it from the master catalog?</div>
+      <div style="font-size:12.5px; color:var(--gray-700); margin-top:2px;">
+        A: First change its status to <span class="badge badge-danger">Damaged</span> with remarks. Next, click <strong>Request Deletion</strong>. An Administrator will review the scrap justification and execute final deletion from the Admin Center.
+      </div>
+    </div>
+
+    <div class="callout callout-info" style="margin-top:24px;">
+      <div class="callout-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="callout-content">
+        <strong>Technical Support &amp; System Administration:</strong>
+        For user access approvals, role escalations, or database backups, contact your site System Administrator or Store Manager.
+      </div>
+    </div>
+  </section>
+  </main>
+
+  </main>
+
+  
+  <script id="dynamic-toc-script">
+    document.addEventListener('DOMContentLoaded', () => {
+      const grid = document.querySelector('.toc-grid');
+      if (grid) {
+        grid.innerHTML = '';
+        document.querySelectorAll('.module-title').forEach((h1, index) => {
+          const title = h1.textContent.trim();
+          const moduleId = index + 1;
+          const el = document.createElement('a');
+          el.href = '#module-' + moduleId;
+          el.className = 'toc-link';
+          el.innerHTML = '<span><strong>Module ' + moduleId + ':</strong> ' + title.replace(/Module\s*\d+:/i, '').trim() + '</span> <span style="font-size:11px; color:var(--primary); font-weight:700;">(Jump)</span>';
+          grid.appendChild(el);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

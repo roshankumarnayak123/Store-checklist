@@ -4,9 +4,6 @@ const CACHE_NAME = 'cmm-sms-store-v3.0.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
-  './anim.js',
   './boot.js',
   './manifest.json',
   './icon.svg',
@@ -20,9 +17,9 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[SW] Pre-caching partial failure:', err);
-      });
+      return Promise.allSettled(STATIC_ASSETS.map(url => 
+        cache.add(url).catch(err => console.warn(`[SW] Failed to precache ${url}:`, err))
+      ));
     })
   );
 });
