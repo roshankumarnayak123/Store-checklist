@@ -5351,6 +5351,7 @@ function renderToolsDashboard() {
   `;
 
   // Admin View: Pending Tool Deletion Requests Banner/Table
+  const isToolsAdmin = currentUser.roles.includes('tools_admin') && !isAdmin;
   const deletionRequestsToShow = isAdmin ? toolDeletionRequestsCache : toolDeletionRequestsCache.filter(r => r.requestedBy === currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && deletionRequestsToShow.length > 0) {
@@ -5403,7 +5404,6 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Addition Requests Banner/Table
-  const isToolsAdmin = currentUser.roles.includes('tools_admin') && !isAdmin;
   const additionRequestsToShow = isAdmin ? toolAdditionRequestsCache : toolAdditionRequestsCache.filter(r => r.requestedBy === currentUser.username || r.createdBy === currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && additionRequestsToShow.length > 0) {
