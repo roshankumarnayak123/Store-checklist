@@ -27,8 +27,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <script type="module" crossorigin src="/assets/index-C_YltwRY.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CVmtRwzs.css">
+  <script type="module" crossorigin src="/assets/index-NeEv7STa.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-D8Nzw2JV.css">
 </head>
 
 <body>
@@ -162,6 +162,45 @@
     </section>
   </div>
 
+  <!-- Cleanup Preview Dialog -->
+  <div id="cleanupPreviewDialog" class="app-dialog-backdrop hidden" role="presentation">
+    <section class="tool-status-dialog" style="max-width:600px;" role="dialog" aria-modal="true" aria-labelledby="cleanupPreviewTitle">
+      <div class="tool-modal-head">
+        <div>
+          <h2 id="cleanupPreviewTitle" style="margin:0; font-size:18px; font-weight:700;">Confirm Cleanup</h2>
+          <div id="cleanupPreviewSubtitle" class="modal-sub" style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">Review records before deletion</div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="cleanupPreviewCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+      </div>
+      <div class="tool-modal-body" style="padding:16px 20px 20px;">
+        <div id="cleanupPreviewStorageBanner" style="padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 13.5px; font-weight: 500; display:flex; align-items:center; gap:8px;">
+           <span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Calculating storage space...
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          The following records were returned more than 3 months ago. Deleting them will also permanently remove their attached photos from cloud storage.
+        </p>
+        <div class="table-wrap" style="max-height:300px; overflow-y:auto; margin-bottom:20px;">
+          <table class="tools-master-table" style="font-size:12.5px; width:100%;">
+            <thead>
+              <tr>
+                <th>Issue ID</th>
+                <th>Material</th>
+                <th>Returned On</th>
+              </tr>
+            </thead>
+            <tbody id="cleanupPreviewTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:12px;">
+          <button type="button" class="btn btn-ghost" id="cleanupPreviewCancelBtn">Cancel</button>
+          <button type="button" class="btn btn-danger" id="cleanupPreviewConfirmBtn">Confirm Delete</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <!-- Tool Status & History Dialog -->
   <div id="toolStatusDialog" class="app-dialog-backdrop hidden" role="presentation">
     <section class="tool-status-dialog" role="dialog" aria-modal="true" aria-labelledby="toolStatusTitle">
@@ -175,14 +214,33 @@
       <div class="tool-modal-body" style="padding:16px 20px 20px;">
         <form id="toolStatusForm">
           <input type="hidden" id="statusModalToolId" />
-          <div class="field" style="margin-bottom:12px;">
-            <label for="statusModalNewStatus">New Tool Status *</label>
-            <select id="statusModalNewStatus" required>
-              <option value="Available">Available</option>
-              <option value="In Maintenance">In Maintenance</option>
-              <option value="Damaged">Damaged</option>
-              <option value="Lost">Lost</option>
-            </select>
+          <div class="field" style="margin-bottom:16px;">
+            <label style="margin-bottom:8px; display:block;">Distribute Quantities Across Statuses</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <label for="statusModalQtyAvailable" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Available (Auto-calculated)</label>
+                <input type="number" id="statusModalQtyAvailable" min="0" value="0" readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
+              </div>
+              <div>
+                <label for="statusModalQtyMaintenance" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">In Maintenance</label>
+                <input type="number" id="statusModalQtyMaintenance" min="0" value="0" required />
+              </div>
+              <div>
+                <label for="statusModalQtyDamaged" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Damaged</label>
+                <input type="number" id="statusModalQtyDamaged" min="0" value="0" required />
+              </div>
+              <div>
+                <label for="statusModalQtyLost" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Lost</label>
+                <input type="number" id="statusModalQtyLost" min="0" value="0" required />
+              </div>
+            </div>
+            <div style="margin-top:10px; font-size:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--text-muted);">Allocated: <span id="statusModalAllocatedSum">0</span> / <span id="statusModalTotalSum">0</span></span>
+                <button type="button" class="btn btn-ghost btn-sm" id="statusModalRequestQtyBtn" style="padding:2px 8px; font-size:11px; display:none;">Update Total</button>
+              </div>
+              <span id="statusModalAllocatedWarn" style="color:var(--danger); display:none;">Must match total quantity</span>
+            </div>
           </div>
           <div class="field" style="margin-bottom:14px;">
             <label for="statusModalNotes">Update Notes / Reason (Optional)</label>
@@ -446,6 +504,13 @@
               <span id="cloudSyncRetryBtn" class="cloud-sync-retry hidden" aria-hidden="true">Retry</span>
             </button>
             <div class="status-right-group">
+              <button type="button" class="topbar-overdue-btn hidden" id="topbarRequestsBtn" title="Pending Admin Requests" aria-label="Pending Admin Requests" style="color: var(--primary);">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <span class="overdue-badge-count" id="topbarRequestsCount" style="background: var(--primary);">0</span>
+              </button>
               <button type="button" class="topbar-overdue-btn hidden" id="topbarOverdueBtn" title="Overdue Tools/Materials Follow-up" aria-label="Overdue items follow-up">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>

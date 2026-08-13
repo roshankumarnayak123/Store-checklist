@@ -31,16 +31,24 @@
   });
 
   window.addEventListener('error', (event) => {
-    const target = event.target;
-    const externalFailure = target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK');
-    if (!externalFailure) return;
     if (auth) auth.classList.remove('hidden');
-    if (label) label.textContent = 'A required online resource could not be loaded.';
     if (error) {
-      error.textContent = 'The page could not load a required cloud library. Check your internet connection, disable blocking extensions for this site, and reload.';
+      error.textContent = 'JS Error: ' + (event.message || 'unknown') + ' at ' + (event.filename || '') + ':' + (event.lineno || '');
       error.classList.remove('hidden');
     }
+    const splash = document.getElementById('splashScreen');
+    if (splash) splash.classList.add('splash-hidden');
   }, true);
+
+  window.addEventListener('unhandledrejection', (event) => {
+    if (auth) auth.classList.remove('hidden');
+    if (error) {
+      error.textContent = 'Promise Error: ' + (event.reason ? (event.reason.message || event.reason) : 'unknown');
+      error.classList.remove('hidden');
+    }
+    const splash = document.getElementById('splashScreen');
+    if (splash) splash.classList.add('splash-hidden');
+  });
 
   // Soft fallback: only show a gentle notice if completely unresponsive after 12 seconds
   _bootWatchdog = setTimeout(() => {

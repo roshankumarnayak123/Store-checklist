@@ -1693,7 +1693,7 @@ function updateRequestsTopbarBadge() {
     return;
   }
 
-  let addReqs = 0, qtyReqs = 0, delReqs = 0;
+  let addReqs, qtyReqs, delReqs;
 
   if (isAdmin) {
     addReqs = toolAdditionRequestsCache.length;
@@ -4366,7 +4366,7 @@ async function handleToolStatusSubmit(e) {
       notes
     });
 
-    showToast(`Tool status updated to "${newStatus}"`, { title: 'Status Updated' });
+    showToast(`Tool status updated to "${newPrimaryStatus}"`, { title: 'Status Updated' });
     closeToolStatusModal();
   } catch (err) {
     await appAlert('Could not update tool status: ' + err.message, { type: 'danger' });
