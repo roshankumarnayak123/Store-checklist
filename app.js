@@ -1287,7 +1287,13 @@ function renderTransition() {
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const swap = () => { render(); window.scrollTo(0, 0); };
   if (!isMobile && !reduceMotion && typeof document.startViewTransition === 'function') {
-    try { document.startViewTransition(swap); return; } catch (_) { /* fall through */ }
+    try { 
+      const t = document.startViewTransition(swap); 
+      t.updateCallbackDone?.catch(() => {});
+      t.ready?.catch(() => {});
+      t.finished?.catch(() => {});
+      return; 
+    } catch (_) { /* fall through */ }
   }
   swap();
 }
@@ -2277,7 +2283,7 @@ function renderRegister() {
   // list that would silently go stale in 2029 and can't reach older records.
   const yearOptions = Array.from(new Set([
     String(new Date().getFullYear()),
-    ...issuesCache.map((r) => r.issueDate ? r.issueDate.slice(0, 4) : null).filter(Boolean),
+    ...globalState.issuesCache.map((r) => r.issueDate ? r.issueDate.slice(0, 4) : null).filter(Boolean),
   ])).sort((a, b) => b.localeCompare(a));
   const vendorOptions = registerFilterOptions('vendor');
   const areaOptions = registerFilterOptions('area');
@@ -2975,6 +2981,7 @@ function renderSettingsAdmin() {
         </div>
         <div class="actions-row">
           <button class="btn btn-ghost btn-sm" id="refreshSyncStatusBtn">Refresh Status</button>
+          <button class="btn btn-ghost btn-sm" id="testSyncHealthBtn">Test Sync Health</button>
         </div>
       </div>
     </div>
@@ -3363,6 +3370,39 @@ function wireViewEvents(viewId) {
         showToast('Sync status and storage metrics refreshed.', { title: 'Cloud Sync Updated' });
       } catch (err) {
         showToast('Sync refresh error: ' + err.message, { type: 'danger' });
+      } finally {
+        setSyncingState(false);
+      }
+    });
+
+    $('#testSyncHealthBtn')?.addEventListener('click', async () => {
+      setSyncingState(true, 'Testing sync health...');
+      try {
+        const results = [];
+        
+        results.push(`Network: ${navigator.onLine ? 'Online 🟢' : 'Offline 🔴'}`);
+        results.push(`Firebase RTDB: ${cloudConnected ? 'Connected 🟢' : 'Disconnected 🔴'}`);
+        results.push(`Issues Cache: ${globalState.issuesCache?.length || 0} records 🟢`);
+        results.push(`Tools Cache: ${globalState.toolsCache?.length || 0} records 🟢`);
+        
+        if (db) {
+          const startRead = performance.now();
+          await get(ref(db, 'healthCheck/lastTest'));
+          const readTime = Math.round(performance.now() - startRead);
+          results.push(`Read Access: OK (${readTime}ms) 🟢`);
+          
+          const startWrite = performance.now();
+          await set(ref(db, 'healthCheck/lastTest'), { timestamp: Date.now(), user: globalState.currentUser?.username || 'unknown' });
+          const writeTime = Math.round(performance.now() - startWrite);
+          results.push(`Write Access: OK (${writeTime}ms) 🟢`);
+        } else {
+          results.push('Read/Write Tests: Skipped (DB not initialized) 🔴');
+        }
+        
+        await appAlert(results.join('\n'), { title: 'Sync Health Report', type: 'info' });
+        
+      } catch (err) {
+        await appAlert('Health check failed:\n' + err.message, { title: 'Sync Health Error', type: 'danger' });
       } finally {
         setSyncingState(false);
       }
