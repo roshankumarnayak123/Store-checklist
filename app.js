@@ -1,14 +1,8 @@
-import { initializeApp } from "firebase/app";
-import {
-  getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment, query, orderByChild, equalTo
-} from "firebase/database";
-import {
-  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata
-} from "firebase/storage";
 import { $, $$, escapeHtml, todayStr, triggerHaptic, hashPassword, calculatePasswordStrength, MOBILE_NAV_ICONS } from './src/utils.js';
+import { firebaseConfig } from './src/firebase-config.js';
 
-// Bug fix: import statements must come before any executable code in an ES module.
-// Moved these two lines from the top of the file to after all imports.
+import './src/styles/tools.css';
+import './src/styles/overdue.css';
 window.__cmmModuleReady = true;
 window.dispatchEvent(new CustomEvent('cmm-module-ready'));
 
@@ -19,14 +13,14 @@ window.dispatchEvent(new CustomEvent('cmm-module-ready'));
    This codebase manages TWO COMPLETELY INDEPENDENT, UNCONNECTED DATABASES/COLLECTIONS:
 
    1. MATERIAL ISSUE REGISTER (Firebase RTDB: `issues/` path):
-      - In-memory cache: `issuesCache`
+      - In-memory cache: `globalState.issuesCache`
       - Purpose: Daily logging of materials/consumables issued to workers/supervisors/vendors,
         tracking issue dates, quantities, partial/full return statuses, and return logs.
       - Key Views: 'dashboard', 'register', 'issue-new', 'return-record', 'edit-issue', 'edit-return'.
       - Roles: 'storekeeper', 'viewer', 'admin'.
 
    2. TOOL REGISTER / TOOLS MASTER LIST (Firebase RTDB: `tools/` path):
-      - In-memory cache: `toolsCache`
+      - In-memory cache: `globalState.toolsCache`
       - Purpose: Master catalog and inventory tracking of physical tools/equipment,
         unique auto-incrementing serial IDs (`CMM/SMS/[TOOLNAME]/[SEQ]`), quantities,
         shelf locations, conditions/statuses (Available, In Maintenance, Damaged, Lost), and notes.
@@ -41,83 +35,53 @@ window.dispatchEvent(new CustomEvent('cmm-module-ready'));
      the Material Issue Register, and vice-versa. They operate in complete isolation.
    ========================================================================= */
 
-import { firebaseConfig } from './src/firebase-config.js';
 
 /* =========================================================================
    STATE (Independent Caches for Issues and Tools)
    ========================================================================= */
-let currentUser = null;
-let issuesCache = []; // Material Issue & Return Register records ('issues/')
-let toolsCache = [];  // Physical Tool Master Catalog records ('tools/')
-let toolDeletionRequestsCache = []; // Pending Tool Deletion Requests ('toolDeletionRequests/')
-let toolAdditionRequestsCache = []; // Pending Tool Addition Requests
-let toolQuantityRequestsCache = []; // Pending Tool Quantity Update Requests
-let unsubIssues = null;
-let unsubTools = null;
-let unsubRequests = null;
-let unsubToolDeletionRequests = null;
-let unsubToolAdditionRequests = null;
-let unsubToolQuantityRequests = null;
-let currentView = null;
+import { globalState } from './src/state.js';
+import { app, db, storage, cloudConnected, setCloudConnected, appBootstrapped, setAppBootstrapped, attemptFirebaseInit } from './src/services/firebase.js';
+import { ref, get, set, push, update, remove, onValue, serverTimestamp, increment, query, orderByChild, equalTo } from "firebase/database";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata } from "firebase/storage";
+
+ 
+  
+ 
+ 
+ 
+
+
+
+
+
+
+
 
 // Explicit public bridge: the error logger lives in a classic <script> outside
 // this ES module, and module-scoped bindings never reach it, so mirror the
 // two fields it needs onto window (kept in sync at every render/login/logout).
-window.currentView = currentView;
-window.currentUser = currentUser;
+window.currentView = globalState.currentView;
+window.currentUser = globalState.currentUser;
 
 
 
-// Unified custom dialogs replace native alert/confirm popups.
-let appDialogResolver = null;
-let appDialogLastFocus = null;
-function closeAppDialog(result) {
-  const backdrop = $('#appDialog');
-  if (!backdrop || backdrop.classList.contains('hidden')) return;
-  backdrop.classList.add('hidden');
-  document.body.classList.remove('modal-open');
-  const resolver = appDialogResolver;
-  appDialogResolver = null;
-  if (appDialogLastFocus && typeof appDialogLastFocus.focus === 'function') appDialogLastFocus.focus();
-  if (resolver) resolver(result);
-}
-function showAppDialog(message, options = {}) {
-  const { title = 'Notice', type = 'info', confirmText = 'OK', cancelText = 'Cancel', showCancel = false } = options;
-  const backdrop = $('#appDialog');
-  const dialog = backdrop.querySelector('.app-dialog');
-  appDialogLastFocus = document.activeElement;
-  dialog.dataset.type = type;
-  $('#appDialogTitle').textContent = title;
-  $('#appDialogMessage').textContent = String(message ?? '');
-  $('#appDialogIcon').textContent = type === 'danger' ? '!' : type === 'success' ? '✓' : type === 'confirm' ? '?' : 'i';
-  $('#appDialogConfirm').textContent = confirmText;
-  $('#appDialogCancel').textContent = cancelText;
-  $('#appDialogCancel').classList.toggle('hidden', !showCancel);
-  document.body.classList.add('modal-open');
-  backdrop.classList.remove('hidden');
-  triggerHaptic(type === 'danger' ? [30, 40, 30] : 20);
-  setTimeout(() => $('#appDialogConfirm').focus(), 0);
-  return new Promise((resolve) => { appDialogResolver = resolve; });
-}
-function appAlert(message, options = {}) {
-  return showAppDialog(message, { title: options.title || 'Notice', type: options.type || 'info', confirmText: 'OK' });
-}
-function appConfirm(message, options = {}) {
-  return showAppDialog(message, { title: options.title || 'Please confirm', type: options.type || 'confirm', confirmText: options.confirmText || 'Confirm', cancelText: options.cancelText || 'Cancel', showCancel: true });
-}
-window.appConfirm = appConfirm;
-window.appAlert = appAlert;
-$('#appDialogConfirm')?.addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(true); });
-$('#appDialogCancel')?.addEventListener('click', (e) => { e.stopPropagation(); closeAppDialog(false); });
-$('#appDialog')?.addEventListener('click', (event) => { if (event.target.id === 'appDialog') closeAppDialog(false); });
+import {
+  showAppDialog,
+  closeAppDialog,
+  appAlert,
+  appConfirm,
+  isIosDevice,
+  showIosInstallDialog,
+  closeIosInstallDialog,
+  initDialogs
+} from './src/ui/dialogs.js';
+
+// Initialize the dialogs and event listeners
+initDialogs();
+
+// Keep the cleanup preview escape handler here since it depends on app state
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
-    const backdrop = $('#appDialog');
-    if (backdrop && !backdrop.classList.contains('hidden')) {
-      event.preventDefault();
-      closeAppDialog(false);
-      return;
-    }
     const cleanupPreview = $('#cleanupPreviewDialog');
     if (cleanupPreview && !cleanupPreview.classList.contains('hidden')) {
       event.preventDefault();
@@ -126,25 +90,7 @@ window.addEventListener('keydown', (event) => {
     }
   }
 });
-// iOS Safari Install Modal Controls
-function isIosDevice() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) || 
-         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-function showIosInstallDialog() {
-  $('#iosInstallDialog')?.classList.remove('hidden');
-}
-function closeIosInstallDialog() {
-  $('#iosInstallDialog')?.classList.add('hidden');
-}
-$('#iosInstallCloseBtn')?.addEventListener('click', closeIosInstallDialog);
-$('#iosInstallGotItBtn')?.addEventListener('click', closeIosInstallDialog);
-$('#iosInstallDialog')?.addEventListener('click', (e) => {
-  if (e.target.id === 'iosInstallDialog') closeIosInstallDialog();
-});
 
-// Preserve old alert call sites while giving them the same modern dialog appearance.
-window.alert = (message) => { void appAlert(message); };
 
 // Cloud Sync progress and retry state
 let cloudSyncProgressValue = 0;
@@ -192,38 +138,40 @@ async function retryCloudSync() {
   hideCloudSyncRetry();
   setSyncingState(true, 'Retrying Cloud Sync…');
   try {
-    attemptFirebaseInit();
+    attemptFirebaseInit(() => {
+    if (globalState.currentUser) listenToCollections();
+  });
     if (!db) throw new Error('Cloud service is not initialized');
     // Fetch issues to verify database connectivity
     const snap = await get(ref(db, 'issues'));
-    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+    globalState.issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     issuesLoaded = true;
 
     // Fetch tools to refresh tool cache
     const snapTools = await get(ref(db, 'tools')).catch(() => null);
     if (snapTools) {
-      toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+      globalState.toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
       toolsLoaded = true;
     }
 
-    if (currentUser?.roles?.includes('admin')) {
+    if (globalState.currentUser?.roles?.includes('admin')) {
       const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
-      toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+      globalState.toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
       const snapToolAddRequests = await get(ref(db, 'toolAdditionRequests')).catch(() => null);
-      toolAdditionRequestsCache = snapToolAddRequests ? snapshotToArray(snapToolAddRequests) : [];
+      globalState.toolAdditionRequestsCache = snapToolAddRequests ? snapshotToArray(snapToolAddRequests) : [];
       const snapToolQtyRequests = await get(ref(db, 'toolQuantityRequests')).catch(() => null);
-      toolQuantityRequestsCache = snapToolQtyRequests ? snapshotToArray(snapToolQtyRequests) : [];
+      globalState.toolQuantityRequestsCache = snapToolQtyRequests ? snapshotToArray(snapToolQtyRequests) : [];
     }
 
-    cloudConnected = true;
+    setCloudConnected(true);
     lastSyncedAt = new Date();
-    if (currentUser) listenToCollections();
+    if (globalState.currentUser) listenToCollections();
     updateLoginSyncIndicator(true);
-    if (!FORM_VIEWS.has(currentView)) render();
+    if (!FORM_VIEWS.has(globalState.currentView)) render();
     setCloudSyncProgress(100);
     setTimeout(() => setCloudSyncProgress(null), 550);
   } catch (error) {
-    cloudConnected = false;
+    setCloudConnected(false);
     updateLoginSyncIndicator(false);
     showCloudSyncRetry('Cloud Sync failed — click to retry');
     console.error('Cloud Sync retry failed:', error);
@@ -237,31 +185,33 @@ async function refreshFromCloudDatabase() {
   control?.classList.add('is-refreshing');
   setSyncingState(true, 'Refreshing from cloud…');
   try {
-    if (!db) attemptFirebaseInit();
+    if (!db) attemptFirebaseInit(() => {
+    if (globalState.currentUser) listenToCollections();
+  });
     if (!db) throw new Error('Cloud service is not initialized');
     const snap = await get(ref(db, 'issues'));
-    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+    globalState.issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     issuesLoaded = true;
     const snapTools = await get(ref(db, 'tools'));
-    toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+    globalState.toolsCache = snapshotToArray(snapTools).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
-    if (currentUser?.roles?.includes('admin')) {
+    if (globalState.currentUser?.roles?.includes('admin')) {
       const snapToolRequests = await get(ref(db, 'toolDeletionRequests')).catch(() => null);
-      toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
+      globalState.toolDeletionRequestsCache = snapToolRequests ? snapshotToArray(snapToolRequests) : [];
       const snapToolAddRequests = await get(ref(db, 'toolAdditionRequests')).catch(() => null);
-      toolAdditionRequestsCache = snapToolAddRequests ? snapshotToArray(snapToolAddRequests) : [];
+      globalState.toolAdditionRequestsCache = snapToolAddRequests ? snapshotToArray(snapToolAddRequests) : [];
       const snapToolQtyRequests = await get(ref(db, 'toolQuantityRequests')).catch(() => null);
-      toolQuantityRequestsCache = snapToolQtyRequests ? snapshotToArray(snapToolQtyRequests) : [];
+      globalState.toolQuantityRequestsCache = snapToolQtyRequests ? snapshotToArray(snapToolQtyRequests) : [];
     }
-    cloudConnected = true;
+    setCloudConnected(true);
     lastSyncedAt = new Date();
     updateLoginSyncIndicator(true);
-    if (!FORM_VIEWS.has(currentView)) render();
+    if (!FORM_VIEWS.has(globalState.currentView)) render();
     setCloudSyncProgress(100);
     if ($('#appSyncLabel')) $('#appSyncLabel').textContent = 'Cloud Sync refreshed';
     setTimeout(() => { setCloudSyncProgress(null); if ($('#appSyncLabel')) $('#appSyncLabel').textContent = 'Cloud Sync'; }, 900);
   } catch (error) {
-    cloudConnected = false;
+    setCloudConnected(false);
     updateLoginSyncIndicator(false);
     showCloudSyncRetry('Refresh failed — click to retry');
     console.error('Cloud database refresh failed:', error);
@@ -297,7 +247,7 @@ const PULL_REFRESH_COOLDOWN = 4000;
 document.addEventListener('touchstart', (event) => {
   const target = event.target instanceof Element ? event.target : null;
   const interactive = target?.closest('input, textarea, select, button, a, label, [contenteditable="true"], [role="button"]');
-  const formViewOpen = typeof FORM_VIEWS !== 'undefined' && FORM_VIEWS.has(currentView);
+  const formViewOpen = typeof FORM_VIEWS !== 'undefined' && FORM_VIEWS.has(globalState.currentView);
   const coolingDown = Date.now() - lastPullRefreshAt < PULL_REFRESH_COOLDOWN;
   // Bug #7 fix: do not allow pull-to-refresh when the cloud fail-safe overlay is active
   const cloudSuspended = document.body.classList.contains('cloud-sync-suspended');
@@ -492,7 +442,7 @@ function limitPhotoFiles(files, existingCount = 0) {
 function previewSelectedImages(files, selector) { const h = $(selector); if (!h) return; h.innerHTML = ''; files.forEach((f, i) => { const item = document.createElement('div'); item.className = 'photo-preview-item'; const img = document.createElement('img'); img.alt = `Selected photo ${i + 1}`; img.style.cssText = 'width:110px;height:90px;object-fit:cover;border-radius:12px;display:block;'; const r = new FileReader(); r.onload = () => img.src = r.result; r.readAsDataURL(f); const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'photo-preview-remove'; rm.setAttribute('aria-label', `Remove photo ${i + 1}`); rm.title = 'Remove photo'; rm.textContent = '\u00d7'; rm.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const liveIndex = Array.from(h.children).indexOf(item); if (liveIndex !== -1) files.splice(liveIndex, 1); previewSelectedImages(files, selector); }); item.appendChild(img); item.appendChild(rm); h.appendChild(item); }); h.parentElement.style.display = files.length ? 'block' : 'none'; }
 function uniqueRecentValues(field, limit = 12) {
   const seen = new Set(), values = [];
-  for (const item of issuesCache) {
+  for (const item of globalState.issuesCache) {
     const value = String(item?.[field] || '').trim();
     const key = value.toLowerCase();
     if (value && !seen.has(key)) { seen.add(key); values.push(value); }
@@ -507,7 +457,7 @@ async function appendCameraPhoto(input, targetArrayName, previewSelector) {
   const file = input.files?.[0];
   if (!file) return;
   if (!file.type.startsWith('image/')) { void appAlert('Please take an image only.', { title: 'Invalid File', type: 'danger' }); input.value = ''; return; }
-  const issue = targetArrayName === 'edit-issue' ? issuesCache.find(i => i.id === editIssueTargetId) : targetArrayName === 'edit-return' ? issuesCache.find(i => i.id === editReturnTargetId) : targetArrayName === 'return' ? issuesCache.find(i => i.id === returnFormTargetId) : null;
+  const issue = targetArrayName === 'edit-issue' ? globalState.issuesCache.find(i => i.id === editIssueTargetId) : targetArrayName === 'edit-return' ? globalState.issuesCache.find(i => i.id === editReturnTargetId) : targetArrayName === 'return' ? globalState.issuesCache.find(i => i.id === returnFormTargetId) : null;
   const existingCount = targetArrayName === 'edit-issue' ? normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length : 0;
   const selectedCount = targetArrayName === 'issue' ? selectedPhotoFiles.length : targetArrayName === 'return' ? returnSelectedPhotoFiles.length : targetArrayName === 'edit-issue' ? editIssueSelectedPhotoFiles.length : editReturnSelectedPhotoFiles.length;
   if (existingCount + selectedCount >= MAX_PHOTOS_PER_ENTRY) { input.value = ''; await appAlert(`Maximum ${MAX_PHOTOS_PER_ENTRY} photos are allowed per entry.`, { title: 'Photo Limit Reached', type: 'danger' }); return; }
@@ -626,7 +576,7 @@ let editIssueSelectedPhotoFiles = [];
 let profileSelectedPhotoFile = null;
 let profilePasswordError = '';
 
-function showScreen(id) {
+export function showScreen(id) {
   ['authScreen', 'appScreen'].forEach((s) => {
     const el = $('#' + s);
     if (!el) return;
@@ -642,12 +592,9 @@ function showScreen(id) {
 }
 
 const configIsPlaceholder = Object.values(firebaseConfig).some((v) => v.startsWith('YOUR_'));
-let app, db, storage;
 let cloudSyncOk = false;
 let lastSyncedAt = null;
-let appBootstrapped = false;
 let clockStarted = false;
-let cloudConnected = false;
 let clockInterval = null;
 let sessionTimerStarted = false;
 let sessionTimerInterval = null;
@@ -693,50 +640,23 @@ $('#authThemeToggle')?.addEventListener('click', toggleTheme);
 // =========================================================================
 function startApp() {
   clearAuthMessages();
-  attemptFirebaseInit();
+  attemptFirebaseInit(() => {
+    if (globalState.currentUser) listenToCollections();
+  });
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
   updateLoginSyncIndicator(isOnline);
   const saved = loadSession();
   if (saved) {
-    currentUser = saved;
+    globalState.currentUser = saved;
     initTopbar();
     showScreen('appScreen');
-    navigateTo(getStartupView(currentUser), false, true);
+    navigateTo(getStartupView(globalState.currentUser), false, true);
   } else {
     showScreen('authScreen');
   }
 }
 
-function attemptFirebaseInit() {
-  if (configIsPlaceholder) return;
-  if (app && db) return;
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-    try { storage = getStorage(app); } catch (e) { storage = null; }
-  } catch (err) {
-    console.error('Firebase init error:', err);
-    return;
-  }
 
-  onValue(ref(db, '.info/connected'), (snap) => {
-    const connected = snap.val() === true;
-    cloudConnected = connected;
-    if (connected) {
-      lastSyncedAt = new Date();
-      if (!appBootstrapped) {
-        appBootstrapped = true;
-        if (currentUser) listenToCollections();
-      }
-    }
-    updateLoginSyncIndicator(connected);
-    if (currentView === 'settings-admin') render();
-  }, (err) => {
-    console.error('Connectivity listener error:', err);
-    cloudConnected = false;
-    updateLoginSyncIndicator(false);
-  });
-}
 
 // Bug fix: updateLoginSyncIndicator fired on EVERY .info/connected event from
 // Firebase — which can fire many times per second during reconnection. Each
@@ -745,7 +665,7 @@ function attemptFirebaseInit() {
 // rapid state changes into a single update, 600 ms after the last one.
 let _syncIndicatorTimer = null;
 let _syncIndicatorPending = null;
-function updateLoginSyncIndicator(connected) {
+export function updateLoginSyncIndicator(connected) {
   _syncIndicatorPending = connected === true;
   if (_syncIndicatorTimer) return;
   _syncIndicatorTimer = setTimeout(() => {
@@ -827,7 +747,7 @@ function startSessionTimer() {
   ['click', 'keydown', 'touchstart', 'scroll'].forEach((evt) => document.addEventListener(evt, markActivity, { passive: true }));
   const tick = () => {
     const textEl = $('#timerText');
-    if (!textEl || !currentUser) { clearInterval(sessionTimerInterval); sessionTimerStarted = false; return; }
+    if (!textEl || !globalState.currentUser) { clearInterval(sessionTimerInterval); sessionTimerStarted = false; return; }
     const remaining = Math.max(0, SESSION_IDLE_LIMIT_SECONDS - Math.floor((Date.now() - lastActivityAt) / 1000));
     textEl.textContent = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
     $('#sessionTimer')?.classList.toggle('is-critical', remaining <= 60);
@@ -853,7 +773,7 @@ function startSessionTimer() {
 
 // Persist the signed-in session across page refreshes and browser restarts.
 // Only the non-sensitive user profile/role is stored; passwords are never saved here.
-function saveSession(user) {
+export function saveSession(user) {
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
     // Remove the old tab-only copy to avoid conflicting session sources.
@@ -934,7 +854,7 @@ function getHomeView(user) {
   } catch (_) { return fallback; }
 }
 
-function getStartupView(user) {
+export function getStartupView(user) {
   if (!user) return 'dashboard';
   const hash = (window.location.hash || '').replace('#', '').trim();
   const allowed = navLinksForRoles(user.roles).map(([id]) => id);
@@ -961,13 +881,13 @@ function setHomeView(user, viewId) {
   } catch { /* ignore */ }
 }
 function homeViewSelectHtml() {
-  return navLinksForRoles(currentUser.roles).map(([id, label]) =>
-    `<option value="${id}"${getHomeView(currentUser) === id ? ' selected' : ''}>${escapeHtml(label)}</option>`
+  return navLinksForRoles(globalState.currentUser.roles).map(([id, label]) =>
+    `<option value="${id}"${getHomeView(globalState.currentUser) === id ? ' selected' : ''}>${escapeHtml(label)}</option>`
   ).join('');
 }
 function wireHomeViewSelect() {
   $('#homeViewSelect')?.addEventListener('change', (e) => {
-    setHomeView(currentUser, e.target.value);
+    setHomeView(globalState.currentUser, e.target.value);
     showToast("You'll land here next time you sign in.", { title: 'Startup Page Updated' });
   });
 }
@@ -981,14 +901,14 @@ function showAuthInfo(msg) { $('#authError').classList.add('hidden'); $('#authIn
 // entire form from its template string and silently discard everything the
 // user had already typed (and any selected-but-unsaved photo) — all to show a
 // one-line error message. This keeps the rest of the form untouched.
-function showInlineError(alertId, msg) {
+export function showInlineError(alertId, msg) {
   const el = $('#' + alertId);
   if (!el) return;
   el.textContent = msg;
   el.classList.remove('hidden');
   if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-function hideInlineError(alertId) {
+export function hideInlineError(alertId) {
   const el = $('#' + alertId);
   if (el) el.classList.add('hidden');
 }
@@ -1001,7 +921,9 @@ let loginAttempts = { count: 0, lockedUntil: 0 };
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   clearAuthMessages();
-  if (!db) attemptFirebaseInit();
+  if (!db) attemptFirebaseInit(() => {
+    if (globalState.currentUser) listenToCollections();
+  });
 
   if (Date.now() < loginAttempts.lockedUntil) {
     showAuthError(`Too many failed attempts. Try again in ${Math.ceil((loginAttempts.lockedUntil - Date.now()) / 1000)} seconds.`);
@@ -1019,16 +941,16 @@ $('#loginForm').addEventListener('submit', async (e) => {
     // 1. Admin login check (case-insensitive username)
     if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase() && hashedPwd === ADMIN_PASSWORD) {
       loginAttempts = { count: 0, lockedUntil: 0 };
-      cloudConnected = true;
+      setCloudConnected(true);
       updateLoginSyncIndicator(true);
-      currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
-      window.currentUser = currentUser;
-      document.body.dataset.role = currentUser.roles.join(',');
-      saveSession(currentUser);
+      globalState.currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
+      window.currentUser = globalState.currentUser;
+      document.body.dataset.role = globalState.currentUser.roles.join(',');
+      saveSession(globalState.currentUser);
       initTopbar();
       listenToCollections();
       showScreen('appScreen');
-      navigateTo(getStartupView(currentUser), true, true);
+      navigateTo(getStartupView(globalState.currentUser), true, true);
       return;
     }
 
@@ -1055,7 +977,7 @@ $('#loginForm').addEventListener('submit', async (e) => {
       }
     }
 
-    cloudConnected = true;
+    setCloudConnected(true);
     updateLoginSyncIndicator(true);
 
     if (!record) {
@@ -1093,19 +1015,19 @@ $('#loginForm').addEventListener('submit', async (e) => {
       }
     }
 
-    currentUser = {
+    globalState.currentUser = {
       username: resolvedUsername,
       fullName: record.fullName || resolvedUsername,
       roles: Array.isArray(record.roles) ? record.roles : (record.role ? [record.role] : ['storekeeper']),
       profilePhotoUrl: record.profilePhotoUrl || null
     };
-    window.currentUser = currentUser;
-    document.body.dataset.role = currentUser.roles.join(',');
-    saveSession(currentUser);
+    window.currentUser = globalState.currentUser;
+    document.body.dataset.role = globalState.currentUser.roles.join(',');
+    saveSession(globalState.currentUser);
     initTopbar();
     listenToCollections();
     showScreen('appScreen');
-    navigateTo(getStartupView(currentUser), true, true);
+    navigateTo(getStartupView(globalState.currentUser), true, true);
   } catch (err) {
     console.error('Login error:', err);
     showAuthError('Unable to log in: failed to sync with cloud. (' + (err.message || 'unknown error') + ')');
@@ -1115,10 +1037,10 @@ $('#loginForm').addEventListener('submit', async (e) => {
 });
 
 $('#logoutBtn').addEventListener('click', () => {
-  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
-  if (unsubTools) { unsubTools(); unsubTools = null; }
-  if (unsubRequests) { unsubRequests(); unsubRequests = null; }
-  if (unsubToolDeletionRequests) { unsubToolDeletionRequests(); unsubToolDeletionRequests = null; }
+  if (globalState.unsubIssues) { globalState.unsubIssues(); globalState.unsubIssues = null; }
+  if (globalState.unsubTools) { globalState.unsubTools(); globalState.unsubTools = null; }
+  if (globalState.unsubRequests) { globalState.unsubRequests(); globalState.unsubRequests = null; }
+  if (globalState.unsubToolDeletionRequests) { globalState.unsubToolDeletionRequests(); globalState.unsubToolDeletionRequests = null; }
 
   // Bug D fix: unsubscribe the login-screen KPI listener to prevent memory
   // leak from accumulating Firebase listeners across login/logout cycles.
@@ -1139,8 +1061,8 @@ $('#logoutBtn').addEventListener('click', () => {
   window.toolsStatusFilter = 'all';
   window.toolsCategoryFilter = 'all';
 
-  currentUser = null;
-  currentView = null;
+  globalState.currentUser = null;
+  globalState.currentView = null;
   window.currentUser = null;
   window.currentView = null;
   clearSession();
@@ -1232,21 +1154,21 @@ function updateMobileFab() {
   const fab = $('#mobileFab');
   if (!fab) return;
 
-  const roles = currentUser?.roles || [];
+  const roles = globalState.currentUser?.roles || [];
   const hasStorekeeper = roles.includes('storekeeper') || roles.includes('user') || roles.includes('admin');
   const hasToolsAdmin = roles.includes('tools_admin') || roles.includes('admin');
   const canCreate = hasStorekeeper || hasToolsAdmin;
 
   // Bug C fix: use 'return-record' (the actual view name) not 'return-new'
   const nonFabViews = ['issue-new', 'add-tool', 'return-record', 'edit-issue', 'edit-return', 'profile', 'settings-admin', 'users-admin'];
-  if (!canCreate || nonFabViews.includes(currentView)) {
+  if (!canCreate || nonFabViews.includes(globalState.currentView)) {
     fab.style.display = 'none';
     return;
   }
 
   fab.style.removeProperty('display');
 
-  if (currentView === 'tools-dashboard' || (hasToolsAdmin && !hasStorekeeper)) {
+  if (globalState.currentView === 'tools-dashboard' || (hasToolsAdmin && !hasStorekeeper)) {
     fab.dataset.nav = 'add-tool';
     fab.setAttribute('aria-label', 'Add New Tool');
     fab.setAttribute('title', 'Add New Tool');
@@ -1297,7 +1219,7 @@ function renderMobileBottomNav(roles = []) {
 
   bottomNav.innerHTML = links.map(([id, label]) => {
     const icon = MOBILE_NAV_ICONS[id] || MOBILE_NAV_ICONS['dashboard'];
-    return `<button type="button" class="mobile-nav-item${currentView === id ? ' active' : ''}" data-view="${id}" aria-label="${label}">
+    return `<button type="button" class="mobile-nav-item${globalState.currentView === id ? ' active' : ''}" data-view="${id}" aria-label="${label}">
       <span class="mobile-nav-icon">${icon}</span>
       <span class="mobile-nav-label">${label}</span>
     </button>`;
@@ -1313,21 +1235,21 @@ function renderMobileBottomNav(roles = []) {
   updateMobileFab();
 }
 
-function initTopbar() {
+export function initTopbar() {
   // Assign the highest-privilege role to data-role so that CSS viewer-only
   // restrictions (e.g. hiding [data-nav="issue-new"]) never incorrectly fire
   // for users who have storekeeper/admin/user in addition to viewer.
   const ROLE_PRIORITY = ['admin', 'storekeeper', 'user', 'tools_admin', 'tools_viewer', 'viewer'];
-  const primaryRole = ROLE_PRIORITY.find(r => currentUser.roles.includes(r)) || currentUser.roles[0] || 'viewer';
+  const primaryRole = ROLE_PRIORITY.find(r => globalState.currentUser.roles.includes(r)) || globalState.currentUser.roles[0] || 'viewer';
   document.body.dataset.role = primaryRole;
-  document.body.dataset.roles = currentUser.roles.join(' ');
+  document.body.dataset.roles = globalState.currentUser.roles.join(' ');
 
-  $('#whoName').textContent = currentUser.fullName || currentUser.username;
-  $('#whoRole').textContent = currentUser.roles.join(', ');
-  $('#whoRole').className = 'who-role role-' + currentUser.roles[0];
+  $('#whoName').textContent = globalState.currentUser.fullName || globalState.currentUser.username;
+  $('#whoRole').textContent = globalState.currentUser.roles.join(', ');
+  $('#whoRole').className = 'who-role role-' + globalState.currentUser.roles[0];
 
-  if (currentUser.profilePhotoUrl) {
-    $('#topbarAvatar').src = currentUser.profilePhotoUrl;
+  if (globalState.currentUser.profilePhotoUrl) {
+    $('#topbarAvatar').src = globalState.currentUser.profilePhotoUrl;
     $('#topbarAvatar').classList.remove('hidden');
   } else {
     $('#topbarAvatar').classList.add('hidden');
@@ -1338,18 +1260,18 @@ function initTopbar() {
   if (!sessionTimerStarted) { startSessionTimer(); sessionTimerStarted = true; }
 
   const nav = $('#navLinks');
-  const links = navLinksForRoles(currentUser.roles);
+  const links = navLinksForRoles(globalState.currentUser.roles);
 
   nav.innerHTML = links.map(([id, label]) => `<button class="navlink" data-view="${id}">${label}</button>`).join('');
   nav.querySelectorAll('.navlink').forEach((btn) => {
     btn.addEventListener('click', () => navigateTo(btn.dataset.view));
   });
 
-  renderMobileBottomNav(currentUser.roles);
+  renderMobileBottomNav(globalState.currentUser.roles);
 
-  if (currentUser.roles.includes('admin')) {
-    if (unsubRequests) { unsubRequests(); unsubRequests = null; }
-    unsubRequests = onValue(ref(db, 'accessRequests'), (snap) => {
+  if (globalState.currentUser.roles.includes('admin')) {
+    if (globalState.unsubRequests) { globalState.unsubRequests(); globalState.unsubRequests = null; }
+    globalState.unsubRequests = onValue(ref(db, 'accessRequests'), (snap) => {
       const count = snap.exists() ? Object.keys(snap.val()).length : 0;
       updatePendingRequestsNavBadge(count);
     }, (err) => console.error('access requests listener error', err));
@@ -1370,14 +1292,14 @@ function renderTransition() {
   swap();
 }
 
-async function navigateTo(viewId, updateHistory = true, force = false) {
-  if (!force && viewId === currentView) return;
+export async function navigateTo(viewId, updateHistory = true, force = false) {
+  if (!force && viewId === globalState.currentView) return;
   if (formDirty) {
     const leave = await appConfirm('You have unsaved changes. Leave this page and discard them?', { title: 'Unsaved Changes', confirmText: 'Leave Page', cancelText: 'Stay' });
     if (!leave) return;
     formDirty = false;
   }
-  if (currentView === 'register' && viewId !== 'register') {
+  if (globalState.currentView === 'register' && viewId !== 'register') {
     registerStickyObserver?.disconnect();
     registerStickyObserver = null;
   }
@@ -1392,7 +1314,7 @@ async function navigateTo(viewId, updateHistory = true, force = false) {
   editReturnError = '';
   userFormError = '';
 
-  currentView = viewId;
+  globalState.currentView = viewId;
   if (updateHistory && window.location.hash !== '#' + viewId) {
     try {
       history.pushState({ view: viewId }, '', '#' + viewId);
@@ -1406,9 +1328,9 @@ async function navigateTo(viewId, updateHistory = true, force = false) {
 
 // Android Back Button and Browser History Handler
 window.addEventListener('popstate', (e) => {
-  if (!currentUser) return;
-  const target = (e.state && e.state.view) || (window.location.hash ? window.location.hash.replace('#', '').trim() : getHomeView(currentUser));
-  if (target && target !== currentView) {
+  if (!globalState.currentUser) return;
+  const target = (e.state && e.state.view) || (window.location.hash ? window.location.hash.replace('#', '').trim() : getHomeView(globalState.currentUser));
+  if (target && target !== globalState.currentView) {
     navigateTo(target, false);
   }
 });
@@ -1419,9 +1341,9 @@ function snapshotToArray(snap) {
   return Object.keys(val).map((key) => ({ id: key, ...val[key] }));
 }
 async function writeAudit(action, issueId, details = {}) {
-  if (!db || !currentUser) return false;
+  if (!db || !globalState.currentUser) return false;
   try {
-    await set(push(ref(db, 'auditLog')), { action, issueId: issueId || null, details, actorUsername: currentUser.username, actorName: currentUser.fullName || currentUser.username, actorRole: currentUser.roles.join(','), createdAt: serverTimestamp() });
+    await set(push(ref(db, 'auditLog')), { action, issueId: issueId || null, details, actorUsername: globalState.currentUser.username, actorName: globalState.currentUser.fullName || globalState.currentUser.username, actorRole: globalState.currentUser.roles.join(','), createdAt: serverTimestamp() });
     return true;
   } catch (error) {
     console.warn('Audit log was not saved; primary activity remains valid:', error);
@@ -1438,29 +1360,29 @@ function friendlySaveError(error, activity = 'save this activity') {
 
 
 // Views with a live <form> the user could be mid-typing in. A background data
-// sync shouldn't blow these away — issuesCache still updates immediately, the
+// sync shouldn't blow these away — globalState.issuesCache still updates immediately, the
 // visible DOM just isn't force-refreshed until the user navigates away.
 const FORM_VIEWS = new Set(['issue-new', 'return-record', 'edit-issue', 'edit-return', 'profile', 'users-admin', 'add-tool', 'edit-tool']);
 
 // -------------------------------------------------------------------------
 // Realtime Database Listeners (Completely Separate Paths & Collections)
-// 1. Material Issue Register -> `issues/` (populates `issuesCache`)
-// 2. Tool Register           -> `tools/`  (populates `toolsCache`)
+// 1. Material Issue Register -> `issues/` (populates `globalState.issuesCache`)
+// 2. Tool Register           -> `tools/`  (populates `globalState.toolsCache`)
 // There is NO joining, foreign key linking, or cross-dependency between them.
 // -------------------------------------------------------------------------
-function listenToCollections() {
-  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
-  if (unsubTools) { unsubTools(); unsubTools = null; }
-  if (unsubToolDeletionRequests) { unsubToolDeletionRequests(); unsubToolDeletionRequests = null; }
+export function listenToCollections() {
+  if (globalState.unsubIssues) { globalState.unsubIssues(); globalState.unsubIssues = null; }
+  if (globalState.unsubTools) { globalState.unsubTools(); globalState.unsubTools = null; }
+  if (globalState.unsubToolDeletionRequests) { globalState.unsubToolDeletionRequests(); globalState.unsubToolDeletionRequests = null; }
 
   if (!db) return;
 
-  unsubIssues = onValue(ref(db, 'issues'), (snap) => {
-    issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
+  globalState.unsubIssues = onValue(ref(db, 'issues'), (snap) => {
+    globalState.issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
     issuesLoaded = true;
     updateOverdueTopbarBadge();
     checkAndNotifyOverdueIssues();
-    if (!FORM_VIEWS.has(currentView)) render();
+    if (!FORM_VIEWS.has(globalState.currentView)) render();
   }, (err) => {
     // Bug fix: was console.warn (silent) — .info/connected can report
     // "connected" while THIS listener is denied (e.g. expired/edited
@@ -1471,41 +1393,41 @@ function listenToCollections() {
     if (typeof showToast === 'function') showToast('Material register failed to sync from the cloud: ' + (err.message || err.code || 'permission error'), { title: 'Cloud Sync Error', type: 'error', duration: 6000 });
   });
   
-  unsubTools = onValue(ref(db, 'tools'), (snap) => {
-    toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
+  globalState.unsubTools = onValue(ref(db, 'tools'), (snap) => {
+    globalState.toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
-    if (!FORM_VIEWS.has(currentView)) render();
+    if (!FORM_VIEWS.has(globalState.currentView)) render();
   }, (err) => {
     // Bug fix: was console.warn (silent) — see note on the issues listener above.
     console.error('Tools sync listener error:', err);
     if (typeof showToast === 'function') showToast('Tool register failed to sync from the cloud: ' + (err.message || err.code || 'permission error'), { title: 'Cloud Sync Error', type: 'error', duration: 6000 });
   });
 
-  if (currentUser?.roles?.includes('admin')) {
-    unsubToolDeletionRequests = onValue(ref(db, 'toolDeletionRequests'), (snap) => {
-      toolDeletionRequestsCache = snapshotToArray(snap);
-      if (!FORM_VIEWS.has(currentView)) render();
+  if (globalState.currentUser?.roles?.includes('admin')) {
+    globalState.unsubToolDeletionRequests = onValue(ref(db, 'toolDeletionRequests'), (snap) => {
+      globalState.toolDeletionRequestsCache = snapshotToArray(snap);
+      if (!FORM_VIEWS.has(globalState.currentView)) render();
     }, (err) => {
       console.error('Tool deletion requests sync listener error:', err);
-      toolDeletionRequestsCache = [];
+      globalState.toolDeletionRequestsCache = [];
     });
     
-    if (unsubToolAdditionRequests) { unsubToolAdditionRequests(); unsubToolAdditionRequests = null; }
-    unsubToolAdditionRequests = onValue(ref(db, 'toolAdditionRequests'), (snap) => {
-      toolAdditionRequestsCache = snapshotToArray(snap);
-      if (!FORM_VIEWS.has(currentView)) render();
+    if (globalState.unsubToolAdditionRequests) { globalState.unsubToolAdditionRequests(); globalState.unsubToolAdditionRequests = null; }
+    globalState.unsubToolAdditionRequests = onValue(ref(db, 'toolAdditionRequests'), (snap) => {
+      globalState.toolAdditionRequestsCache = snapshotToArray(snap);
+      if (!FORM_VIEWS.has(globalState.currentView)) render();
     }, (err) => {
       console.error('Tool addition requests sync listener error:', err);
-      toolAdditionRequestsCache = [];
+      globalState.toolAdditionRequestsCache = [];
     });
 
-    if (unsubToolQuantityRequests) { unsubToolQuantityRequests(); unsubToolQuantityRequests = null; }
-    unsubToolQuantityRequests = onValue(ref(db, 'toolQuantityRequests'), (snap) => {
-      toolQuantityRequestsCache = snapshotToArray(snap);
-      if (!FORM_VIEWS.has(currentView)) render();
+    if (globalState.unsubToolQuantityRequests) { globalState.unsubToolQuantityRequests(); globalState.unsubToolQuantityRequests = null; }
+    globalState.unsubToolQuantityRequests = onValue(ref(db, 'toolQuantityRequests'), (snap) => {
+      globalState.toolQuantityRequestsCache = snapshotToArray(snap);
+      if (!FORM_VIEWS.has(globalState.currentView)) render();
     }, (err) => {
       console.error('Tool quantity requests sync listener error:', err);
-      toolQuantityRequestsCache = [];
+      globalState.toolQuantityRequestsCache = [];
     });
   }
 }
@@ -1513,7 +1435,7 @@ function listenToCollections() {
 function statusOf(issue) { const returned = issue.qtyReturned || 0; if (returned >= issue.qtyIssued) return 'Returned'; if (returned > 0) return 'Partially Returned'; return 'Issued'; }
 
 function enrichedIssues() {
-  return issuesCache.map((i) => {
+  return globalState.issuesCache.map((i) => {
     const displayName = i.materialName || '(unnamed)';
     return { ...i, materialName: displayName, status: statusOf(i) };
   });
@@ -1528,8 +1450,8 @@ function getOverdueIssues(thresholdDays = 7) {
   const thresholdMs = thresholdDays * oneDayMs;
   const overdue = [];
 
-  for (let i = 0; i < issuesCache.length; i++) {
-    const issue = issuesCache[i];
+  for (let i = 0; i < globalState.issuesCache.length; i++) {
+    const issue = globalState.issuesCache[i];
     const qtyIssued = Number(issue.qtyIssued) || 0;
     const qtyReturned = Number(issue.qtyReturned) || 0;
     if (qtyReturned >= qtyIssued) continue;
@@ -1683,10 +1605,10 @@ function updateOverdueTopbarBadge() {
 function updateRequestsTopbarBadge() {
   const btn = $('#topbarRequestsBtn');
   const countEl = $('#topbarRequestsCount');
-  if (!btn || !countEl || !currentUser) return;
+  if (!btn || !countEl || !globalState.currentUser) return;
 
-  const isAdmin = currentUser.roles.includes('admin');
-  const isToolsAdmin = currentUser.roles.includes('tools_admin') && !isAdmin;
+  const isAdmin = globalState.currentUser.roles.includes('admin');
+  const isToolsAdmin = globalState.currentUser.roles.includes('tools_admin') && !isAdmin;
 
   if (!isAdmin && !isToolsAdmin) {
     btn.classList.add('hidden');
@@ -1696,13 +1618,13 @@ function updateRequestsTopbarBadge() {
   let addReqs, qtyReqs, delReqs;
 
   if (isAdmin) {
-    addReqs = toolAdditionRequestsCache.length;
-    qtyReqs = toolQuantityRequestsCache.length;
-    delReqs = toolDeletionRequestsCache.length;
+    addReqs = globalState.toolAdditionRequestsCache.length;
+    qtyReqs = globalState.toolQuantityRequestsCache.length;
+    delReqs = globalState.toolDeletionRequestsCache.length;
   } else {
-    addReqs = toolAdditionRequestsCache.filter(r => r.requestedBy === currentUser.username || r.createdBy === currentUser.username).length;
-    qtyReqs = toolQuantityRequestsCache.filter(r => r.requestedBy === currentUser.username).length;
-    delReqs = toolDeletionRequestsCache.filter(r => r.requestedBy === currentUser.username).length;
+    addReqs = globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username).length;
+    qtyReqs = globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username).length;
+    delReqs = globalState.toolDeletionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username).length;
   }
 
   const total = addReqs + qtyReqs + delReqs;
@@ -1855,7 +1777,7 @@ function openOverdueFollowUpModal() {
               </svg>
               <span>View Details</span>
             </button>
-            ${(currentUser && (currentUser.roles.includes('admin') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('user'))) ? `
+            ${(globalState.currentUser && (globalState.currentUser.roles.includes('admin') || globalState.currentUser.roles.includes('storekeeper') || globalState.currentUser.roles.includes('user'))) ? `
               <button type="button" class="btn btn-dark btn-sm overdue-action-return" data-overdue-record-return="${item.id}">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="9 14 4 9 9 4"/>
@@ -1879,7 +1801,7 @@ function openOverdueFollowUpModal() {
       registerFilterState.status = 'all';
 
       // Find exact page containing this issue
-      const all = typeof enrichedIssues === 'function' ? enrichedIssues() : issuesCache;
+      const all = typeof enrichedIssues === 'function' ? enrichedIssues() : globalState.issuesCache;
       const itemIndex = all.findIndex(item => item.id === id);
       if (itemIndex !== -1) {
         registerFilterState.page = Math.floor(itemIndex / REG_PAGE_SIZE) + 1;
@@ -1889,7 +1811,7 @@ function openOverdueFollowUpModal() {
 
       registerExpandedRows.add(id);
       saveRegisterPreferences();
-      if (currentView === 'register') {
+      if (globalState.currentView === 'register') {
         render();
       } else {
         navigateTo('register');
@@ -1925,32 +1847,32 @@ function closeOverdueFollowUpModal() {
 }
 
 function render() {
-  if (!currentUser) return;
+  if (!globalState.currentUser) return;
 
   const main = $('#appMain');
   const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
 
   let validViews = ['profile'];
-  if (currentUser.roles.includes('admin')) {
+  if (globalState.currentUser.roles.includes('admin')) {
     validViews.push('admin-dashboard', 'users-admin', 'settings-admin', 'edit-return', 'register', 'tools-dashboard', 'add-tool', 'edit-tool', 'dashboard');
   }
-  if (currentUser.roles.includes('user') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('viewer')) {
+  if (globalState.currentUser.roles.includes('user') || globalState.currentUser.roles.includes('storekeeper') || globalState.currentUser.roles.includes('viewer')) {
     validViews.push('dashboard', 'register');
-    if (!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper')) {
+    if (!globalState.currentUser.roles.includes('viewer') || globalState.currentUser.roles.includes('storekeeper')) {
       validViews.push('issue-new', 'return-record', 'edit-issue', 'edit-return');
     }
   }
-  if (currentUser.roles.includes('tools_admin')) {
+  if (globalState.currentUser.roles.includes('tools_admin')) {
     validViews.push('tools-dashboard', 'add-tool', 'edit-tool');
-  } else if (currentUser.roles.includes('tools_viewer')) {
+  } else if (globalState.currentUser.roles.includes('tools_viewer')) {
     validViews.push('tools-dashboard');
   }
-  if (!validViews.includes(currentView)) {
-    currentView = getHomeView(currentUser);
+  if (!validViews.includes(globalState.currentView)) {
+    globalState.currentView = getHomeView(globalState.currentUser);
   }
 
-  window.currentView = currentView;
-  window.currentUser = currentUser;
+  window.currentView = globalState.currentView;
+  window.currentUser = globalState.currentUser;
 
   const views = {
     'dashboard': renderUserDashboard,
@@ -1968,10 +1890,10 @@ function render() {
     'edit-tool': renderEditToolForm,
   };
 
-  const fn = views[currentView] || (currentUser.roles.includes('admin') ? renderAdminDashboard : renderUserDashboard);
+  const fn = views[globalState.currentView] || (globalState.currentUser.roles.includes('admin') ? renderAdminDashboard : renderUserDashboard);
   const html = fn();
   if (typeof html === 'string') main.innerHTML = html;
-  wireViewEvents(currentView);
+  wireViewEvents(globalState.currentView);
   updateOverdueTopbarBadge();
   updateRequestsTopbarBadge();
 }
@@ -1979,16 +1901,16 @@ function render() {
 function statsSummary() {
   let pending = 0;
   let returned = 0;
-  const total = issuesCache.length;
+  const total = globalState.issuesCache.length;
   for (let i = 0; i < total; i++) {
-    const isRet = (issuesCache[i].qtyReturned || 0) >= (issuesCache[i].qtyIssued || 0);
+    const isRet = (globalState.issuesCache[i].qtyReturned || 0) >= (globalState.issuesCache[i].qtyIssued || 0);
     if (isRet) returned++;
     else pending++;
   }
   return { total, pending, returned };
 }
 
-// Before the first real-time snapshot arrives, issuesCache is genuinely empty —
+// Before the first real-time snapshot arrives, globalState.issuesCache is genuinely empty —
 // showing "0" for every KPI reads as "there are no records" rather than
 // "still loading", which is misleading. Show a small spinner instead until
 // we know the real numbers.
@@ -1998,9 +1920,9 @@ function kpiValue(n) {
 
 function renderUserDashboard() {
   const s = statsSummary();
-  const canIssue = currentUser.roles.includes('admin') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('user');
-  const canManageTools = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin');
-  const canViewTools = currentUser.roles.includes('admin') || currentUser.roles.includes('tools_admin') || currentUser.roles.includes('tools_viewer');
+  const canIssue = globalState.currentUser.roles.includes('admin') || globalState.currentUser.roles.includes('storekeeper') || globalState.currentUser.roles.includes('user');
+  const canManageTools = globalState.currentUser.roles.includes('admin') || globalState.currentUser.roles.includes('tools_admin');
+  const canViewTools = globalState.currentUser.roles.includes('admin') || globalState.currentUser.roles.includes('tools_admin') || globalState.currentUser.roles.includes('tools_viewer');
   return `
     <div class="page-head">
       <div>
@@ -2039,7 +1961,7 @@ function renderProfile() {
       <form id="profileForm">
         <div class="form-grid">
           <div class="field full" style="display:flex; flex-direction:column; align-items:center; gap:16px;">
-            <img id="p_avatarPreview" src="${currentUser.profilePhotoUrl || placeholderSvg}" class="avatar" style="width:80px; height:80px; border-width:3px;" />
+            <img id="p_avatarPreview" src="${globalState.currentUser.profilePhotoUrl || placeholderSvg}" class="avatar" style="width:80px; height:80px; border-width:3px;" />
             <div>
               <input type="file" id="p_photo" accept="image/*" style="display:none;" />
               <button type="button" class="btn btn-ghost btn-sm" id="profileChoosePhotoBtn">Choose Profile Photo</button>
@@ -2047,11 +1969,11 @@ function renderProfile() {
           </div>
           <div class="field">
             <label>Username</label>
-            <input type="text" value="${escapeHtml(currentUser.username)}" disabled />
+            <input type="text" value="${escapeHtml(globalState.currentUser.username)}" disabled />
           </div>
           <div class="field">
             <label>Full Name</label>
-            <input type="text" value="${escapeHtml(currentUser.fullName)}" disabled />
+            <input type="text" value="${escapeHtml(globalState.currentUser.fullName)}" disabled />
           </div>
         </div>
         <p style="margin:12px 0 0; font-size:12.5px; color:var(--text-muted);">Username and full name are set by an Admin. You can update your password and profile photo here.</p>
@@ -2146,7 +2068,7 @@ function renderProfile() {
 
 function renderAdminDashboard() {
   const s = statsSummary();
-  const delReqCount = toolDeletionRequestsCache.length;
+  const delReqCount = globalState.toolDeletionRequestsCache.length;
   const delBanner = delReqCount > 0 ? 
     `<div class="overdue-banner" style="background:var(--bad-light); border:1px solid var(--bad); color:var(--bad-dark); padding:12px 16px; border-radius:12px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
       <div style="display:flex; align-items:center; gap:12px;">
@@ -2274,7 +2196,7 @@ function activeFilterChips() {
 // Bug A fix: also clear expanded-row overrides so stale IDs from the old result
 // set don't accidentally expand rows in the new filtered result set.
 function resetRegisterFilters() { registerFilterState = { q: '', status: 'all', month: 'all', year: 'all', vendor: 'all', area: 'all', supervisor: 'all', issuedBy: 'all', dateFrom: '', dateTo: '', page: 1 }; registerExpandedRows.clear(); }
-function registerFilterOptions(field) { return Array.from(new Set(issuesCache.map(item => String(item?.[field] || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)); }
+function registerFilterOptions(field) { return Array.from(new Set(globalState.issuesCache.map(item => String(item?.[field] || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)); }
 function countRegisterMatches(filters) {
   return enrichedIssues().filter(r => {
     if (filters.q) { const q = filters.q.toLowerCase(); if (![r.materialName, r.vendor, r.area, r.supervisorName, r.empCode, r.issueDate, r.returnDate, r.status].join(' ').toLowerCase().includes(q)) return false; }
@@ -2291,7 +2213,7 @@ function countRegisterMatches(filters) {
   }).length;
 }
 function renderRegister() {
-  const isAdmin = currentUser.roles.includes('admin');
+  const isAdmin = globalState.currentUser.roles.includes('admin');
   // Bug I fix: compute enrichedIssues() once and reuse — previously called 6
   // times per render (O(6n)), now called once (O(n)).
   const allEnriched = enrichedIssues();
@@ -2360,7 +2282,7 @@ function renderRegister() {
   const vendorOptions = registerFilterOptions('vendor');
   const areaOptions = registerFilterOptions('area');
   const supervisorOptions = registerFilterOptions('supervisorName');
-  const issuedByOptions = Array.from(new Set(issuesCache.map(r => String(r.issuedByName || r.issuedBy || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const issuedByOptions = Array.from(new Set(globalState.issuesCache.map(r => String(r.issuedByName || r.issuedBy || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   let totalPending = 0, totalReturned = 0, totalIssued = 0, totalPartial = 0;
   for (let i = 0; i < allEnriched.length; i++) {
     const st = allEnriched[i].status;
@@ -2379,12 +2301,12 @@ function renderRegister() {
         <span class="eyebrow">Records</span>
         <h1>${isAdmin ? 'Full Register' : 'Issue &amp; Return Register'}</h1>
         <div class="page-sub">${isAdmin ? 'Every record. Admins can remove entries here.' : 'All material movements logged by the store.'}</div>
-        <div class="register-summary-meta"><span><strong>${totalRows}</strong> shown</span><span>${issuesCache.length} total</span><span>${totalPending} pending</span><span>${totalReturned} returned</span></div>
+        <div class="register-summary-meta"><span><strong>${totalRows}</strong> shown</span><span>${globalState.issuesCache.length} total</span><span>${totalPending} pending</span><span>${totalReturned} returned</span></div>
       </div>
     </div>
 
     <div class="status-filter-chips" aria-label="Quick status filters">
-      ${[['all', 'All', issuesCache.length], ['pending', 'Pending', totalPending], ['issued', 'Issued', totalIssued], ['partiallyreturned', 'Partial', totalPartial], ['returned', 'Returned', totalReturned]].map(([value, label, count]) => `<button type="button" class="status-filter-chip ${registerFilterState.status === value ? 'is-active' : ''}" data-status-chip="${value}">${label} · ${count}</button>`).join('')}
+      ${[['all', 'All', globalState.issuesCache.length], ['pending', 'Pending', totalPending], ['issued', 'Issued', totalIssued], ['partiallyreturned', 'Partial', totalPartial], ['returned', 'Returned', totalReturned]].map(([value, label, count]) => `<button type="button" class="status-filter-chip ${registerFilterState.status === value ? 'is-active' : ''}" data-status-chip="${value}">${label} · ${count}</button>`).join('')}
     </div>
     <button type="button" class="btn btn-ghost filter-toggle" id="filterToggleBtn" aria-expanded="${registerFiltersOpen ? 'true' : 'false'}" aria-controls="regFilterBar">
       <span>Filters${activeFilterCount ? `<span class="count-badge">${activeFilterCount}</span>` : ''}</span>
@@ -2446,7 +2368,7 @@ function renderRegister() {
       <div class="table-wrap">
         ${rows.length === 0 ? (
       issuesLoaded
-        ? `<div class="empty-state"><div class="display">${activeFilterCount ? 'No matching records' : 'No register records yet'}</div><p>${activeFilterCount ? 'No records match the selected filters.' : 'No material movements have been recorded.'}</p>${activeFilterCount || !currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') ? `<button type="button" class="btn btn-ghost register-empty-action" ${activeFilterCount ? 'id="emptyClearFilters"' : 'data-nav="issue-new"'}>${activeFilterCount ? 'Clear Filters' : 'Log New Issue'}</button>` : ''}</div>`
+        ? `<div class="empty-state"><div class="display">${activeFilterCount ? 'No matching records' : 'No register records yet'}</div><p>${activeFilterCount ? 'No records match the selected filters.' : 'No material movements have been recorded.'}</p>${activeFilterCount || !globalState.currentUser.roles.includes('viewer') || globalState.currentUser.roles.includes('storekeeper') ? `<button type="button" class="btn btn-ghost register-empty-action" ${activeFilterCount ? 'id="emptyClearFilters"' : 'data-nav="issue-new"'}>${activeFilterCount ? 'Clear Filters' : 'Log New Issue'}</button>` : ''}</div>`
         : `<div class="skeleton-register" aria-label="Loading records"><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`
     ) : `
         <table class="reg">
@@ -2508,9 +2430,9 @@ function renderRegister() {
                   ${r.status === 'Returned' ? '<span class="badge good">Returned</span>' : r.status === 'Partially Returned' ? '<span class="badge" style="background:#dbeafe;color:#1d4ed8">Partially Returned</span>' : '<span class="badge warn">Issued</span>'}
                 </td>
                 <td data-label="Action" class="register-actions">
-                  ${(!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('admin')) && r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
+                  ${(!globalState.currentUser.roles.includes('viewer') || globalState.currentUser.roles.includes('storekeeper') || globalState.currentUser.roles.includes('admin')) && r.status !== 'Returned' ? `<button class="btn btn-dark btn-sm" data-return="${r.id}">Record Return</button>` : ''}
                   
-                  ${(!currentUser.roles.includes('viewer') || currentUser.roles.includes('storekeeper') || currentUser.roles.includes('admin')) && r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
+                  ${(!globalState.currentUser.roles.includes('viewer') || globalState.currentUser.roles.includes('storekeeper') || globalState.currentUser.roles.includes('admin')) && r.status !== 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-issue="${r.id}">Edit Issue</button>` : ''}
                   
                   ${isAdmin && r.status === 'Returned' ? `<button class="btn btn-ghost btn-sm" data-edit-return="${r.id}">Edit Return</button>` : ''}
                   ${r.returnHistory && Object.keys(r.returnHistory).length ? `<button class="btn btn-ghost btn-sm return-history-btn" data-return-history="${r.id}">Return History · ${Object.keys(r.returnHistory).length}</button>` : ''}
@@ -2598,7 +2520,7 @@ function renderIssueForm() {
 }
 
 function renderEditIssueForm() {
-  const issue = issuesCache.find((i) => i.id === editIssueTargetId);
+  const issue = globalState.issuesCache.find((i) => i.id === editIssueTargetId);
   if (!issue) return `<div class="empty-state"><div class="display">Record not found</div></div>`;
 
   return `
@@ -2671,7 +2593,7 @@ function renderEditIssueForm() {
 }
 
 function renderReturnForm() {
-  const issue = issuesCache.find((i) => i.id === returnFormTargetId);
+  const issue = globalState.issuesCache.find((i) => i.id === returnFormTargetId);
   if (!issue) return `<div class="empty-state"><div class="display">Record not found</div></div>`;
   const materialName = issue.materialName || '(unnamed)';
   const alreadyReturned = issue.qtyReturned || 0;
@@ -2732,7 +2654,7 @@ function renderReturnForm() {
 }
 
 function renderEditReturnForm() {
-  const issue = issuesCache.find((i) => i.id === editReturnTargetId);
+  const issue = globalState.issuesCache.find((i) => i.id === editReturnTargetId);
   if (!issue) return `<div class="empty-state"><div class="display">Record not found</div></div>`;
   const materialName = issue.materialName || '(unnamed)';
   return `
@@ -2878,10 +2800,10 @@ function updateExcelExportSummary() {
   summary.textContent = !from || !to ? 'Choose both dates to prepare the register download.' : from > to ? 'Start date cannot be after end date.' : to > todayStr() ? 'End date cannot be in the future.' : `${count} record${count === 1 ? '' : 's'}${statusNote} will be exported. Photos are excluded.`;
   button.disabled = invalid || count === 0 || !window.XLSX;
 }
-function excelPresetRange(preset) { const now = new Date(), local = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10) }; let from, to = local(now); if (preset === 'this-month') from = local(new Date(now.getFullYear(), now.getMonth(), 1)); else if (preset === 'last-month') { from = local(new Date(now.getFullYear(), now.getMonth() - 1, 1)); to = local(new Date(now.getFullYear(), now.getMonth(), 0)); } else if (preset === '30-days') { const d = new Date(now); d.setDate(d.getDate() - 29); from = local(d); } else if (preset === 'this-year') from = `${now.getFullYear()}-01-01`; else { const dates = issuesCache.map(r => r.issueDate).filter(Boolean).sort(); from = dates[0] || todayStr(); to = dates[dates.length - 1] || todayStr(); } return { from, to }; }
+function excelPresetRange(preset) { const now = new Date(), local = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10) }; let from, to = local(now); if (preset === 'this-month') from = local(new Date(now.getFullYear(), now.getMonth(), 1)); else if (preset === 'last-month') { from = local(new Date(now.getFullYear(), now.getMonth() - 1, 1)); to = local(new Date(now.getFullYear(), now.getMonth(), 0)); } else if (preset === '30-days') { const d = new Date(now); d.setDate(d.getDate() - 29); from = local(d); } else if (preset === 'this-year') from = `${now.getFullYear()}-01-01`; else { const dates = globalState.issuesCache.map(r => r.issueDate).filter(Boolean).sort(); from = dates[0] || todayStr(); to = dates[dates.length - 1] || todayStr(); } return { from, to }; }
 function updateExcelModuleReadiness() { const el = $('#excelReadiness'), retry = $('#retryExcelModuleBtn'); if (!el) return; const ready = !!window.XLSX; el.classList.toggle('is-ready', ready); el.querySelector('span:last-child').textContent = ready ? 'Excel module ready' : 'Excel module unavailable'; retry?.classList.toggle('hidden', ready); updateExcelExportSummary(); }
 async function downloadRegisterExcel() {
-  if (!currentUser?.roles.includes('admin')) { await appAlert('Only the administrator can download the Excel register.', { title: 'Admin Access Required', type: 'danger' }); return; }
+  if (!globalState.currentUser?.roles.includes('admin')) { await appAlert('Only the administrator can download the Excel register.', { title: 'Admin Access Required', type: 'danger' }); return; }
   const from = $('#excelDateFrom')?.value || '', to = $('#excelDateTo')?.value || '';
   if (!from || !to || from > to || to > todayStr()) { await appAlert('Select a valid issue-date range up to today.', { title: 'Invalid Date Range', type: 'danger' }); return; }
   const statusFilter = excelStatusFilter, statusLabel = EXCEL_STATUS_MAP[statusFilter] || '';
@@ -2894,7 +2816,7 @@ async function downloadRegisterExcel() {
   ws['!cols'] = [{ wch: 8 }, { wch: 30 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 13 }, { wch: 21 }, { wch: 24 }, { wch: 20 }, { wch: 25 }, { wch: 24 }, { wch: 13 }, { wch: 21 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 35 }];
   const wb = window.XLSX.utils.book_new();
   window.XLSX.utils.book_append_sheet(wb, ws, 'Register');
-  wb.Props = { Title: `CMM SMS Register ${from} to ${to}${statusFilter === 'all' ? '' : ' - ' + statusLabel}`, Subject: 'Issue and Return Register', Author: currentUser.fullName || currentUser.username, CreatedDate: new Date() };
+  wb.Props = { Title: `CMM SMS Register ${from} to ${to}${statusFilter === 'all' ? '' : ' - ' + statusLabel}`, Subject: 'Issue and Return Register', Author: globalState.currentUser.fullName || globalState.currentUser.username, CreatedDate: new Date() };
   const downloadBtn = $('#downloadRegisterExcelBtn'); if (downloadBtn) { downloadBtn.disabled = true; downloadBtn.innerHTML = '<span class="spinner"></span> Preparing Excel…'; }
   const statusSuffix = statusFilter === 'all' ? '' : `_${statusLabel.replace(/\s+/g, '')}`;
   const fileName = `CMM_SMS_Register_${from}_to_${to}${statusSuffix}.xlsx`;
@@ -2905,7 +2827,7 @@ async function downloadRegisterExcel() {
   await appAlert(`${rows.length} register record${rows.length === 1 ? '' : 's'} exported successfully. Photos were excluded.`, { title: 'Excel Download Ready', type: 'success' });
 }
 async function downloadToolsExcel() {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can download the Tools Master List in Excel.', { title: 'Admin Access Required', type: 'danger' });
     return;
   }
@@ -2917,7 +2839,7 @@ async function downloadToolsExcel() {
   const categoryFilter = $('#toolsExcelCategory')?.value || 'all';
   const statusFilter = $('#toolsExcelStatus')?.value || 'all';
 
-  let filtered = toolsCache.filter(t => {
+  let filtered = globalState.toolsCache.filter(t => {
     if (categoryFilter !== 'all' && (t.category || '').trim() !== categoryFilter) return false;
     if (statusFilter !== 'all' && (t.status || 'Available') !== statusFilter) return false;
     return true;
@@ -2976,7 +2898,7 @@ async function downloadToolsExcel() {
   wb.Props = {
     Title: `CMM SMS Tools Master List`,
     Subject: 'Physical Tool Asset Master Register',
-    Author: currentUser.fullName || currentUser.username,
+    Author: globalState.currentUser.fullName || globalState.currentUser.username,
     CreatedDate: new Date()
   };
 
@@ -2996,7 +2918,7 @@ async function downloadToolsExcel() {
 
 function renderSettingsAdmin() {
   const dbUrl = firebaseConfig.databaseURL || '(not set)';
-  const toolCategories = Array.from(new Set(toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+  const toolCategories = Array.from(new Set(globalState.toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
   const errorLogs = typeof window.getAdminErrorLogs === 'function' ? window.getAdminErrorLogs() : [];
   const errorSummary = typeof window.renderAdminErrorSummary === 'function' ? window.renderAdminErrorSummary() : '';
   const errorLogsHtml = typeof window.renderAdminErrorLogs === 'function' ? window.renderAdminErrorLogs() : '<div class="error-log-empty">No errors recorded.</div>';
@@ -3047,9 +2969,9 @@ function renderSettingsAdmin() {
           <div class="kv-row"><span class="kv-key">Last synced</span><span class="kv-val mono">${lastSyncedAt ? lastSyncedAt.toLocaleString() : '—'}</span></div>
           <div class="kv-row"><span class="kv-key">Database URL</span><span class="kv-val mono" style="word-break:break-all;">${escapeHtml(dbUrl)}</span></div>
           <div class="kv-row"><span class="kv-key">Project ID</span><span class="kv-val mono">${escapeHtml(firebaseConfig.projectId || '—')}</span></div>
-          <div class="kv-row"><span class="kv-key">Issue records cached</span><span class="kv-val mono">${issuesCache.length}</span></div>
-          <div class="kv-row"><span class="kv-key">Tools cached</span><span class="kv-val mono">${toolsCache.length}</span></div>
-          <div class="kv-row"><span class="kv-key">Pending tool deletion requests</span><span class="kv-val mono">${toolDeletionRequestsCache.length}</span></div>
+          <div class="kv-row"><span class="kv-key">Issue records cached</span><span class="kv-val mono">${globalState.issuesCache.length}</span></div>
+          <div class="kv-row"><span class="kv-key">Tools cached</span><span class="kv-val mono">${globalState.toolsCache.length}</span></div>
+          <div class="kv-row"><span class="kv-key">Pending tool deletion requests</span><span class="kv-val mono">${globalState.toolDeletionRequestsCache.length}</span></div>
         </div>
         <div class="actions-row">
           <button class="btn btn-ghost btn-sm" id="refreshSyncStatusBtn">Refresh Status</button>
@@ -3117,7 +3039,7 @@ function renderSettingsAdmin() {
               <option value="Lost">Lost</option>
             </select>
           </div>
-          <div class="excel-export-summary" id="toolsExcelSummary">Total tools in master register: <strong>${toolsCache.length}</strong></div>
+          <div class="excel-export-summary" id="toolsExcelSummary">Total tools in master register: <strong>${globalState.toolsCache.length}</strong></div>
           <button type="button" class="btn btn-primary" id="downloadToolsExcelBtn">Download Tools Excel (.xlsx)</button>
         </div>
       </div>
@@ -3163,8 +3085,8 @@ function renderStorageUsage() {
   Promise.all([snapUsersPromise, snapAccessReqPromise, snapToolDelReqPromise, snapAuditPromise]).then(([snapUsers, snapAccess, snapToolDel, snapAudit]) => {
     if (!document.contains(holder)) return;
 
-    const issuesKB = new Blob([JSON.stringify(issuesCache)]).size / 1024;
-    const toolsKB = new Blob([JSON.stringify(toolsCache)]).size / 1024;
+    const issuesKB = new Blob([JSON.stringify(globalState.issuesCache)]).size / 1024;
+    const toolsKB = new Blob([JSON.stringify(globalState.toolsCache)]).size / 1024;
     const usersKB = snapUsers?.val() ? new Blob([JSON.stringify(snapUsers.val())]).size / 1024 : 0;
     const accessReqKB = snapAccess?.val() ? new Blob([JSON.stringify(snapAccess.val())]).size / 1024 : 0;
     const toolDelReqKB = snapToolDel?.val() ? new Blob([JSON.stringify(snapToolDel.val())]).size / 1024 : 0;
@@ -3177,8 +3099,8 @@ function renderStorageUsage() {
     const auditCount = snapAudit?.val() ? Object.keys(snapAudit.val()).length : 0;
 
     const breakdown = [
-      { label: 'Material Issue Register', count: `${issuesCache.length} records`, kb: issuesKB, color: '#3b82f6' },
-      { label: 'Tool Master Catalog', count: `${toolsCache.length} tools`, kb: toolsKB, color: '#f59e0b' },
+      { label: 'Material Issue Register', count: `${globalState.issuesCache.length} records`, kb: issuesKB, color: '#3b82f6' },
+      { label: 'Tool Master Catalog', count: `${globalState.toolsCache.length} tools`, kb: toolsKB, color: '#f59e0b' },
       { label: 'Staff User Accounts', count: `${userCount} accounts`, kb: usersKB, color: '#8b5cf6' },
       { label: 'Pending Access & Tool Requests', count: `${accessCount + toolDelCount} pending`, kb: reqKB, color: '#ec4899' },
       { label: 'Audit Trail Logs', count: `${auditCount} events`, kb: auditKB, color: '#10b981' }
@@ -3306,7 +3228,7 @@ function wireViewEvents(viewId) {
       }, 280);
     }));
     $$('[data-return-history]').forEach(btn => btn.addEventListener('click', async () => {
-      const issue = issuesCache.find(i => i.id === btn.dataset.returnHistory);
+      const issue = globalState.issuesCache.find(i => i.id === btn.dataset.returnHistory);
       const entries = issue?.returnHistory ? (Array.isArray(issue.returnHistory) ? issue.returnHistory.slice() : Object.values(issue.returnHistory)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : [];
       if (!entries.length) { await appAlert('No return history is available.', { title: 'Return History', type: 'info' }); return; }
       const text = entries.map((e, i) => {
@@ -3392,8 +3314,8 @@ function wireViewEvents(viewId) {
     $('#issueForm').addEventListener('submit', handleIssueSubmit);
     $('#f_photo').addEventListener('change', handlePhotoSelected);
     $('#f_photoClear').addEventListener('click', clearSelectedPhoto);
-    $('#f_supervisorName').addEventListener('change', e => { const match = issuesCache.find(i => String(i.supervisorName || '').toLowerCase() === e.target.value.trim().toLowerCase()); if (match?.supervisorContact && !$('#f_supervisorContact').value) $('#f_supervisorContact').value = match.supervisorContact; });
-    $('#f_supervisorContact').addEventListener('change', e => { const match = issuesCache.find(i => String(i.supervisorContact || '') === e.target.value.trim()); if (match?.supervisorName && !$('#f_supervisorName').value) $('#f_supervisorName').value = match.supervisorName; });
+    $('#f_supervisorName').addEventListener('change', e => { const match = globalState.issuesCache.find(i => String(i.supervisorName || '').toLowerCase() === e.target.value.trim().toLowerCase()); if (match?.supervisorContact && !$('#f_supervisorContact').value) $('#f_supervisorContact').value = match.supervisorContact; });
+    $('#f_supervisorContact').addEventListener('change', e => { const match = globalState.issuesCache.find(i => String(i.supervisorContact || '') === e.target.value.trim()); if (match?.supervisorName && !$('#f_supervisorName').value) $('#f_supervisorName').value = match.supervisorName; });
     $('#f_choosePhotoBtn').addEventListener('click', () => $('#f_photo').click());
     $('#f_cameraBtn').addEventListener('click', () => $('#f_camera').click());
     $('#f_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'issue', '#f_photoPreview'));
@@ -3421,7 +3343,7 @@ function wireViewEvents(viewId) {
     $('#ei_choosePhotoBtn').addEventListener('click', () => $('#ei_photo').click());
     $('#ei_cameraBtn').addEventListener('click', () => $('#ei_camera').click());
     $('#ei_camera').addEventListener('change', e => appendCameraPhoto(e.target, 'edit-issue', '#ei_photoPreview'));
-    $('#ei_photo').addEventListener('change', async e => { let files = Array.from(e.target.files || []); if (files.some(f => !f.type.startsWith('image/'))) { void appAlert('Please choose image files only.', { title: 'Invalid File', type: 'danger' }); e.target.value = ''; return; } const issue = issuesCache.find(i => i.id === editIssueTargetId); files = limitPhotoFiles(files, normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length); editIssueSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(editIssueSelectedPhotoFiles, '#ei_photoPreview'); });
+    $('#ei_photo').addEventListener('change', async e => { let files = Array.from(e.target.files || []); if (files.some(f => !f.type.startsWith('image/'))) { void appAlert('Please choose image files only.', { title: 'Invalid File', type: 'danger' }); e.target.value = ''; return; } const issue = globalState.issuesCache.find(i => i.id === editIssueTargetId); files = limitPhotoFiles(files, normalizePhotoUrls(issue?.photoUrls || issue?.photoUrl).length); editIssueSelectedPhotoFiles = await Promise.all(files.map(f => compressImage(f))); previewSelectedImages(editIssueSelectedPhotoFiles, '#ei_photoPreview'); });
     $('#ei_photoClear').addEventListener('click', () => { editIssueSelectedPhotoFiles = []; $('#ei_photo').value = ''; $('#ei_photoPreviewWrap').style.display = 'none'; $('#ei_photoPreview').innerHTML = ''; });
   }
   if (viewId === 'users-admin') {
@@ -3496,14 +3418,14 @@ function wireViewEvents(viewId) {
     const updateToolsExcelSummary = () => {
       const cat = $('#toolsExcelCategory')?.value || 'all';
       const st = $('#toolsExcelStatus')?.value || 'all';
-      const matching = toolsCache.filter(t => {
+      const matching = globalState.toolsCache.filter(t => {
         if (cat !== 'all' && (t.category || '').trim() !== cat) return false;
         if (st !== 'all' && (t.status || 'Available') !== st) return false;
         return true;
       }).length;
       const summaryEl = $('#toolsExcelSummary');
       if (summaryEl) {
-        summaryEl.innerHTML = `Matching tools to export: <strong>${matching}</strong> (out of ${toolsCache.length} total)`;
+        summaryEl.innerHTML = `Matching tools to export: <strong>${matching}</strong> (out of ${globalState.toolsCache.length} total)`;
       }
     };
     $('#toolsExcelCategory')?.addEventListener('change', updateToolsExcelSummary);
@@ -3530,8 +3452,8 @@ function wireViewEvents(viewId) {
   }
 
   if (viewId === 'tools-dashboard') {
-    const isAdmin = currentUser.roles.includes('admin');
-    const canManageTools = isAdmin || currentUser.roles.includes('tools_admin');
+    const isAdmin = globalState.currentUser.roles.includes('admin');
+    const canManageTools = isAdmin || globalState.currentUser.roles.includes('tools_admin');
     const main = $('#appMain');
 
     const searchInput = main.querySelector('#toolsSearchInput');
@@ -3665,7 +3587,7 @@ function wireViewEvents(viewId) {
         btn.addEventListener('click', async () => {
           triggerHaptic(18);
           const id = btn.dataset.deleteTool;
-          const tool = toolsCache.find(t => t.id === id);
+          const tool = globalState.toolsCache.find(t => t.id === id);
           if (await appConfirm(`Are you sure you want to permanently delete tool "${tool?.toolName || id}" from the master register?`, { title: 'Delete Tool', type: 'danger', confirmText: 'Delete' })) {
             try {
               setSyncingState(true, 'Deleting tool...');
@@ -3698,13 +3620,13 @@ async function handleProfileSubmit(e) {
 
   try {
     const ext = (profileSelectedPhotoFile.name.split('.').pop() || 'jpg').slice(0, 8);
-    const path = `profile-photos/${currentUser.username}.${ext}`;
+    const path = `profile-photos/${globalState.currentUser.username}.${ext}`;
     const url = await uploadWithProgress(path, profileSelectedPhotoFile, btn);
 
-    await update(ref(db, 'users/' + currentUser.username), { profilePhotoUrl: url, profilePhotoPath: path });
+    await update(ref(db, 'users/' + globalState.currentUser.username), { profilePhotoUrl: url, profilePhotoPath: path });
 
-    currentUser.profilePhotoUrl = url;
-    saveSession(currentUser);
+    globalState.currentUser.profilePhotoUrl = url;
+    saveSession(globalState.currentUser);
 
     $('#topbarAvatar').src = url;
     $('#topbarAvatar').classList.remove('hidden');
@@ -3755,7 +3677,7 @@ async function handleProfilePasswordSubmit(e) {
     const hashedCurrentPwd = await hashPassword(currentPassword);
     const hashedNewPwd = await hashPassword(newPassword);
 
-    const userSnap = await get(ref(db, 'users/' + currentUser.username));
+    const userSnap = await get(ref(db, 'users/' + globalState.currentUser.username));
     if (!userSnap.exists()) {
       profilePasswordError = 'User record not found.';
       showInlineError('profilePasswordAlert', profilePasswordError);
@@ -3772,7 +3694,7 @@ async function handleProfilePasswordSubmit(e) {
       return;
     }
 
-    await set(ref(db, 'users/' + currentUser.username + '/password'), hashedNewPwd);
+    await set(ref(db, 'users/' + globalState.currentUser.username + '/password'), hashedNewPwd);
     $('#profilePasswordAlert').className = 'alert alert-info';
     
     await writeAudit('profile-password-changed', null, {});
@@ -3827,7 +3749,7 @@ async function handleIssueSubmit(e) {
       await set(newRef, {
         materialName, qtyIssued: qty, vendor, area, empCode: empCode || null,
         issueDate, supervisorName, supervisorContact, returnDate: null, qtyReturned: 0, conditionOnReturn: null,
-        issuedBy: currentUser.username, issuedByName: currentUser.fullName, receivedBy: null, receivedByName: null,
+        issuedBy: globalState.currentUser.username, issuedByName: globalState.currentUser.fullName, receivedBy: null, receivedByName: null,
         remarks: remarks || null, photoUrls: uploadedPhotoUrls, photoPaths: uploadedPhotoPaths,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
@@ -3853,7 +3775,7 @@ async function handleEditIssueSubmit(e) {
   e.preventDefault();
   editIssueError = '';
   hideInlineError('editIssueFormAlert');
-  const issue = issuesCache.find((i) => i.id === editIssueTargetId);
+  const issue = globalState.issuesCache.find((i) => i.id === editIssueTargetId);
   if (!issue) return;
 
   const materialName = $('#ei_material').value.trim();
@@ -3910,7 +3832,7 @@ async function handleReturnSubmit(e) {
   e.preventDefault();
   returnFormError = '';
   hideInlineError('returnFormAlert');
-  const issue = issuesCache.find((i) => i.id === returnFormTargetId);
+  const issue = globalState.issuesCache.find((i) => i.id === returnFormTargetId);
   if (!issue) return;
   const alreadyReturned = issue.qtyReturned || 0;
   const remaining = issue.qtyIssued - alreadyReturned;
@@ -3947,14 +3869,14 @@ async function handleReturnSubmit(e) {
       [`${base}/returnDate`]: returnDate,
       [`${base}/qtyReturned`]: increment(qty),
       [`${base}/conditionOnReturn`]: condition,
-      [`${base}/receivedBy`]: currentUser.username,
-      [`${base}/receivedByName`]: currentUser.fullName,
+      [`${base}/receivedBy`]: globalState.currentUser.username,
+      [`${base}/receivedByName`]: globalState.currentUser.fullName,
       [`${base}/remarks`]: remarks || issue.remarks || null,
       [`${base}/updatedAt`]: serverTimestamp(),
       [`${base}/returnedAt`]: serverTimestamp(),
       [`${base}/returnHistory/${historyKey}`]: {
         qtyReturnedNow: qty, returnDate, conditionOnReturn: condition,
-        receivedBy: currentUser.username, receivedByName: currentUser.fullName,
+        receivedBy: globalState.currentUser.username, receivedByName: globalState.currentUser.fullName,
         remarks: remarks || null,
         returnPhotoUrls: newlyUploadedUrls,
         returnPhotoPaths: newlyUploadedPaths,
@@ -3985,7 +3907,7 @@ async function handleEditReturnSubmit(e) {
   e.preventDefault();
   editReturnError = '';
   hideInlineError('editReturnFormAlert');
-  const issue = issuesCache.find((i) => i.id === editReturnTargetId);
+  const issue = globalState.issuesCache.find((i) => i.id === editReturnTargetId);
   if (!issue) return;
 
   const qty = parseInt($('#er_qty').value, 10);
@@ -4038,7 +3960,7 @@ async function handleEditReturnSubmit(e) {
 async function deleteIssue(id) {
   setSyncingState(true, 'Deleting record...');
   try {
-    const issue = issuesCache.find((i) => i.id === id);
+    const issue = globalState.issuesCache.find((i) => i.id === id);
     if (!issue) return;
 
     await writeAudit('issue-deleted', id, { materialName: issue.materialName, qtyIssued: issue.qtyIssued });
@@ -4168,7 +4090,7 @@ function updateStatusModalSum() {
 }
 
 function openToolStatusModal(toolId) {
-  const tool = toolsCache.find(t => t.id === toolId);
+  const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) return;
   const toolIdInput = $('#statusModalToolId');
   if (toolIdInput) toolIdInput.value = toolId;
@@ -4190,7 +4112,7 @@ function openToolStatusModal(toolId) {
 
   const btnQty = $('#statusModalRequestQtyBtn');
   if (btnQty) {
-    if (currentUser?.roles?.includes('tools_admin') && !currentUser?.roles?.includes('admin')) {
+    if (globalState.currentUser?.roles?.includes('tools_admin') && !globalState.currentUser?.roles?.includes('admin')) {
       btnQty.style.display = 'inline-block';
       btnQty.onclick = () => {
         handleRequestTotalQuantityChange(toolId);
@@ -4255,7 +4177,7 @@ function closeToolStatusModal() {
 }
 
 function openToolDeletionRequestModal(toolId) {
-  const tool = toolsCache.find(t => t.id === toolId);
+  const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) return;
   const toolIdInput = $('#deletionReqToolId');
   if (toolIdInput) toolIdInput.value = toolId;
@@ -4283,7 +4205,7 @@ function closeToolDeletionRequestModal() {
 async function handleToolStatusSubmit(e) {
   e.preventDefault();
   const toolId = $('#statusModalToolId')?.value;
-  const tool = toolsCache.find(t => t.id === toolId);
+  const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) { await appAlert('Tool record not found.', { type: 'danger' }); return; }
 
   const available = parseInt($('#statusModalQtyAvailable')?.value || '0', 10) || 0;
@@ -4332,8 +4254,8 @@ async function handleToolStatusSubmit(e) {
     const historyEntry = {
       status: statusSnapshot,
       previousStatus: null,
-      changedBy: currentUser.fullName || currentUser.username,
-      changedByUsername: currentUser.username,
+      changedBy: globalState.currentUser.fullName || globalState.currentUser.username,
+      changedByUsername: globalState.currentUser.username,
       timestamp: now,
       dateStr: dateStr,
       notes: notes
@@ -4355,7 +4277,7 @@ async function handleToolStatusSubmit(e) {
       statusQuantities: newStatusQuantities,
       statusHistory: updatedHistory,
       updatedAt: serverTimestamp(),
-      updatedBy: currentUser.username,
+      updatedBy: globalState.currentUser.username,
       lastStatusNote: notes
     });
 
@@ -4381,7 +4303,7 @@ async function handleToolDeletionRequestSubmit(e) {
   const toolId = $('#deletionReqToolId')?.value;
   const reason = ($('#deletionReqReason')?.value || '').trim();
   if (!reason) { await appAlert('Please provide a reason for the deletion request.', { type: 'warn' }); return; }
-  const tool = toolsCache.find(t => t.id === toolId);
+  const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) { await appAlert('Tool record not found.', { type: 'danger' }); return; }
 
   const btn = $('#deletionReqSubmitBtn');
@@ -4397,8 +4319,8 @@ async function handleToolDeletionRequestSubmit(e) {
       quantity: tool.quantity ?? 0,
       status: tool.status || 'Available',
       reason: reason,
-      requestedBy: currentUser.username,
-      requestedByName: currentUser.fullName || currentUser.username,
+      requestedBy: globalState.currentUser.username,
+      requestedByName: globalState.currentUser.fullName || globalState.currentUser.username,
       requestedAt: Date.now()
     });
 
@@ -4419,11 +4341,11 @@ async function handleToolDeletionRequestSubmit(e) {
 }
 
 async function handleApproveToolDeletion(reqId) {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can approve tool deletions.', { type: 'danger' });
     return;
   }
-  const req = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === reqId);
+  const req = globalState.toolDeletionRequestsCache.find(r => (r.id || r.toolId) === reqId);
   const toolId = req?.toolId || reqId;
   const toolName = req?.toolName || 'this tool';
 
@@ -4441,7 +4363,7 @@ async function handleApproveToolDeletion(reqId) {
         uniqueId: req?.uniqueId || '',
         reason: req?.reason || '',
         requestedBy: req?.requestedBy || '',
-        approvedBy: currentUser.username
+        approvedBy: globalState.currentUser.username
       });
       showToast(`Tool "${toolName}" deleted successfully.`, { title: 'Tool Deleted' });
     } catch (err) {
@@ -4453,11 +4375,11 @@ async function handleApproveToolDeletion(reqId) {
 }
 
 async function handleRejectToolDeletion(reqId) {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can reject deletion requests.', { type: 'danger' });
     return;
   }
-  const req = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === reqId);
+  const req = globalState.toolDeletionRequestsCache.find(r => (r.id || r.toolId) === reqId);
   const toolName = req?.toolName || 'tool';
 
   if (await appConfirm(`Reject the deletion request for "${toolName}"? The tool will remain in the master register.`, {
@@ -4471,7 +4393,7 @@ async function handleRejectToolDeletion(reqId) {
       await writeAudit('tool-deletion-rejected', reqId, {
         toolName,
         requestedBy: req?.requestedBy || '',
-        rejectedBy: currentUser.username
+        rejectedBy: globalState.currentUser.username
       });
       showToast('Deletion request rejected.', { title: 'Request Rejected' });
     } catch (err) {
@@ -4488,7 +4410,7 @@ function closeToolQtyRequestModal() {
 }
 
 function handleRequestTotalQuantityChange(toolId) {
-  const tool = toolsCache.find(t => t.id === toolId);
+  const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) return;
   
   const currentQty = tool.quantity || 0;
@@ -4509,7 +4431,7 @@ async function handleQtyRequestSubmit(e) {
   e.preventDefault();
   
   const toolId = $('#qtyReqToolId')?.value;
-  const tool = toolsCache.find(t => t.id === toolId);
+  const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) {
     await appAlert('Tool record not found.', { type: 'danger' });
     return;
@@ -4539,8 +4461,8 @@ async function handleQtyRequestSubmit(e) {
       uniqueId: tool.uniqueId || '',
       oldQuantity: currentQty,
       newQuantity: newQty,
-      requestedBy: currentUser.username,
-      requestedByName: currentUser.fullName || currentUser.username,
+      requestedBy: globalState.currentUser.username,
+      requestedByName: globalState.currentUser.fullName || globalState.currentUser.username,
       createdAt: serverTimestamp()
     });
     showToast('Quantity update request submitted to admin.', { title: 'Request Sent' });
@@ -4554,11 +4476,11 @@ async function handleQtyRequestSubmit(e) {
 }
 
 async function handleApproveToolAddition(reqId) {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can approve tool additions.', { type: 'danger' });
     return;
   }
-  const req = toolAdditionRequestsCache.find(r => r.id === reqId || r.toolName === reqId);
+  const req = globalState.toolAdditionRequestsCache.find(r => r.id === reqId || r.toolName === reqId);
   if (!req) return;
   const toolName = req.toolName || 'tool';
 
@@ -4571,7 +4493,7 @@ async function handleApproveToolAddition(reqId) {
       let maxSequence = 0;
       const upperName = req.toolName.replace(/\//g, '-').trim().toUpperCase();
       
-      toolsCache.forEach(t => {
+      globalState.toolsCache.forEach(t => {
         const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
         const prefix = `CMM/SMS/${upperName}/`;
         if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
@@ -4593,8 +4515,8 @@ async function handleApproveToolAddition(reqId) {
       newToolData.statusHistory = [{
         status: req.status || 'Available',
         previousStatus: null,
-        changedBy: currentUser.fullName || currentUser.username,
-        changedByUsername: currentUser.username,
+        changedBy: globalState.currentUser.fullName || globalState.currentUser.username,
+        changedByUsername: globalState.currentUser.username,
         timestamp: Date.now(),
         dateStr: new Date().toLocaleString(),
         notes: req.notes || 'Approved tool addition'
@@ -4606,7 +4528,7 @@ async function handleApproveToolAddition(reqId) {
         toolName,
         uniqueId,
         requestedBy: req.createdBy || '',
-        approvedBy: currentUser.username
+        approvedBy: globalState.currentUser.username
       });
       showToast(`Tool "${toolName}" approved and added successfully.`, { title: 'Tool Added' });
     } catch (err) {
@@ -4618,11 +4540,11 @@ async function handleApproveToolAddition(reqId) {
 }
 
 async function handleRejectToolAddition(reqId) {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can reject tool additions.', { type: 'danger' });
     return;
   }
-  const req = toolAdditionRequestsCache.find(r => r.id === reqId || r.toolName === reqId);
+  const req = globalState.toolAdditionRequestsCache.find(r => r.id === reqId || r.toolName === reqId);
   const toolName = req?.toolName || 'tool';
 
   if (await appConfirm(`Reject the addition request for "${toolName}"? This will permanently delete the request.`, {
@@ -4636,7 +4558,7 @@ async function handleRejectToolAddition(reqId) {
       await writeAudit('tool-addition-rejected', reqId, {
         toolName,
         requestedBy: req?.createdBy || '',
-        rejectedBy: currentUser.username
+        rejectedBy: globalState.currentUser.username
       });
       showToast('Tool addition request rejected.', { title: 'Request Rejected' });
     } catch (err) {
@@ -4648,11 +4570,11 @@ async function handleRejectToolAddition(reqId) {
 }
 
 async function handleApproveToolQty(reqId) {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can approve quantity changes.', { type: 'danger' });
     return;
   }
-  const req = toolQuantityRequestsCache.find(r => r.id === reqId || r.toolId === reqId);
+  const req = globalState.toolQuantityRequestsCache.find(r => r.id === reqId || r.toolId === reqId);
   if (!req) return;
   const toolName = req.toolName || 'tool';
 
@@ -4662,7 +4584,7 @@ async function handleApproveToolQty(reqId) {
   })) {
     try {
       setSyncingState(true, 'Updating quantity...');
-      const tool = toolsCache.find(t => t.id === req.toolId);
+      const tool = globalState.toolsCache.find(t => t.id === req.toolId);
       if (tool) {
         await update(ref(db, 'tools/' + tool.id), { quantity: req.newQuantity });
       }
@@ -4672,7 +4594,7 @@ async function handleApproveToolQty(reqId) {
         oldQuantity: req.oldQuantity,
         newQuantity: req.newQuantity,
         requestedBy: req.requestedBy || '',
-        approvedBy: currentUser.username
+        approvedBy: globalState.currentUser.username
       });
       showToast(`Quantity for "${toolName}" updated successfully.`, { title: 'Quantity Updated' });
     } catch (err) {
@@ -4684,11 +4606,11 @@ async function handleApproveToolQty(reqId) {
 }
 
 async function handleRejectToolQty(reqId) {
-  if (!currentUser?.roles.includes('admin')) {
+  if (!globalState.currentUser?.roles.includes('admin')) {
     await appAlert('Only administrators can reject quantity changes.', { type: 'danger' });
     return;
   }
-  const req = toolQuantityRequestsCache.find(r => r.id === reqId || r.toolId === reqId);
+  const req = globalState.toolQuantityRequestsCache.find(r => r.id === reqId || r.toolId === reqId);
   const toolName = req?.toolName || 'tool';
 
   if (await appConfirm(`Reject the total quantity change request for "${toolName}"?`, {
@@ -4702,7 +4624,7 @@ async function handleRejectToolQty(reqId) {
       await writeAudit('tool-qty-change-rejected', reqId, {
         toolName,
         requestedBy: req?.requestedBy || '',
-        rejectedBy: currentUser.username
+        rejectedBy: globalState.currentUser.username
       });
       showToast('Quantity change request rejected.', { title: 'Request Rejected' });
     } catch (err) {
@@ -4796,7 +4718,7 @@ $('#clearDataVerifyBtn')?.addEventListener('click', async () => {
   try {
     // 1. Delete storage photos for issues
     if (storage) {
-      for (const issue of issuesCache) {
+      for (const issue of globalState.issuesCache) {
         for (const path of (issue.photoPaths || (issue.photoPath ? [issue.photoPath] : []))) {
           try { await deleteObject(storageRef(storage, path)); } catch { /* ignore */ }
         }
@@ -4812,9 +4734,9 @@ $('#clearDataVerifyBtn')?.addEventListener('click', async () => {
     await remove(ref(db, 'auditLog'));
 
     // 3. Write new audit log marking the clear
-    await writeAudit('store-data-cleared', null, { clearedBy: currentUser.username, timestamp: Date.now() });
+    await writeAudit('store-data-cleared', null, { clearedBy: globalState.currentUser.username, timestamp: Date.now() });
 
-    issuesCache = [];
+    globalState.issuesCache = [];
     showToast('All material issue records and store data have been cleared.', { title: 'Store Data Cleared' });
     render();
   } catch (err) {
@@ -4852,7 +4774,7 @@ async function handleCleanupOldRecords() {
   const cutoffDate = new Date();
   cutoffDate.setMonth(cutoffDate.getMonth() - 3);
 
-  const toDelete = issuesCache.filter(issue => {
+  const toDelete = globalState.issuesCache.filter(issue => {
     if (statusOf(issue) !== 'Returned') return false;
     const completed = issue.returnedAt ? new Date(issue.returnedAt) : (issue.returnDate ? new Date(issue.returnDate + 'T23:59:59') : null);
     return completed && !Number.isNaN(completed.getTime()) && completed < cutoffDate;
@@ -5311,13 +5233,13 @@ document.addEventListener('click', (e) => {
 // =========================================================================
 // ARCHITECTURE INSTRUCTION:
 // This module operates strictly on the `tools/` Firebase collection and
-// `toolsCache`. It is COMPLETELY SEPARATE and INDEPENDENT from the Material
+// `globalState.toolsCache`. It is COMPLETELY SEPARATE and INDEPENDENT from the Material
 // Issue & Return Register (`issues/`). Do NOT connect or link them.
 // =========================================================================
 function renderToolsDashboard() {
   const main = $('#appMain');
-  const isAdmin = currentUser.roles.includes('admin');
-  const canManageTools = isAdmin || currentUser.roles.includes('tools_admin');
+  const isAdmin = globalState.currentUser.roles.includes('admin');
+  const canManageTools = isAdmin || globalState.currentUser.roles.includes('tools_admin');
 
   if (!toolsLoaded) {
     return `
@@ -5339,13 +5261,13 @@ function renderToolsDashboard() {
     `;
   }
   
-  const categories = Array.from(new Set(toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+  const categories = Array.from(new Set(globalState.toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
   const activeSearch = (window.toolsSearchQuery || '').toLowerCase().trim();
   const activeStatus = window.toolsStatusFilter || 'all';
   const activeCategory = window.toolsCategoryFilter || 'all';
   const hasActiveFilters = Boolean(activeSearch || activeStatus !== 'all' || activeCategory !== 'all');
 
-  let filteredTools = toolsCache.filter(t => {
+  let filteredTools = globalState.toolsCache.filter(t => {
     if (activeStatus !== 'all') {
       const sq = getToolStatusQuantities(t);
       if ((sq[activeStatus] || 0) <= 0) return false;
@@ -5389,8 +5311,8 @@ function renderToolsDashboard() {
   `;
 
   // Admin View: Pending Tool Deletion Requests Banner/Table
-  const isToolsAdmin = currentUser.roles.includes('tools_admin') && !isAdmin;
-  const deletionRequestsToShow = isAdmin ? toolDeletionRequestsCache : toolDeletionRequestsCache.filter(r => r.requestedBy === currentUser.username);
+  const isToolsAdmin = globalState.currentUser.roles.includes('tools_admin') && !isAdmin;
+  const deletionRequestsToShow = isAdmin ? globalState.toolDeletionRequestsCache : globalState.toolDeletionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && deletionRequestsToShow.length > 0) {
     let pendingDelTitle = isAdmin ? "Pending Tool Deletion Requests" : "Your Pending Deletion Requests";
@@ -5442,7 +5364,7 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Addition Requests Banner/Table
-  const additionRequestsToShow = isAdmin ? toolAdditionRequestsCache : toolAdditionRequestsCache.filter(r => r.requestedBy === currentUser.username || r.createdBy === currentUser.username);
+  const additionRequestsToShow = isAdmin ? toolAdditionRequestsCache : globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && additionRequestsToShow.length > 0) {
     let pendingTitle = isAdmin ? "Pending Tool Additions" : "Your Pending Tool Additions";
@@ -5494,7 +5416,7 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Quantity Updates Banner/Table
-  const qtyRequestsToShow = isAdmin ? toolQuantityRequestsCache : toolQuantityRequestsCache.filter(r => r.requestedBy === currentUser.username);
+  const qtyRequestsToShow = isAdmin ? toolQuantityRequestsCache : globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && qtyRequestsToShow.length > 0) {
     let pendingQtyTitle = isAdmin ? "Pending Total Quantity Updates" : "Your Pending Quantity Updates";
@@ -5593,8 +5515,8 @@ function renderToolsDashboard() {
       <tr>
         <td colspan="8" style="text-align:center; padding: 48px 16px;">
           <div class="empty-state" style="padding:0;">
-            <div class="display" style="font-size:16px; margin-bottom:6px;">${toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
-            <p style="margin:0 0 16px; font-size:13.5px; color:var(--text-muted);">${toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
+            <div class="display" style="font-size:16px; margin-bottom:6px;">${globalState.toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
+            <p style="margin:0 0 16px; font-size:13.5px; color:var(--text-muted);">${globalState.toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
             ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtn">Clear Filters</button>' : (canManageTools ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
           </div>
         </td>
@@ -5602,7 +5524,7 @@ function renderToolsDashboard() {
     `;
   } else {
     filteredTools.forEach(t => {
-      const pendingReq = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === t.id);
+      const pendingReq = globalState.toolDeletionRequestsCache.find(r => (r.id || r.toolId) === t.id);
       const historyCount = Array.isArray(t.statusHistory) ? t.statusHistory.length : 0;
 
       html += `
@@ -5645,14 +5567,14 @@ function renderToolsDashboard() {
   if (filteredTools.length === 0) {
     html += `
       <div class="empty-state" style="padding:40px 16px; text-align:center;">
-        <div class="display" style="font-size:16px; margin-bottom:6px;">${toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
-        <p style="margin:0 0 16px; font-size:13px; color:var(--text-muted);">${toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
+        <div class="display" style="font-size:16px; margin-bottom:6px;">${globalState.toolsCache.length === 0 ? 'No tools recorded yet' : 'No matching tools found'}</div>
+        <p style="margin:0 0 16px; font-size:13px; color:var(--text-muted);">${globalState.toolsCache.length === 0 ? 'Start by logging your first tool into the master register.' : 'Try adjusting or clearing your search and filter criteria.'}</p>
         ${hasActiveFilters ? '<button type="button" class="btn btn-ghost btn-sm" id="toolsClearFiltersBtnMobile">Clear Filters</button>' : (canManageTools ? '<button type="button" class="btn btn-primary btn-sm" data-nav="add-tool">+ Add First Tool</button>' : '')}
       </div>
     `;
   } else {
     filteredTools.forEach(t => {
-      const pendingReq = toolDeletionRequestsCache.find(r => (r.id || r.toolId) === t.id);
+      const pendingReq = globalState.toolDeletionRequestsCache.find(r => (r.id || r.toolId) === t.id);
       const historyCount = Array.isArray(t.statusHistory) ? t.statusHistory.length : 0;
 
       html += `
@@ -5717,14 +5639,14 @@ function renderAddToolForm() {
 }
 
 function renderEditToolForm() {
-  const tool = toolsCache.find(t => t.id === window.currentEditToolId);
+  const tool = globalState.toolsCache.find(t => t.id === window.currentEditToolId);
   if (!tool) { navigateTo('tools-dashboard'); return null; }
   renderToolForm('Edit Tool', tool);
   return null;
 }
 
 function renderToolForm(title, tool) {
-  if (!currentUser.roles.includes('admin') && !currentUser.roles.includes('tools_admin')) {
+  if (!globalState.currentUser.roles.includes('admin') && !globalState.currentUser.roles.includes('tools_admin')) {
     appAlert('You do not have permission to modify tools.', { type: 'danger' });
     navigateTo('tools-dashboard');
     return;
@@ -5808,7 +5730,7 @@ function renderToolForm(title, tool) {
       status: $('#t_status').value,
       notes: $('#t_notes').value.trim(),
       updatedAt: serverTimestamp(),
-      updatedBy: currentUser.username
+      updatedBy: globalState.currentUser.username
     };
     
     try {
@@ -5830,8 +5752,8 @@ function renderToolForm(title, tool) {
           toolData.statusHistory = [...currentHist, {
             status: toolData.status,
             previousStatus: tool.status || 'Available',
-            changedBy: currentUser.fullName || currentUser.username,
-            changedByUsername: currentUser.username,
+            changedBy: globalState.currentUser.fullName || globalState.currentUser.username,
+            changedByUsername: globalState.currentUser.username,
             timestamp: now,
             dateStr: dateStr,
             notes: toolData.notes || 'Status updated via tool editor'
@@ -5845,17 +5767,17 @@ function renderToolForm(title, tool) {
         const upperName = cleanName.toUpperCase();
         
         toolData.createdAt = serverTimestamp();
-        toolData.createdBy = currentUser.username;
-        toolData.requestedByName = currentUser.fullName || currentUser.username;
+        toolData.createdBy = globalState.currentUser.username;
+        toolData.requestedByName = globalState.currentUser.fullName || globalState.currentUser.username;
 
-        if (!currentUser.roles.includes('admin')) {
+        if (!globalState.currentUser.roles.includes('admin')) {
           await push(ref(db, 'toolAdditionRequests'), toolData);
           await writeAudit('tool-addition-requested', toolName, { toolName, quantity: toolQty });
           showToast('Tool addition request submitted for admin approval.');
         } else {
           let maxSequence = 0;
           
-          toolsCache.forEach(t => {
+          globalState.toolsCache.forEach(t => {
             const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
             const prefix = `CMM/SMS/${upperName}/`;
             if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
@@ -5872,8 +5794,8 @@ function renderToolForm(title, tool) {
           toolData.statusHistory = [{
             status: toolData.status,
             previousStatus: null,
-            changedBy: currentUser.fullName || currentUser.username,
-            changedByUsername: currentUser.username,
+            changedBy: globalState.currentUser.fullName || globalState.currentUser.username,
+            changedByUsername: globalState.currentUser.username,
             timestamp: now,
             dateStr: dateStr,
             notes: toolData.notes || 'Initial registration'
