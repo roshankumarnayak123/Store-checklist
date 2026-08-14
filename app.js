@@ -644,7 +644,11 @@ function startApp() {
     if (globalState.currentUser) listenToCollections();
   });
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
-  updateLoginSyncIndicator(isOnline);
+  if (!isOnline) updateLoginSyncIndicator(false);
+  
+  window.addEventListener('firebase-connection-status', (e) => {
+    updateLoginSyncIndicator(e.detail.connected);
+  });
   const saved = loadSession();
   if (saved) {
     globalState.currentUser = saved;
@@ -2846,7 +2850,7 @@ async function downloadToolsExcel() {
   const statusFilter = $('#toolsExcelStatus')?.value || 'all';
 
   let filtered = globalState.toolsCache.filter(t => {
-    if (categoryFilter !== 'all' && (t.category || '').trim() !== categoryFilter) return false;
+    if (categoryFilter !== 'all' && String(t.category || '').trim() !== categoryFilter) return false;
     if (statusFilter !== 'all' && (t.status || 'Available') !== statusFilter) return false;
     return true;
   });
@@ -2924,7 +2928,7 @@ async function downloadToolsExcel() {
 
 function renderSettingsAdmin() {
   const dbUrl = firebaseConfig.databaseURL || '(not set)';
-  const toolCategories = Array.from(new Set(globalState.toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+  const toolCategories = Array.from(new Set(globalState.toolsCache.map(t => String(t.category || '').trim()).filter(Boolean))).sort();
   const errorLogs = typeof window.getAdminErrorLogs === 'function' ? window.getAdminErrorLogs() : [];
   const errorSummary = typeof window.renderAdminErrorSummary === 'function' ? window.renderAdminErrorSummary() : '';
   const errorLogsHtml = typeof window.renderAdminErrorLogs === 'function' ? window.renderAdminErrorLogs() : '<div class="error-log-empty">No errors recorded.</div>';
@@ -3459,7 +3463,7 @@ function wireViewEvents(viewId) {
       const cat = $('#toolsExcelCategory')?.value || 'all';
       const st = $('#toolsExcelStatus')?.value || 'all';
       const matching = globalState.toolsCache.filter(t => {
-        if (cat !== 'all' && (t.category || '').trim() !== cat) return false;
+        if (cat !== 'all' && String(t.category || '').trim() !== cat) return false;
         if (st !== 'all' && (t.status || 'Available') !== st) return false;
         return true;
       }).length;
@@ -4531,10 +4535,10 @@ async function handleApproveToolAddition(reqId) {
     try {
       setSyncingState(true, 'Adding tool...');
       let maxSequence = 0;
-      const upperName = req.toolName.replace(/\//g, '-').trim().toUpperCase();
+      const upperName = String(req.toolName || '').replace(/\//g, '-').trim().toUpperCase();
       
       globalState.toolsCache.forEach(t => {
-        const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
+        const tName = String(t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
         const prefix = `CMM/SMS/${upperName}/`;
         if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
           const match = (t.uniqueId || '').match(/(\d+)$/);
@@ -5301,7 +5305,7 @@ function renderToolsDashboard() {
     `;
   }
   
-  const categories = Array.from(new Set(globalState.toolsCache.map(t => (t.category || '').trim()).filter(Boolean))).sort();
+  const categories = Array.from(new Set(globalState.toolsCache.map(t => String(t.category || '').trim()).filter(Boolean))).sort();
   const activeSearch = (window.toolsSearchQuery || '').toLowerCase().trim();
   const activeStatus = window.toolsStatusFilter || 'all';
   const activeCategory = window.toolsCategoryFilter || 'all';
@@ -5312,7 +5316,7 @@ function renderToolsDashboard() {
       const sq = getToolStatusQuantities(t);
       if ((sq[activeStatus] || 0) <= 0) return false;
     }
-    if (activeCategory !== 'all' && (t.category || '').trim() !== activeCategory) return false;
+    if (activeCategory !== 'all' && String(t.category || '').trim() !== activeCategory) return false;
     if (activeSearch) {
       const matchName = String(t.toolName || '').toLowerCase().includes(activeSearch);
       const matchId = String(t.uniqueId || '').toLowerCase().includes(activeSearch);
@@ -5404,7 +5408,7 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Addition Requests Banner/Table
-  const additionRequestsToShow = isAdmin ? toolAdditionRequestsCache : globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username);
+  const additionRequestsToShow = isAdmin ? globalState.toolAdditionRequestsCache : globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && additionRequestsToShow.length > 0) {
     let pendingTitle = isAdmin ? "Pending Tool Additions" : "Your Pending Tool Additions";
@@ -5456,7 +5460,7 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Quantity Updates Banner/Table
-  const qtyRequestsToShow = isAdmin ? toolQuantityRequestsCache : globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
+  const qtyRequestsToShow = isAdmin ? globalState.toolQuantityRequestsCache : globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && qtyRequestsToShow.length > 0) {
     let pendingQtyTitle = isAdmin ? "Pending Total Quantity Updates" : "Your Pending Quantity Updates";
@@ -5818,7 +5822,7 @@ function renderToolForm(title, tool) {
           let maxSequence = 0;
           
           globalState.toolsCache.forEach(t => {
-            const tName = (t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
+            const tName = String(t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
             const prefix = `CMM/SMS/${upperName}/`;
             if (tName === upperName || (t.uniqueId && t.uniqueId.startsWith(prefix))) {
               const match = (t.uniqueId || '').match(/(\d+)$/);

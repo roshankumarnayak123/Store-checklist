@@ -218,19 +218,19 @@
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
               <div>
                 <label for="statusModalQtyAvailable" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Available (Auto-calculated)</label>
-                <input type="number" id="statusModalQtyAvailable" min="0" value="0" readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyAvailable" min="0" value="0" readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
               </div>
               <div>
                 <label for="statusModalQtyMaintenance" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">In Maintenance</label>
-                <input type="number" id="statusModalQtyMaintenance" min="0" value="0" required />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyMaintenance" min="0" value="0" required />
               </div>
               <div>
                 <label for="statusModalQtyDamaged" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Damaged</label>
-                <input type="number" id="statusModalQtyDamaged" min="0" value="0" required />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyDamaged" min="0" value="0" required />
               </div>
               <div>
                 <label for="statusModalQtyLost" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Lost</label>
-                <input type="number" id="statusModalQtyLost" min="0" value="0" required />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyLost" min="0" value="0" required />
               </div>
             </div>
             <div style="margin-top:10px; font-size:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
@@ -307,7 +307,7 @@
           <div class="tool-deletion-target-info" id="qtyReqToolInfo" style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;"></div>
           <div class="field" style="margin-top:10px;">
             <label for="qtyReqNewQuantity">New Total Quantity *</label>
-            <input type="number" id="qtyReqNewQuantity" min="0" required />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="qtyReqNewQuantity" min="0" required />
           </div>
           <div class="actions-row" style="margin-top:18px; justify-content:flex-end;">
             <button type="button" class="btn btn-ghost" id="qtyReqCancelBtn">Cancel</button>
@@ -431,8 +431,8 @@
         <div class="auth-sub">Issue &amp; Return Register — Store Access</div>
 
         <div id="loginSyncStatus" class="login-sync-row">
-          <span class="sync-dot sync-dot-good" id="loginSyncDot"></span>
-          <span id="loginSyncLabel">Cloud Sync ready</span>
+          <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
+          <span id="loginSyncLabel">Checking cloud connection...</span>
         </div>
 
         <div id="authError" class="alert alert-error hidden" role="alert"></div>
@@ -451,7 +451,7 @@
                 aria-label="Show password" aria-pressed="false">Show</button>
             </div>
           </div>
-          <button type="submit" id="loginBtn" class="btn btn-primary">Log In</button>
+          <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
         </form>
 
         <form id="requestForm" class="hidden">

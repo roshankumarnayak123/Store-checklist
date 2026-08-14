@@ -24,6 +24,7 @@ export function attemptFirebaseInit(onConnectedCallback) {
   onValue(ref(db, '.info/connected'), (snap) => {
     const connected = snap.val() === true;
     cloudConnected = connected;
+    window.dispatchEvent(new CustomEvent('firebase-connection-status', { detail: { connected } }));
     if (connected) {
       if (!appBootstrapped) {
         appBootstrapped = true;
