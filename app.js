@@ -5404,7 +5404,7 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Addition Requests Banner/Table
-  const additionRequestsToShow = isAdmin ? toolAdditionRequestsCache : globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username);
+  const additionRequestsToShow = isAdmin ? globalState.toolAdditionRequestsCache : globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && additionRequestsToShow.length > 0) {
     let pendingTitle = isAdmin ? "Pending Tool Additions" : "Your Pending Tool Additions";
@@ -5456,7 +5456,7 @@ function renderToolsDashboard() {
   }
 
   // Admin View: Pending Tool Quantity Updates Banner/Table
-  const qtyRequestsToShow = isAdmin ? toolQuantityRequestsCache : globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
+  const qtyRequestsToShow = isAdmin ? globalState.toolQuantityRequestsCache : globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
   
   if ((isAdmin || isToolsAdmin) && qtyRequestsToShow.length > 0) {
     let pendingQtyTitle = isAdmin ? "Pending Total Quantity Updates" : "Your Pending Quantity Updates";
