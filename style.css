@@ -400,6 +400,14 @@ html[data-theme="light"] #timerText { color: var(--steel-800); }
   border-top: 3px solid var(--amber);
   animation: authCardIn 0.6s var(--ease-spring); 
 }
+.overdue-modal-container {
+  position: relative;
+  width: min(1000px, 94vw);
+  max-height: 86vh;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 20px;
+}
 .tool-mobile-card {
   background: var(--surface);
   border: 1px solid var(--surface-border);
@@ -5613,7 +5621,7 @@ html[data-theme="dark"] .tool-timeline-note {
 
 .overdue-modal-container {
   position: relative;
-  width: min(680px, 94vw);
+  width: min(1000px, 94vw);
   max-height: 86vh;
   background: var(--surface);
   border: 1px solid var(--surface-border);
@@ -6321,3 +6329,121 @@ html[data-theme="dark"] .status-pill[data-status="Lost"] {
 
 /* Fix for transparent buttons (removes grey watermark) */
 .btn-clean { background: transparent; border: none; padding: 0; margin: 0; outline: none; box-shadow: none; }
+
+
+
+/* =========================================================================
+   OVERDUE MODAL DESKTOP ROW FORMAT OVERRIDES (FORCED)
+   ========================================================================= */
+@media (min-width: 768px) {
+  .overdue-cards-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  .overdue-card-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+    gap: 16px !important;
+  }
+  
+  .overdue-card-top {
+    flex: 3 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    margin-bottom: 0 !important;
+  }
+  
+  .overdue-card-name-group {
+    margin-bottom: 0 !important;
+  }
+  
+  .overdue-badge-pill {
+    margin-top: 0 !important;
+    align-self: flex-start !important;
+  }
+  
+  .overdue-meta-chips {
+    flex: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  
+  .overdue-chip {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
+  
+  .overdue-contact-card {
+    flex: 3 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+    gap: 12px !important;
+  }
+  
+  .overdue-supervisor-info {
+    margin-bottom: 0 !important;
+  }
+  
+  .overdue-contact-action {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6px !important;
+  }
+  
+  /* Icon-only WhatsApp & Call buttons */
+  .overdue-wa-pill-btn, .overdue-call-pill-btn {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .overdue-wa-pill-btn span, .overdue-call-pill-btn span {
+    display: none !important;
+  }
+  
+  .overdue-card-btns {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    justify-content: flex-end !important;
+  }
+  
+  /* Icon-only action buttons */
+  .overdue-action-view span,
+  .overdue-action-return span {
+    display: none !important;
+  }
+  
+  .overdue-action-view,
+  .overdue-action-return {
+    width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
