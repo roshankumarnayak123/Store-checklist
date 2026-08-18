@@ -98,6 +98,11 @@ html[data-theme="dark"] textarea { background: var(--input-bg); color: var(--tex
 html[data-theme="dark"] input:focus,
 html[data-theme="dark"] select:focus,
 html[data-theme="dark"] textarea:focus { background: #111827; }
+html[data-theme="dark"] select option,
+html[data-theme="dark"] select optgroup {
+  background: var(--input-bg);
+  color: var(--text-strong);
+}
 html[data-theme="dark"] input:disabled { background: #1e293b; color: #94a3b8; }
 html[data-theme="dark"] .btn-ghost { color: #cbd5e1; border-color: #475569; }
 html[data-theme="dark"] .btn-ghost:hover { background: #1e293b; color: #fff; }
@@ -1032,6 +1037,8 @@ table.reg tbody tr:hover td { background: rgba(245,158,11,.035); }
     padding: 40px 40px 40px 60px;
     z-index: 10;
   }
+  .desktop-hidden-brand { display: none !important; }
+  .login-sync-row { margin-top: 0 !important; }
   .auth-right {
     background: rgba(0, 0, 0, 0.15);
     display: flex;

@@ -818,7 +818,7 @@ function clearSession() {
 // in sync automatically if a view is ever added/removed/relabelled.
 function navLinksForRoles(roles) {
   if (!roles) return [];
-  if (roles.includes('admin')) return [['admin-dashboard', 'Dashboard'], ['register', 'Issue/Return'], ['tools-dashboard', 'Tools List'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
+  if (roles.includes('admin')) return [['admin-dashboard', 'Dashboard'], ['material-requests', 'Material Requests'], ['register', 'Issue/Return'], ['tools-dashboard', 'Tools List'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
 
   let links = [];
   if (roles.includes('tools_admin') || roles.includes('tools_viewer')) {
@@ -1094,6 +1094,29 @@ $('#showMaterialRequestForm').addEventListener('click', () => {
   clearAuthMessages();
   $('#authCard').classList.add('hidden');
   $('#materialRequestCard').classList.remove('hidden');
+
+  const approverSelect = $('#matReqApprover');
+  if (approverSelect) {
+    approverSelect.innerHTML = '<option value="" disabled selected>Loading approvers...</option>';
+    get(ref(db, 'users')).then(snap => {
+      if (snap.exists()) {
+        const users = snapshotToArray(snap);
+        const approvers = users.filter(u => u.roles && u.roles.includes('request_approver'));
+        if (approvers.length > 0) {
+          approverSelect.innerHTML = '<option value="" disabled selected>Select an Approver</option>' + 
+            approvers.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.fullName || a.id)}</option>`).join('');
+        } else {
+          approverSelect.innerHTML = '<option value="" disabled selected>No Approvers available</option>';
+        }
+      } else {
+        approverSelect.innerHTML = '<option value="" disabled selected>No Approvers available</option>';
+      }
+    }).catch(err => {
+      console.error(err);
+      approverSelect.innerHTML = '<option value="" disabled selected>Failed to load</option>';
+    });
+  }
+
   try {
     const saved = localStorage.getItem('lastMaterialRequest');
     if (saved) {
@@ -1159,6 +1182,7 @@ $('#materialRequestForm').addEventListener('submit', async (e) => {
   const vendor = $('#matReqVendor').value.trim();
   const mobileNumber = $('#matReqMobile').value.trim();
   const materials = $('#matReqMaterials').value.trim();
+  const designatedApprover = $('#matReqApprover') ? $('#matReqApprover').value : '';
   const btn = $('#matReqSubmitBtn');
   btn.disabled = true; btn.textContent = 'Submitting...';
   setSyncingState(true);
@@ -1169,6 +1193,7 @@ $('#materialRequestForm').addEventListener('submit', async (e) => {
       vendor,
       mobileNumber,
       materials,
+      designatedApprover,
       status: 'Pending',
       requestTimestamp: new Date().toISOString()
     };
@@ -1487,6 +1512,7 @@ export function listenToCollections() {
 
   globalState.unsubMaterialRequests = onValue(ref(db, 'materialRequests'), (snap) => {
     globalState.materialRequestsCache = snapshotToArray(snap).sort((a, b) => (b.requestTimestamp || '').localeCompare(a.requestTimestamp || ''));
+    updateMaterialRequestsTopbarBadge();
     if (!FORM_VIEWS.has(globalState.currentView)) render();
   }, (err) => {
     console.error('Material Requests sync listener error:', err);
@@ -1726,6 +1752,29 @@ function updateRequestsTopbarBadge() {
   }
 }
 
+function updateMaterialRequestsTopbarBadge() {
+  const btn = $('#topbarMaterialRequestsBtn');
+  const countEl = $('#topbarMaterialRequestsCount');
+  if (!btn || !countEl || !globalState.currentUser) return;
+
+  const isAdmin = globalState.currentUser.roles.includes('admin');
+  const isApprover = globalState.currentUser.roles.includes('request_approver');
+
+  if (!isAdmin && !isApprover) {
+    btn.classList.add('hidden');
+    return;
+  }
+
+  const pendingCount = globalState.materialRequestsCache.filter(r => r.status === 'Pending').length;
+
+  if (pendingCount > 0) {
+    btn.classList.remove('hidden');
+    countEl.textContent = pendingCount > 99 ? '99+' : pendingCount;
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
 function renderOverdueBannerHtml() {
   const overdue = getOverdueIssues(7);
   if (!overdue.length) return '';
@@ -1935,6 +1984,117 @@ function closeOverdueFollowUpModal() {
   document.body.classList.remove('modal-open');
 }
 
+function openMaterialRequestsModal() {
+  const isAdmin = globalState.currentUser.roles.includes('admin');
+  const pendingRequests = globalState.materialRequestsCache.filter(r => r.status === 'Pending');
+
+  const listEl = $('#matReqList');
+  const subEl = $('#matReqModalSubtitle');
+  const countBadgeEl = $('#matReqCountBadge');
+
+  if (countBadgeEl) {
+    countBadgeEl.textContent = `${pendingRequests.length} Pending`;
+  }
+  if (subEl) {
+    subEl.textContent = `${pendingRequests.length} ${pendingRequests.length === 1 ? 'request' : 'requests'} waiting for approval.`;
+    if (isAdmin && !globalState.currentUser.roles.includes('request_approver')) {
+      get(ref(db, 'users')).then(snap => {
+        if (snap.exists() && $('#materialRequestsDialog') && !$('#materialRequestsDialog').classList.contains('hidden')) {
+          const users = snapshotToArray(snap);
+          const approvers = users.filter(u => u.roles && u.roles.includes('request_approver')).map(u => u.fullName || u.id);
+          if (approvers.length > 0) {
+            subEl.innerHTML = `${pendingRequests.length} ${pendingRequests.length === 1 ? 'request' : 'requests'} waiting for approval.<br><span style="font-size:13px; color:var(--amber); margin-top:6px; display:inline-block;"><strong>Designated Approvers:</strong> ${escapeHtml(approvers.join(', '))}</span>`;
+          } else {
+            subEl.innerHTML = `${pendingRequests.length} ${pendingRequests.length === 1 ? 'request' : 'requests'} waiting for approval.<br><span style="font-size:13px; color:var(--bad); margin-top:6px; display:inline-block;"><strong>No Approvers found in the system!</strong> Please assign the Material Request Approver role to a user.</span>`;
+          }
+        }
+      }).catch(err => console.error("Failed to load approvers", err));
+    }
+  }
+  if (listEl) {
+    if (pendingRequests.length === 0) {
+      listEl.innerHTML = `
+        <div class="overdue-empty-state">
+          <div class="overdue-empty-icon">✅</div>
+          <strong class="overdue-empty-title">All caught up!</strong>
+          <p class="overdue-empty-text">No material requests are currently pending approval.</p>
+        </div>
+      `;
+    } else {
+      listEl.innerHTML = pendingRequests.map(item => `
+        <div class="overdue-card-item">
+          <div class="overdue-card-top">
+            <div class="overdue-card-name-group">
+              <div class="overdue-item-icon" style="background: rgba(255,193,7,0.1); color: var(--amber);">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                  <path d="M12 11h4"></path>
+                  <path d="M12 16h4"></path>
+                  <path d="M8 11h.01"></path>
+                  <path d="M8 16h.01"></path>
+                </svg>
+              </div>
+              <div class="overdue-card-title-wrap">
+                <strong class="overdue-card-title">${escapeHtml(item.materials)}</strong>
+                ${item.id ? `<span class="overdue-card-code">#${escapeHtml(item.id.slice(-6).toUpperCase())}</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="overdue-meta-chips">
+            <div class="overdue-chip">
+              <span class="overdue-chip-label">Requester:</span>
+              <strong class="overdue-chip-value">${escapeHtml(item.requesterName)}</strong>
+            </div>
+            <div class="overdue-chip">
+              <span class="overdue-chip-label">Vendor:</span>
+              <strong class="overdue-chip-value">${escapeHtml(item.vendor)}</strong>
+            </div>
+            <div class="overdue-chip">
+              <span class="overdue-chip-label">Requested:</span>
+              <strong class="overdue-chip-value">${formatShortDate(item.requestTimestamp)}</strong>
+            </div>
+          </div>
+
+          <div class="overdue-contact-card">
+            <div class="overdue-supervisor-info">
+              <div class="overdue-avatar">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="overdue-supervisor-name">${escapeHtml(item.mobileNumber)}</div>
+              </div>
+            </div>
+            ${globalState.currentUser.roles.includes('request_approver') ? `
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="overdue-remind-btn" style="background:var(--success); color:#fff; border:none; padding: 8px 12px; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; border-radius:6px; cursor:pointer;" onclick="closeMaterialRequestsModal(); window.approveMaterialRequest('${item.id}');">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+                <span style="font-weight:600; font-size:14px; margin:0;">Approve</span>
+              </button>
+              <button type="button" class="overdue-remind-btn" style="background:var(--danger); color:#fff; border:none; padding: 8px 12px; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; border-radius:6px; cursor:pointer;" onclick="closeMaterialRequestsModal(); window.rejectMaterialRequest('${item.id}');">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <span style="font-weight:600; font-size:14px; margin:0;">Reject</span>
+              </button>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  $('#materialRequestsDialog')?.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+function closeMaterialRequestsModal() {
+  $('#materialRequestsDialog')?.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
 function render() {
   if (!globalState.currentUser) return;
 
@@ -1989,24 +2149,26 @@ function render() {
             <h1>Pending & Approved Requests</h1>
           </div>
         </div>
-        <div class="card p-0" style="overflow-x:auto;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Date & Time</th>
-                <th>Requester</th>
-                <th>Vendor/Contractor</th>
-                <th>Mobile</th>
-                <th>Materials Requested</th>
-                <th>Status</th>
-                <th>Approved By</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="materialRequestsTbody">
-              <tr><td colspan="8" class="text-center text-muted" style="padding: 32px 0;">Loading...</td></tr>
-            </tbody>
-          </table>
+        <div class="panel">
+          <div class="panel-pad" style="padding:0; overflow-x:auto;">
+            <table class="tools-master-table" style="font-size:12.5px; width:100%; background:var(--surface); table-layout: fixed;">
+              <thead>
+                <tr>
+                  <th style="width: 14%;">Date & Time</th>
+                  <th style="width: 12%;">Requester</th>
+                  <th style="width: 12%;">Vendor/Contractor</th>
+                  <th style="width: 11%;">Mobile</th>
+                  <th style="width: 18%;">Materials Requested</th>
+                  <th style="width: 10%;">Status</th>
+                  <th style="width: 11%;">Approved By</th>
+                  <th style="width: 12%;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="materialRequestsTbody">
+                <tr><td colspan="8" class="text-center text-muted" style="padding: 32px 0;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
       // We need to defer the rendering of the table body because the DOM elements
@@ -2022,6 +2184,7 @@ function render() {
   wireViewEvents(globalState.currentView);
   updateOverdueTopbarBadge();
   updateRequestsTopbarBadge();
+  updateMaterialRequestsTopbarBadge();
 }
 
 function statsSummary() {
@@ -2860,13 +3023,13 @@ function renderUsersAdmin() {
     </div>
 
     <div id="usersTableHolder" class="panel" style="margin-bottom:32px;">
-      <div class="panel-head"><h2>Storekeeper Accounts</h2></div>
+      <div class="panel-head"><h2>User Accounts</h2></div>
       <div class="table-wrap">
         <div class="empty-state"><span class="spinner"></span><p style="margin-top:10px;">Loading users…</p></div>
       </div>
     </div>
     <div class="panel panel-pad">
-      <h2 style="margin-top:0;">Add New Storekeeper Account</h2>
+      <h2 style="margin-top:0;">Add A User Account</h2>
       <form id="newUserForm">
         <div class="form-grid">
           <div class="field">
@@ -2889,6 +3052,7 @@ function renderUsersAdmin() {
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Viewer</label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="tools_admin" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Tools Admin</label>
                 <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="tools_viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Tools Viewer</label>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0;"><input type="checkbox" value="request_approver" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;"> Material Request Approver</label>
               </div>
             </div>
           </div>
@@ -3108,7 +3272,7 @@ function renderSettingsAdmin() {
 
     <div class="panel" style="margin-bottom:32px;">
       <div class="panel-head"><button type="button" class="settings-section-toggle" data-settings-section="audit" aria-expanded="false"><h2>System Audit Log</h2><span>⌄</span></button></div>
-      <div class="panel-pad settings-section-body hidden" data-settings-body="audit">
+      <div class="panel-pad settings-section-body is-collapsed" data-settings-body="audit">
         <div class="page-sub" style="margin-bottom:14px;">Review recent administrative and system actions. (Loads latest 100 entries on demand)</div>
         <div class="actions-row" style="margin-bottom:16px;">
           <button class="btn btn-dark btn-sm" id="loadAuditLogBtn">Load Audit Log</button>
@@ -3543,7 +3707,7 @@ function wireViewEvents(viewId) {
           if (logs.length === 0) {
             container.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-light); font-size: 13px;">No audit logs found.</div>';
           } else {
-            container.innerHTML = '<table class="data-table" style="font-size: 13px; width: 100%;"><thead><tr><th>Date</th><th>Action</th><th>Actor</th><th>Details</th></tr></thead><tbody>' +
+            container.innerHTML = '<table class="tools-master-table" style="font-size: 13px; width: 100%;"><thead><tr><th>Date</th><th>Action</th><th>Actor</th><th>Details</th></tr></thead><tbody>' +
               logs.map(log => `<tr>
                 <td style="white-space: nowrap;">${log.createdAt ? new Date(log.createdAt).toLocaleString() : 'N/A'}</td>
                 <td><strong style="color: var(--primary);">${escapeHtml(log.action)}</strong></td>
@@ -4815,6 +4979,10 @@ $('#qtyReqCancelBtn')?.addEventListener('click', closeToolQtyRequestModal);
 $('#toolQtyRequestForm')?.addEventListener('submit', handleQtyRequestSubmit);
 $('#toolQtyRequestDialog')?.addEventListener('click', (event) => { if (event.target.id === 'toolQtyRequestDialog') closeToolQtyRequestModal(); });
 
+$('#appClock')?.addEventListener('click', () => navigateTo('audit-log'));
+$('#topbarRequestsBtn')?.addEventListener('click', () => navigateTo('tools-dashboard'));
+$('#topbarOverdueBtn')?.addEventListener('click', () => navigateTo('overdue'));
+
 // Overdue Follow-up Modal Event Listeners
 $('#topbarOverdueBtn')?.addEventListener('click', openOverdueFollowUpModal);
 $('#topbarRequestsBtn')?.addEventListener('click', () => navigateTo('tools-dashboard'));
@@ -4828,6 +4996,16 @@ $('#overdueViewAllRegisterBtn')?.addEventListener('click', () => {
   registerFilterState.page = 1;
   saveRegisterPreferences();
   navigateTo('register');
+});
+
+// Material Requests Modal Event Listeners
+$('#topbarMaterialRequestsBtn')?.addEventListener('click', openMaterialRequestsModal);
+$('#matReqCloseBtn')?.addEventListener('click', closeMaterialRequestsModal);
+$('#matReqModalDoneBtn')?.addEventListener('click', closeMaterialRequestsModal);
+$('#materialRequestsDialog')?.addEventListener('click', (event) => { if (event.target.id === 'materialRequestsDialog') closeMaterialRequestsModal(); });
+$('#matReqViewAllBtn')?.addEventListener('click', () => {
+  closeMaterialRequestsModal();
+  navigateTo('material-requests');
 });
 
 // Clear All Store Data Verification Dialog Handlers
@@ -5185,12 +5363,11 @@ async function loadUsersTable() {
         if (e.target.checked) {
           if (e.target.value === 'viewer') {
             group.querySelectorAll('input:checked').forEach(cb => {
-              if (cb !== e.target) cb.checked = false;
+              if (cb !== e.target && cb.value !== 'request_approver') cb.checked = false;
             });
-            checkedBoxes = [e.target];
-            newRoles = ['viewer'];
-            showToast('Viewer role selected. Other roles removed.', { title: 'Role Updated', type: 'info' });
-          } else if (newRoles.includes('viewer')) {
+            checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
+            newRoles = checkedBoxes.map(cb => cb.value);
+          } else if (newRoles.includes('viewer') && e.target.value !== 'request_approver') {
             const viewerCb = group.querySelector('input[value="viewer"]');
             if (viewerCb && viewerCb.checked) viewerCb.checked = false;
             checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
@@ -5256,8 +5433,9 @@ async function handleNewUserSubmit(e) {
 
   const checkedBoxes = Array.from(document.querySelectorAll('#nu_role_group input:checked'));
   const roles = checkedBoxes.map(cb => cb.value);
-  if (roles.includes('viewer') && roles.length > 1) {
-    userFormError = 'A Viewer cannot have any other roles assigned.';
+  const otherRoles = roles.filter(r => r !== 'viewer' && r !== 'request_approver');
+  if (roles.includes('viewer') && otherRoles.length > 0) {
+    userFormError = 'A Viewer cannot have any roles other than Mat. Request Approver.';
     showInlineError('userFormAlert', userFormError);
     return;
   }
@@ -5352,8 +5530,9 @@ document.addEventListener('change', (e) => {
   if (e.target.closest('#nu_role_group')) {
     const checkedBoxes = Array.from(document.querySelectorAll('#nu_role_group input:checked'));
     const newRoles = checkedBoxes.map(cb => cb.value);
-    if (newRoles.includes('viewer') && newRoles.length > 1) {
-      showToast('A Viewer cannot have any other roles assigned.', { title: 'Role Conflict', type: 'warning' });
+    const otherRoles = newRoles.filter(r => r !== 'viewer' && r !== 'request_approver');
+    if (newRoles.includes('viewer') && otherRoles.length > 0) {
+      showToast('A Viewer cannot have any roles other than Mat. Request Approver.', { title: 'Role Conflict', type: 'warning' });
       e.target.checked = false;
       return;
     }
@@ -5407,7 +5586,7 @@ function renderToolsDashboard() {
 
   if (!toolsLoaded) {
     return `
-      <div class="panel">
+      <div class="panel" style="margin-top: 40px;">
         <div class="panel-head tools-panel-head">
           <div class="tools-head-title">
             <h2>Tools Master List</h2>
@@ -5461,7 +5640,7 @@ function renderToolsDashboard() {
   };
 
   let html = `
-    <div class="panel">
+    <div class="panel" style="margin-top: 40px;">
       <div class="panel-head tools-panel-head">
         <div class="tools-head-title">
           <h2>Tools Master List</h2>
@@ -6020,7 +6199,7 @@ function renderMaterialRequests() {
 
   const isAdmin = globalState.currentUser.roles.includes('admin');
   const isApprover = globalState.currentUser.roles.includes('request_approver');
-  const canApprove = isAdmin || isApprover;
+  const canApprove = isApprover;
 
   // Render recent 100 requests
   const requests = globalState.materialRequestsCache.slice(0, 100);
@@ -6032,13 +6211,21 @@ function renderMaterialRequests() {
 
   tbody.innerHTML = requests.map(req => {
     const isPending = req.status === 'Pending';
-    const statusHtml = isPending 
-      ? '<span class="status-badge" style="background:var(--amber);color:#fff;">Pending</span>'
-      : '<span class="status-badge" style="background:var(--success);color:#fff;">Approved</span>';
+    let statusHtml = '';
+    if (isPending) statusHtml = '<span class="status-badge" style="background:var(--amber);color:#fff;">Pending</span>';
+    else if (req.status === 'Approved') statusHtml = '<span class="status-badge" style="background:var(--success);color:#fff;">Approved</span>';
+    else statusHtml = '<span class="status-badge" style="background:var(--danger);color:#fff;">Rejected</span>';
 
     const actionHtml = (isPending && canApprove)
-      ? `<button class="btn btn-primary btn-sm" onclick="approveMaterialRequest('${escapeHtml(req.id)}')">Approve</button>`
-      : (req.approvedAt ? escapeHtml(new Date(req.approvedAt).toLocaleString()) : '-');
+      ? `<div style="display:flex; gap:6px; align-items:center;">
+           <button class="btn btn-sm" style="background:var(--success); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Approve" onclick="window.approveMaterialRequest('${escapeHtml(req.id)}')">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+           </button>
+           <button class="btn btn-sm" style="background:var(--danger); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Reject" onclick="window.rejectMaterialRequest('${escapeHtml(req.id)}')">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+           </button>
+         </div>`
+      : ((req.approvedAt || req.rejectedAt) ? escapeHtml(new Date(req.approvedAt || req.rejectedAt).toLocaleString()) : '-');
 
     return `
       <tr>
@@ -6056,12 +6243,16 @@ function renderMaterialRequests() {
 }
 
 window.approveMaterialRequest = async function(reqId) {
-  if (!confirm('Are you sure you want to approve this material request?')) return;
+  const btn = window.event ? window.event.currentTarget : null;
+  const originalText = btn ? btn.textContent : '';
+
+  const confirmed = await appConfirm('Are you sure you want to approve this material request?', { title: 'Approve Request', confirmText: 'Approve', type: 'primary' });
+  if (!confirmed) return;
   
-  const btn = event.currentTarget;
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Approving...';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Approving...';
+  }
   
   try {
     const reqRef = ref(db, 'materialRequests/' + reqId);
@@ -6070,11 +6261,45 @@ window.approveMaterialRequest = async function(reqId) {
       approvedBy: globalState.currentUser.username,
       approvedAt: new Date().toISOString()
     });
-    alert('Material Request approved successfully.');
+    showToast('Material Request approved successfully.', { title: 'Approved', type: 'success' });
   } catch(err) {
     console.error(err);
-    alert('Failed to approve material request.');
-    btn.disabled = false;
-    btn.textContent = originalText;
+    appAlert('Failed to approve material request: ' + err.message, { type: 'danger' });
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+};
+
+window.rejectMaterialRequest = async function(reqId) {
+  const btn = window.event ? window.event.currentTarget : null;
+  const originalText = btn ? btn.textContent : '';
+
+  const confirmed = await appConfirm('Are you sure you want to reject this material request?', { title: 'Reject Request', confirmText: 'Reject', type: 'danger' });
+  if (!confirmed) return;
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+  }
+  
+  try {
+    const reqRef = ref(db, 'materialRequests/' + reqId);
+    await update(reqRef, {
+      status: 'Rejected',
+      rejectedBy: globalState.currentUser.username,
+      rejectedAt: new Date().toISOString()
+    });
+    showToast('Material Request rejected successfully.', { title: 'Rejected', type: 'info' });
+  } catch(err) {
+    console.error(err);
+    appAlert('Failed to reject material request: ' + err.message, { type: 'danger' });
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 };
