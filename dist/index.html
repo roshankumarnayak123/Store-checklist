@@ -27,8 +27,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <script type="module" crossorigin src="/Store-checklist/assets/index-B2l1mzgM.js"></script>
-  <link rel="stylesheet" crossorigin href="/Store-checklist/assets/index-Bai1Cs8W.css">
+  <script type="module" crossorigin src="/Store-checklist/assets/index-HLbD06sF.js"></script>
+  <link rel="stylesheet" crossorigin href="/Store-checklist/assets/index-jwlOpldb.css">
 </head>
 
 <body>
@@ -219,19 +219,19 @@
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
               <div>
                 <label for="statusModalQtyAvailable" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Available (Auto-calculated)</label>
-                <input type="number" id="statusModalQtyAvailable" min="0" value="0" readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyAvailable" min="0" value="0" readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
               </div>
               <div>
                 <label for="statusModalQtyMaintenance" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">In Maintenance</label>
-                <input type="number" id="statusModalQtyMaintenance" min="0" value="0" required />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyMaintenance" min="0" value="0" required />
               </div>
               <div>
                 <label for="statusModalQtyDamaged" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Damaged</label>
-                <input type="number" id="statusModalQtyDamaged" min="0" value="0" required />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyDamaged" min="0" value="0" required />
               </div>
               <div>
                 <label for="statusModalQtyLost" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Lost</label>
-                <input type="number" id="statusModalQtyLost" min="0" value="0" required />
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyLost" min="0" value="0" required />
               </div>
             </div>
             <div style="margin-top:10px; font-size:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
@@ -308,7 +308,7 @@
           <div class="tool-deletion-target-info" id="qtyReqToolInfo" style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;"></div>
           <div class="field" style="margin-top:10px;">
             <label for="qtyReqNewQuantity">New Total Quantity *</label>
-            <input type="number" id="qtyReqNewQuantity" min="0" required />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="qtyReqNewQuantity" min="0" required />
           </div>
           <div class="actions-row" style="margin-top:18px; justify-content:flex-end;">
             <button type="button" class="btn btn-ghost" id="qtyReqCancelBtn">Cancel</button>
@@ -382,6 +382,7 @@
       <span class="theme-toggle-knob" aria-hidden="true"></span>
     </button>
 
+    <div class="auth-window">
     <div class="auth-left">
       <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
       <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
@@ -424,7 +425,7 @@
     </div>
 
     <div class="auth-right">
-      <div class="auth-card">
+      <div class="auth-card" id="authCard">
         <div class="brand">
           <span class="brand-mark">⚙</span>
           <span class="brand-text">CMM SMS <strong>STORE</strong></span>
@@ -432,8 +433,8 @@
         <div class="auth-sub">Issue &amp; Return Register — Store Access</div>
 
         <div id="loginSyncStatus" class="login-sync-row">
-          <span class="sync-dot sync-dot-good" id="loginSyncDot"></span>
-          <span id="loginSyncLabel">Cloud Sync ready</span>
+          <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
+          <span id="loginSyncLabel">Checking cloud connection...</span>
         </div>
 
         <div id="authError" class="alert alert-error hidden" role="alert"></div>
@@ -452,7 +453,7 @@
                 aria-label="Show password" aria-pressed="false">Show</button>
             </div>
           </div>
-          <button type="submit" id="loginBtn" class="btn btn-primary">Log In</button>
+          <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
         </form>
 
         <form id="requestForm" class="hidden">
@@ -476,8 +477,9 @@
           <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
         </form>
 
-        <div class="request-link-row">
+        <div class="request-link-row" style="flex-direction: column; gap: 8px;">
           <button type="button" id="showRequestForm">Need access? Request a storekeeper account →</button>
+          <button type="button" id="showMaterialRequestForm" style="color: var(--amber);">Need materials? Submit a Material Request →</button>
           <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
         </div>
 
@@ -487,10 +489,44 @@
           <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
         </div>
       </div>
+
+      <div class="auth-card hidden" id="materialRequestCard" style="position: relative;">
+          <button type="button" id="matReqTopBackBtn" class="btn btn-ghost btn-sm" style="align-self: flex-start; margin-bottom: 16px; margin-left: -8px; color: var(--steel-400);">← Back</button>
+        <div class="brand">
+          <span class="brand-mark">⚙</span>
+          <span class="brand-text">CMM SMS <strong>STORE</strong></span>
+        </div>
+        <div class="auth-sub" style="margin-bottom: 24px;">Material Request Form</div>
+        
+        <form id="materialRequestForm">
+          <div class="field">
+            <label for="matReqName">Requester Name <span style="color:red;">*</span></label>
+            <input type="text" id="matReqName" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="matReqVendor">Vendor/Contractor <span style="color:red;">*</span></label>
+            <input type="text" id="matReqVendor" required autocomplete="organization" />
+          </div>
+          <div class="field">
+            <label for="matReqMobile">Mobile Number <span style="color:red;">*</span></label>
+            <input type="tel" id="matReqMobile" required autocomplete="tel" pattern="\d{13}" minlength="13" maxlength="13" title="Mobile number must be exactly 13 digits" oninput="this.value = this.value.replace(/\D/g, '')" />
+          </div>
+          <div class="field">
+            <label for="matReqMaterials">Required Materials <span style="color:red;">*</span></label>
+            <textarea id="matReqMaterials" rows="4" required autocomplete="off" placeholder="E.g., 50x Safety Helmets, 20x Gloves..."></textarea>
+          </div>
+          <button type="submit" id="matReqSubmitBtn" class="btn btn-primary" style="margin-top: 8px;">Submit Request</button>
+        </form>
+
+        <div class="request-link-row" style="margin-top: 16px;">
+          <button type="button" id="showLoginFormFromMat" style="color: var(--steel-400);">← Back to log in</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div id="appScreen" class="hidden">
+    </div>
+<div id="appScreen" class="hidden">
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">
       <span class="pull-refresh-icon">↻</span>
       <span id="pullRefreshText">Pull to refresh</span>

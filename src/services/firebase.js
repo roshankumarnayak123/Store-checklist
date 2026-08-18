@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, set, push, update, remove, onValue, serverTimestamp, increment, query, orderByChild, equalTo } from "firebase/database";
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata } from "firebase/storage";
+import { getDatabase, ref, onValue } from "firebase/database";
+import { getStorage } from "firebase/storage";
 import { firebaseConfig } from '../firebase-config.js';
 
 export let app, db, storage;

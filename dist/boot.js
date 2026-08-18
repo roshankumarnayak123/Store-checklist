@@ -31,6 +31,7 @@
   });
 
   window.addEventListener('error', (event) => {
+    if (window.__cmmModuleReady) return; // Let app.js handle it
     if (auth) auth.classList.remove('hidden');
     if (error) {
       error.textContent = 'JS Error: ' + (event.message || 'unknown') + ' at ' + (event.filename || '') + ':' + (event.lineno || '');
@@ -41,6 +42,7 @@
   }, true);
 
   window.addEventListener('unhandledrejection', (event) => {
+    if (window.__cmmModuleReady) return; // Let app.js handle it
     if (auth) auth.classList.remove('hidden');
     if (error) {
       error.textContent = 'Promise Error: ' + (event.reason ? (event.reason.message || event.reason) : 'unknown');

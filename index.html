@@ -381,6 +381,7 @@
       <span class="theme-toggle-knob" aria-hidden="true"></span>
     </button>
 
+    <div class="auth-window">
     <div class="auth-left">
       <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
       <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
@@ -423,7 +424,7 @@
     </div>
 
     <div class="auth-right">
-      <div class="auth-card">
+      <div class="auth-card" id="authCard">
         <div class="brand">
           <span class="brand-mark">⚙</span>
           <span class="brand-text">CMM SMS <strong>STORE</strong></span>
@@ -475,8 +476,9 @@
           <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
         </form>
 
-        <div class="request-link-row">
+        <div class="request-link-row" style="flex-direction: column; gap: 8px;">
           <button type="button" id="showRequestForm">Need access? Request a storekeeper account →</button>
+          <button type="button" id="showMaterialRequestForm" style="color: var(--amber);">Need materials? Submit a Material Request →</button>
           <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
         </div>
 
@@ -486,10 +488,44 @@
           <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
         </div>
       </div>
+
+      <div class="auth-card hidden" id="materialRequestCard" style="position: relative;">
+          <button type="button" id="matReqTopBackBtn" class="btn btn-ghost btn-sm" style="align-self: flex-start; margin-bottom: 16px; margin-left: -8px; color: var(--steel-400);">← Back</button>
+        <div class="brand">
+          <span class="brand-mark">⚙</span>
+          <span class="brand-text">CMM SMS <strong>STORE</strong></span>
+        </div>
+        <div class="auth-sub" style="margin-bottom: 24px;">Material Request Form</div>
+        
+        <form id="materialRequestForm">
+          <div class="field">
+            <label for="matReqName">Requester Name <span style="color:red;">*</span></label>
+            <input type="text" id="matReqName" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="matReqVendor">Vendor/Contractor <span style="color:red;">*</span></label>
+            <input type="text" id="matReqVendor" required autocomplete="organization" />
+          </div>
+          <div class="field">
+            <label for="matReqMobile">Mobile Number <span style="color:red;">*</span></label>
+            <input type="tel" id="matReqMobile" required autocomplete="tel" pattern="\d{13}" minlength="13" maxlength="13" title="Mobile number must be exactly 13 digits" oninput="this.value = this.value.replace(/\D/g, '')" />
+          </div>
+          <div class="field">
+            <label for="matReqMaterials">Required Materials <span style="color:red;">*</span></label>
+            <textarea id="matReqMaterials" rows="4" required autocomplete="off" placeholder="E.g., 50x Safety Helmets, 20x Gloves..."></textarea>
+          </div>
+          <button type="submit" id="matReqSubmitBtn" class="btn btn-primary" style="margin-top: 8px;">Submit Request</button>
+        </form>
+
+        <div class="request-link-row" style="margin-top: 16px;">
+          <button type="button" id="showLoginFormFromMat" style="color: var(--steel-400);">← Back to log in</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div id="appScreen" class="hidden">
+    </div>
+<div id="appScreen" class="hidden">
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">
       <span class="pull-refresh-icon">↻</span>
       <span id="pullRefreshText">Pull to refresh</span>

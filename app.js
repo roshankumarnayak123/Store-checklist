@@ -40,15 +40,15 @@ window.dispatchEvent(new CustomEvent('cmm-module-ready'));
    STATE (Independent Caches for Issues and Tools)
    ========================================================================= */
 import { globalState } from './src/state.js';
-import { app, db, storage, cloudConnected, setCloudConnected, appBootstrapped, setAppBootstrapped, attemptFirebaseInit } from './src/services/firebase.js';
-import { ref, get, set, push, update, remove, onValue, serverTimestamp, increment, query, orderByChild, equalTo } from "firebase/database";
+import { db, storage, cloudConnected, setCloudConnected, attemptFirebaseInit } from './src/services/firebase.js';
+import { ref, get, set, push, update, remove, onValue, serverTimestamp, increment } from "firebase/database";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata } from "firebase/storage";
 
- 
-  
- 
- 
- 
+
+
+
+
+
 
 
 
@@ -66,8 +66,6 @@ window.currentUser = globalState.currentUser;
 
 
 import {
-  showAppDialog,
-  closeAppDialog,
   appAlert,
   appConfirm,
   isIosDevice,
@@ -94,8 +92,7 @@ window.addEventListener('keydown', (event) => {
 
 // Cloud Sync progress and retry state
 let cloudSyncProgressValue = 0;
-let lastSyncFailureMessage = '';
-// Bug #6 fix: use a dedicated boolean flag instead of checking lastSyncFailureMessage string,
+// Bug #6 fix: isInRetryMode boolean flag (replaces old lastSyncFailureMessage string check)
 // which could be cleared mid-retry causing the button to fire the wrong action.
 let isInRetryMode = false;
 function setCloudSyncProgress(value = null, mode = 'determinate') {
@@ -116,7 +113,6 @@ function setCloudSyncProgress(value = null, mode = 'determinate') {
   fill.style.width = cloudSyncProgressValue + '%';
 }
 function showCloudSyncRetry(message = 'Cloud Sync failed') {
-  lastSyncFailureMessage = message;
   isInRetryMode = true;
   const retry = $('#cloudSyncRetryBtn');
   const label = $('#appSyncLabel');
@@ -129,7 +125,6 @@ function showCloudSyncRetry(message = 'Cloud Sync failed') {
 function hideCloudSyncRetry() {
   const retry = $('#cloudSyncRetryBtn');
   if (retry) retry.classList.add('hidden');
-  lastSyncFailureMessage = '';
   isInRetryMode = false;
 }
 async function retryCloudSync() {
@@ -139,8 +134,8 @@ async function retryCloudSync() {
   setSyncingState(true, 'Retrying Cloud Sync…');
   try {
     attemptFirebaseInit(() => {
-    if (globalState.currentUser) listenToCollections();
-  });
+      if (globalState.currentUser) listenToCollections();
+    });
     if (!db) throw new Error('Cloud service is not initialized');
     // Fetch issues to verify database connectivity
     const snap = await get(ref(db, 'issues'));
@@ -186,8 +181,8 @@ async function refreshFromCloudDatabase() {
   setSyncingState(true, 'Refreshing from cloud…');
   try {
     if (!db) attemptFirebaseInit(() => {
-    if (globalState.currentUser) listenToCollections();
-  });
+      if (globalState.currentUser) listenToCollections();
+    });
     if (!db) throw new Error('Cloud service is not initialized');
     const snap = await get(ref(db, 'issues'));
     globalState.issuesCache = snapshotToArray(snap).sort((a, b) => (b.issueDate || '').localeCompare(a.issueDate || ''));
@@ -591,15 +586,12 @@ export function showScreen(id) {
   window.scrollTo(0, 0);
 }
 
-const configIsPlaceholder = Object.values(firebaseConfig).some((v) => v.startsWith('YOUR_'));
-let cloudSyncOk = false;
+
 let lastSyncedAt = null;
 let clockStarted = false;
 let clockInterval = null;
 let sessionTimerStarted = false;
 let sessionTimerInterval = null;
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = '921443c5e72aac9f10321d52f095edd5ed04ab8deeca8cd0eb425ad46c135c14'; // SHA-256 of 'admin321'
 const SESSION_KEY = 'mechtools_session';
 
 // =========================================================================
@@ -645,7 +637,7 @@ function startApp() {
   });
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine !== false : true;
   if (!isOnline) updateLoginSyncIndicator(false);
-  
+
   window.addEventListener('firebase-connection-status', (e) => {
     updateLoginSyncIndicator(e.detail.connected);
   });
@@ -827,7 +819,7 @@ function clearSession() {
 function navLinksForRoles(roles) {
   if (!roles) return [];
   if (roles.includes('admin')) return [['admin-dashboard', 'Dashboard'], ['register', 'Issue/Return'], ['tools-dashboard', 'Tools List'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
-  
+
   let links = [];
   if (roles.includes('tools_admin') || roles.includes('tools_viewer')) {
     links.push(['tools-dashboard', 'Tools Master List']);
@@ -835,7 +827,10 @@ function navLinksForRoles(roles) {
   if (roles.includes('user') || roles.includes('storekeeper') || roles.includes('viewer')) {
     links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
   }
-  
+  if (roles.includes('admin') || roles.includes('request_approver')) {
+    links.push(['material-requests', 'Material Requests']);
+  }
+
   links.push(['profile', 'My Profile']);
   return links;
 }
@@ -849,7 +844,7 @@ function getHomeView(user) {
   if (roles.includes('admin')) fallback = 'admin-dashboard';
   else if (roles.includes('user') || roles.includes('storekeeper') || roles.includes('viewer')) fallback = 'dashboard';
   else if (roles.includes('tools_admin') || roles.includes('tools_viewer')) fallback = 'tools-dashboard';
-  
+
   if (!user) return fallback;
   try {
     const saved = JSON.parse(localStorage.getItem(HOME_VIEW_KEY) || '{}')[user.username];
@@ -864,7 +859,7 @@ export function getStartupView(user) {
   const allowed = navLinksForRoles(user.roles).map(([id]) => id);
   const canIssue = user.roles.includes('admin') || user.roles.includes('storekeeper') || user.roles.includes('user');
   const canTools = user.roles.includes('admin') || user.roles.includes('tools_admin') || user.roles.includes('tools_viewer');
-  
+
   if (hash === 'issue-new' || hash === 'return-record') {
     if (canIssue) return hash;
   }
@@ -920,7 +915,25 @@ export function hideInlineError(alertId) {
 // =========================================================================
 // LOGIN FLOW
 // =========================================================================
-let loginAttempts = { count: 0, lockedUntil: 0 };
+// Brute-force lockout state — stored in sessionStorage so a page refresh
+// does NOT reset the counter and bypass the lockout.
+const LOGIN_ATTEMPTS_KEY = 'cmm_login_attempts';
+function getLoginAttempts() {
+  try {
+    const raw = sessionStorage.getItem(LOGIN_ATTEMPTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.count === 'number') return parsed;
+    }
+  } catch { /* ignore */ }
+  return { count: 0, lockedUntil: 0 };
+}
+function saveLoginAttempts(state) {
+  try { sessionStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(state)); } catch { /* ignore */ }
+}
+function resetLoginAttempts() {
+  try { sessionStorage.removeItem(LOGIN_ATTEMPTS_KEY); } catch { /* ignore */ }
+}
 
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -929,8 +942,10 @@ $('#loginForm').addEventListener('submit', async (e) => {
     if (globalState.currentUser) listenToCollections();
   });
 
+  const loginAttempts = getLoginAttempts();
   if (Date.now() < loginAttempts.lockedUntil) {
-    showAuthError(`Too many failed attempts. Try again in ${Math.ceil((loginAttempts.lockedUntil - Date.now()) / 1000)} seconds.`);
+    const secsLeft = Math.ceil((loginAttempts.lockedUntil - Date.now()) / 1000);
+    showAuthError(`Too many failed attempts. Try again in ${secsLeft} seconds.`);
     return;
   }
 
@@ -941,26 +956,10 @@ $('#loginForm').addEventListener('submit', async (e) => {
 
   try {
     const hashedPwd = await hashPassword(password);
-    
-    // 1. Admin login check (case-insensitive username)
-    if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase() && hashedPwd === ADMIN_PASSWORD) {
-      loginAttempts = { count: 0, lockedUntil: 0 };
-      setCloudConnected(true);
-      updateLoginSyncIndicator(true);
-      globalState.currentUser = { username: ADMIN_USERNAME, fullName: 'Administrator', roles: ['admin'], profilePhotoUrl: null };
-      window.currentUser = globalState.currentUser;
-      document.body.dataset.role = globalState.currentUser.roles.join(',');
-      saveSession(globalState.currentUser);
-      initTopbar();
-      listenToCollections();
-      showScreen('appScreen');
-      navigateTo(getStartupView(globalState.currentUser), true, true);
-      return;
-    }
 
     if (!db) throw new Error('Database is not initialized. Please check network.');
 
-    // 2. Lookup user record in Firebase
+    // Lookup user record in Firebase
     let record = null;
     let resolvedUsername = username;
 
@@ -985,11 +984,14 @@ $('#loginForm').addEventListener('submit', async (e) => {
     updateLoginSyncIndicator(true);
 
     if (!record) {
+      const loginAttempts = getLoginAttempts();
       loginAttempts.count++;
       if (loginAttempts.count >= 5) {
         loginAttempts.lockedUntil = Date.now() + 30000;
+        saveLoginAttempts(loginAttempts);
         showAuthError('Too many failed attempts. Login locked for 30 seconds.');
       } else {
+        saveLoginAttempts(loginAttempts);
         showAuthError('Incorrect username or password.');
       }
       return;
@@ -999,18 +1001,21 @@ $('#loginForm').addEventListener('submit', async (e) => {
     const isPlainMatch = String(record.password).trim() === String(password).trim();
 
     if (!isHashedMatch && !isPlainMatch) {
+      const loginAttempts = getLoginAttempts();
       loginAttempts.count++;
       if (loginAttempts.count >= 5) {
         loginAttempts.lockedUntil = Date.now() + 30000;
+        saveLoginAttempts(loginAttempts);
         showAuthError('Too many failed attempts. Login locked for 30 seconds.');
       } else {
+        saveLoginAttempts(loginAttempts);
         showAuthError('Incorrect username or password.');
       }
       return;
     }
-    
-    loginAttempts = { count: 0, lockedUntil: 0 };
-    
+
+    resetLoginAttempts();
+
     if (isPlainMatch && !isHashedMatch) {
       try {
         await set(ref(db, 'users/' + resolvedUsername + '/password'), hashedPwd);
@@ -1077,11 +1082,38 @@ $('#showRequestForm').addEventListener('click', () => {
   clearAuthMessages();
   $('#loginForm').classList.add('hidden'); $('#requestForm').classList.remove('hidden');
   $('#showRequestForm').classList.add('hidden'); $('#showLoginForm').classList.remove('hidden');
+  $('#showMaterialRequestForm').classList.add('hidden');
 });
 $('#showLoginForm').addEventListener('click', () => {
   clearAuthMessages();
   $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden');
   $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden');
+  $('#showMaterialRequestForm').classList.remove('hidden');
+});
+$('#showMaterialRequestForm').addEventListener('click', () => {
+  clearAuthMessages();
+  $('#authCard').classList.add('hidden');
+  $('#materialRequestCard').classList.remove('hidden');
+  try {
+    const saved = localStorage.getItem('lastMaterialRequest');
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (data.name && !$('#matReqName').value) $('#matReqName').value = data.name;
+      if (data.vendor && !$('#matReqVendor').value) $('#matReqVendor').value = data.vendor;
+      if (data.mobile && !$('#matReqMobile').value) $('#matReqMobile').value = data.mobile;
+    }
+  } catch (e) { console.error(e); }
+});
+$('#matReqTopBackBtn').addEventListener('click', () => {
+    $('#showLoginFormFromMat').click();
+  });
+  $('#showLoginFormFromMat').addEventListener('click', () => {
+  clearAuthMessages();
+  $('#materialRequestCard').classList.add('hidden');
+  $('#authCard').classList.remove('hidden');
+  $('#requestForm').classList.add('hidden'); $('#loginForm').classList.remove('hidden');
+  $('#showLoginForm').classList.add('hidden'); $('#showRequestForm').classList.remove('hidden');
+  $('#showMaterialRequestForm').classList.remove('hidden');
 });
 
 $('#requestForm').addEventListener('submit', async (e) => {
@@ -1093,7 +1125,7 @@ $('#requestForm').addEventListener('submit', async (e) => {
   const password = $('#reqPassword').value;
   const btn = $('#reqSubmitBtn');
 
-  if (username.toLowerCase() === ADMIN_USERNAME) { showAuthError(`"${ADMIN_USERNAME}" is reserved and can't be requested as a username.`); return; }
+  if (username.toLowerCase() === 'admin') { showAuthError(`"admin" is reserved and can't be requested as a username.`); return; }
   if (/[.#$\[\]\/\s'"]/.test(username)) { showAuthError('Username can\'t contain spaces, quotes, or the characters . # $ [ ] /'); return; }
 
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…';
@@ -1103,12 +1135,13 @@ $('#requestForm').addEventListener('submit', async (e) => {
     if (existingUser.exists()) { showAuthError('That username is already taken.'); return; }
     const existingReq = await get(ref(db, 'accessRequests/' + username));
     if (existingReq.exists()) { showAuthError('A request for that username is already pending approval.'); return; }
-    
+
     const hashedPwd = await hashPassword(password);
     await set(ref(db, 'accessRequests/' + username), { fullName, password: hashedPwd, requestedAt: serverTimestamp() });
 
     $('#requestForm').classList.add('hidden'); $('#showLoginForm').classList.add('hidden');
     $('#showRequestForm').classList.remove('hidden');
+    $('#showMaterialRequestForm').classList.remove('hidden');
     showAuthInfo('Request submitted. An Admin needs to approve it before you can log in — check back soon.');
     $('#requestForm').reset();
   } catch (err) {
@@ -1119,6 +1152,45 @@ $('#requestForm').addEventListener('submit', async (e) => {
   }
 });
 
+$('#materialRequestForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!cloudConnected) { alert('Cloud sync is not connected. Cannot submit request right now.'); return; }
+  const requesterName = $('#matReqName').value.trim();
+  const vendor = $('#matReqVendor').value.trim();
+  const mobileNumber = $('#matReqMobile').value.trim();
+  const materials = $('#matReqMaterials').value.trim();
+  const btn = $('#matReqSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  setSyncingState(true);
+
+  try {
+    const payload = {
+      requesterName,
+      vendor,
+      mobileNumber,
+      materials,
+      status: 'Pending',
+      requestTimestamp: new Date().toISOString()
+    };
+    await push(ref(db, 'materialRequests'), payload);
+    try {
+      localStorage.setItem('lastMaterialRequest', JSON.stringify({
+        name: requesterName,
+        vendor: vendor,
+        mobile: mobileNumber
+      }));
+    } catch (e) { /* ignore */ }
+    $('#materialRequestForm').reset();
+    alert('Material Request submitted successfully!');
+    $('#showLoginFormFromMat').click(); // go back to login screen
+  } catch (err) {
+    console.error(err);
+    alert('Failed to submit Material Request. Please ensure you have internet access and try again.');
+  } finally {
+    setSyncingState(false);
+    btn.disabled = false; btn.textContent = 'Submit Request';
+  }
+});
 // Password visibility controls. Event delegation also supports dynamically rendered forms.
 document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-password-target]');
@@ -1243,7 +1315,7 @@ export function initTopbar() {
   // Assign the highest-privilege role to data-role so that CSS viewer-only
   // restrictions (e.g. hiding [data-nav="issue-new"]) never incorrectly fire
   // for users who have storekeeper/admin/user in addition to viewer.
-  const ROLE_PRIORITY = ['admin', 'storekeeper', 'user', 'tools_admin', 'tools_viewer', 'viewer'];
+  const ROLE_PRIORITY = ['admin', 'request_approver', 'storekeeper', 'user', 'tools_admin', 'tools_viewer', 'viewer'];
   const primaryRole = ROLE_PRIORITY.find(r => globalState.currentUser.roles.includes(r)) || globalState.currentUser.roles[0] || 'viewer';
   document.body.dataset.role = primaryRole;
   document.body.dataset.roles = globalState.currentUser.roles.join(' ');
@@ -1291,12 +1363,12 @@ function renderTransition() {
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const swap = () => { render(); window.scrollTo(0, 0); };
   if (!isMobile && !reduceMotion && typeof document.startViewTransition === 'function') {
-    try { 
-      const t = document.startViewTransition(swap); 
-      t.updateCallbackDone?.catch(() => {});
-      t.ready?.catch(() => {});
-      t.finished?.catch(() => {});
-      return; 
+    try {
+      const t = document.startViewTransition(swap);
+      t.updateCallbackDone?.catch(() => { });
+      t.ready?.catch(() => { });
+      t.finished?.catch(() => { });
+      return;
     } catch (_) { /* fall through */ }
   }
   swap();
@@ -1402,7 +1474,7 @@ export function listenToCollections() {
     console.error('Issues sync listener error:', err);
     if (typeof showToast === 'function') showToast('Material register failed to sync from the cloud: ' + (err.message || err.code || 'permission error'), { title: 'Cloud Sync Error', type: 'error', duration: 6000 });
   });
-  
+
   globalState.unsubTools = onValue(ref(db, 'tools'), (snap) => {
     globalState.toolsCache = snapshotToArray(snap).sort((a, b) => (a.toolName || '').localeCompare(b.toolName || ''));
     toolsLoaded = true;
@@ -1413,6 +1485,13 @@ export function listenToCollections() {
     if (typeof showToast === 'function') showToast('Tool register failed to sync from the cloud: ' + (err.message || err.code || 'permission error'), { title: 'Cloud Sync Error', type: 'error', duration: 6000 });
   });
 
+  globalState.unsubMaterialRequests = onValue(ref(db, 'materialRequests'), (snap) => {
+    globalState.materialRequestsCache = snapshotToArray(snap).sort((a, b) => (b.requestTimestamp || '').localeCompare(a.requestTimestamp || ''));
+    if (!FORM_VIEWS.has(globalState.currentView)) render();
+  }, (err) => {
+    console.error('Material Requests sync listener error:', err);
+  });
+
   if (globalState.currentUser?.roles?.includes('admin')) {
     globalState.unsubToolDeletionRequests = onValue(ref(db, 'toolDeletionRequests'), (snap) => {
       globalState.toolDeletionRequestsCache = snapshotToArray(snap);
@@ -1421,7 +1500,7 @@ export function listenToCollections() {
       console.error('Tool deletion requests sync listener error:', err);
       globalState.toolDeletionRequestsCache = [];
     });
-    
+
     if (globalState.unsubToolAdditionRequests) { globalState.unsubToolAdditionRequests(); globalState.unsubToolAdditionRequests = null; }
     globalState.unsubToolAdditionRequests = onValue(ref(db, 'toolAdditionRequests'), (snap) => {
       globalState.toolAdditionRequestsCache = snapshotToArray(snap);
@@ -1597,10 +1676,10 @@ function updateOverdueTopbarBadge() {
   const overdue = getOverdueIssues(7);
   const btn = $('#topbarOverdueBtn');
   const countEl = $('#topbarOverdueCount');
-  
+
   if (navigator.setAppBadge) {
-    if (overdue.length > 0) navigator.setAppBadge(overdue.length).catch(() => {});
-    else navigator.clearAppBadge().catch(() => {});
+    if (overdue.length > 0) navigator.setAppBadge(overdue.length).catch(() => { });
+    else navigator.clearAppBadge().catch(() => { });
   }
 
   if (!btn || !countEl) return;
@@ -1753,12 +1832,12 @@ function openOverdueFollowUpModal() {
             <div class="overdue-contact-action">
               ${item.supervisorContact ? `
                 ${(() => {
-                  const rawDigits = String(item.supervisorContact || '').replace(/[^0-9]/g, '');
-                  if (!rawDigits) return '';
-                  const waPhone = rawDigits.length === 10 ? '91' + rawDigits : rawDigits;
-                  const waMsg = `Hello ${item.supervisorName || 'Sir/Madam'},\n\nThis is a reminder from CMM SMS Store regarding the following overdue item:\n📦 Material: ${item.materialName}\n🔢 Pending Qty: ${item.qtyRemaining} / ${item.qtyIssued}\n📅 Issued Date: ${formatShortDate(item.issueDate)} (${item.daysAgo} days ago)\n📍 Area: ${item.area || 'N/A'}\n\nPlease arrange for its return to the store at the earliest.\nThank you!`;
-                  const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMsg)}`;
-                  return `
+            const rawDigits = String(item.supervisorContact || '').replace(/[^0-9]/g, '');
+            if (!rawDigits) return '';
+            const waPhone = rawDigits.length === 10 ? '91' + rawDigits : rawDigits;
+            const waMsg = `Hello ${item.supervisorName || 'Sir/Madam'},\n\nThis is a reminder from CMM SMS Store regarding the following overdue item:\n📦 Material: ${item.materialName}\n🔢 Pending Qty: ${item.qtyRemaining} / ${item.qtyIssued}\n📅 Issued Date: ${formatShortDate(item.issueDate)} (${item.daysAgo} days ago)\n📍 Area: ${item.area || 'N/A'}\n\nPlease arrange for its return to the store at the earliest.\nThank you!`;
+            const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMsg)}`;
+            return `
                     <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="overdue-wa-pill-btn" title="Send WhatsApp Reminder to ${escapeHtml(item.supervisorName)} (${escapeHtml(item.supervisorContact)})">
                       <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                         <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.41a8.21 8.21 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.01-1.24-.74-.66-1.24-1.48-1.39-1.73-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.78.6.26 1.07.41 1.44.53.6.19 1.15.16 1.59.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z"/>
@@ -1766,7 +1845,7 @@ function openOverdueFollowUpModal() {
                       <span>WhatsApp</span>
                     </a>
                   `;
-                })()}
+          })()}
                 <a href="tel:${escapeHtml(item.supervisorContact)}" class="overdue-call-pill-btn" title="Call ${escapeHtml(item.supervisorName)} (${escapeHtml(item.supervisorContact)})">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -1860,17 +1939,20 @@ function render() {
   if (!globalState.currentUser) return;
 
   const main = $('#appMain');
-  const adminOnlyViews = ['admin-dashboard', 'users-admin', 'settings-admin', 'edit-return'];
+
 
   let validViews = ['profile'];
   if (globalState.currentUser.roles.includes('admin')) {
-    validViews.push('admin-dashboard', 'users-admin', 'settings-admin', 'edit-return', 'register', 'tools-dashboard', 'add-tool', 'edit-tool', 'dashboard');
+    validViews.push('admin-dashboard', 'users-admin', 'settings-admin', 'edit-return', 'register', 'tools-dashboard', 'add-tool', 'edit-tool', 'dashboard', 'material-requests');
   }
   if (globalState.currentUser.roles.includes('user') || globalState.currentUser.roles.includes('storekeeper') || globalState.currentUser.roles.includes('viewer')) {
     validViews.push('dashboard', 'register');
     if (!globalState.currentUser.roles.includes('viewer') || globalState.currentUser.roles.includes('storekeeper')) {
       validViews.push('issue-new', 'return-record', 'edit-issue', 'edit-return');
     }
+  }
+  if (globalState.currentUser.roles.includes('request_approver')) {
+    validViews.push('material-requests');
   }
   if (globalState.currentUser.roles.includes('tools_admin')) {
     validViews.push('tools-dashboard', 'add-tool', 'edit-tool');
@@ -1898,6 +1980,40 @@ function render() {
     'tools-dashboard': renderToolsDashboard,
     'add-tool': renderAddToolForm,
     'edit-tool': renderEditToolForm,
+    'material-requests': () => {
+      const isMobile = window.innerWidth <= 768;
+      const html = `
+        <div class="page-head">
+          <div>
+            <span class="eyebrow">Material Requests</span>
+            <h1>Pending & Approved Requests</h1>
+          </div>
+        </div>
+        <div class="card p-0" style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Requester</th>
+                <th>Vendor/Contractor</th>
+                <th>Mobile</th>
+                <th>Materials Requested</th>
+                <th>Status</th>
+                <th>Approved By</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="materialRequestsTbody">
+              <tr><td colspan="8" class="text-center text-muted" style="padding: 32px 0;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+      // We need to defer the rendering of the table body because the DOM elements
+      // are created after this string is injected into appMain by render().
+      setTimeout(renderMaterialRequests, 0);
+      return html;
+    }
   };
 
   const fn = views[globalState.currentView] || (globalState.currentUser.roles.includes('admin') ? renderAdminDashboard : renderUserDashboard);
@@ -2079,7 +2195,7 @@ function renderProfile() {
 function renderAdminDashboard() {
   const s = statsSummary();
   const delReqCount = globalState.toolDeletionRequestsCache.length;
-  const delBanner = delReqCount > 0 ? 
+  const delBanner = delReqCount > 0 ?
     `<div class="overdue-banner" style="background:var(--bad-light); border:1px solid var(--bad); color:var(--bad-dark); padding:12px 16px; border-radius:12px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between;">
       <div style="display:flex; align-items:center; gap:12px;">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -3383,18 +3499,18 @@ function wireViewEvents(viewId) {
       setSyncingState(true, 'Testing sync health...');
       try {
         const results = [];
-        
+
         results.push(`Network: ${navigator.onLine ? 'Online 🟢' : 'Offline 🔴'}`);
         results.push(`Firebase RTDB: ${cloudConnected ? 'Connected 🟢' : 'Disconnected 🔴'}`);
         results.push(`Issues Cache: ${globalState.issuesCache?.length || 0} records 🟢`);
         results.push(`Tools Cache: ${globalState.toolsCache?.length || 0} records 🟢`);
-        
+
         if (db) {
           const startRead = performance.now();
           await get(ref(db, 'healthCheck/lastTest'));
           const readTime = Math.round(performance.now() - startRead);
           results.push(`Read Access: OK (${readTime}ms) 🟢`);
-          
+
           const startWrite = performance.now();
           await set(ref(db, 'healthCheck/lastTest'), { timestamp: Date.now(), user: globalState.currentUser?.username || 'unknown' });
           const writeTime = Math.round(performance.now() - startWrite);
@@ -3402,9 +3518,9 @@ function wireViewEvents(viewId) {
         } else {
           results.push('Read/Write Tests: Skipped (DB not initialized) 🔴');
         }
-        
+
         await appAlert(results.join('\n'), { title: 'Sync Health Report', type: 'info' });
-        
+
       } catch (err) {
         await appAlert('Health check failed:\n' + err.message, { title: 'Sync Health Error', type: 'danger' });
       } finally {
@@ -3434,7 +3550,7 @@ function wireViewEvents(viewId) {
                 <td>${escapeHtml(log.actorName || log.actorUsername)}</td>
                 <td><code style="background: none; padding: 0; color: var(--text-muted);">${escapeHtml(JSON.stringify(log.details || {}))}</code></td>
               </tr>`).join('') +
-            '</tbody></table>';
+              '</tbody></table>';
           }
         } else {
           container.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-light); font-size: 13px;">No audit logs found.</div>';
@@ -3636,7 +3752,7 @@ function wireViewEvents(viewId) {
             try {
               setSyncingState(true, 'Deleting tool...');
               await remove(ref(db, 'tools/' + id));
-              await remove(ref(db, 'toolDeletionRequests/' + id)).catch(() => {});
+              await remove(ref(db, 'toolDeletionRequests/' + id)).catch(() => { });
               await writeAudit('tool-deleted', id, { toolName: tool?.toolName, uniqueId: tool?.uniqueId });
               showToast('Tool deleted successfully.', { title: 'Tool Deleted' });
             } catch (e) {
@@ -3716,7 +3832,7 @@ async function handleProfilePasswordSubmit(e) {
   const btn = $('#profilePasswordSubmitBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Updating...';
   setSyncingState(true, 'Updating password...');
-  
+
   try {
     const hashedCurrentPwd = await hashPassword(currentPassword);
     const hashedNewPwd = await hashPassword(newPassword);
@@ -3740,7 +3856,7 @@ async function handleProfilePasswordSubmit(e) {
 
     await set(ref(db, 'users/' + globalState.currentUser.username + '/password'), hashedNewPwd);
     $('#profilePasswordAlert').className = 'alert alert-info';
-    
+
     await writeAudit('profile-password-changed', null, {});
 
     $('#profilePasswordForm').reset();
@@ -4100,14 +4216,14 @@ function updateStatusModalSum() {
   const maintenance = parseInt($('#statusModalQtyMaintenance')?.value || '0', 10) || 0;
   const damaged = parseInt($('#statusModalQtyDamaged')?.value || '0', 10) || 0;
   const lost = parseInt($('#statusModalQtyLost')?.value || '0', 10) || 0;
-  
+
   const totalSumEl = $('#statusModalTotalSum');
   const targetTotal = parseInt(totalSumEl?.textContent || '0', 10) || 0;
-  
+
   let available = targetTotal - (maintenance + damaged + lost);
   // Optional: clamp to 0 if they type more than total
   // But if we clamp, sum > targetTotal, triggering the warn/disabled save button!
-  
+
   const availableInput = $('#statusModalQtyAvailable');
   if (availableInput) {
     // Show negative so user knows they over-allocated, or clamp to 0. Clamping to 0 is safer for UI.
@@ -4116,10 +4232,10 @@ function updateStatusModalSum() {
   }
 
   const sum = available + maintenance + damaged + lost;
-  
+
   const sumEl = $('#statusModalAllocatedSum');
   if (sumEl) sumEl.textContent = sum;
-  
+
   const warnEl = $('#statusModalAllocatedWarn');
   const saveBtn = $('#statusModalSaveBtn');
   if (sum !== targetTotal) {
@@ -4150,7 +4266,7 @@ function openToolStatusModal(toolId) {
   if ($('#statusModalQtyMaintenance')) $('#statusModalQtyMaintenance').value = sq['In Maintenance'] || 0;
   if ($('#statusModalQtyDamaged')) $('#statusModalQtyDamaged').value = sq['Damaged'] || 0;
   if ($('#statusModalQtyLost')) $('#statusModalQtyLost').value = sq['Lost'] || 0;
-  
+
   if ($('#statusModalTotalSum')) $('#statusModalTotalSum').textContent = tool.quantity || 0;
   updateStatusModalSum();
 
@@ -4258,12 +4374,12 @@ async function handleToolStatusSubmit(e) {
   const lost = parseInt($('#statusModalQtyLost')?.value || '0', 10) || 0;
   const sum = available + maintenance + damaged + lost;
   const total = parseInt(tool.quantity || 0, 10);
-  
+
   if (sum !== total) {
     await appAlert(`The allocated quantities (${sum}) must equal the tool's total quantity (${total}).`, { type: 'warn' });
     return;
   }
-  
+
   const newStatusQuantities = {
     'Available': available,
     'In Maintenance': maintenance,
@@ -4278,7 +4394,7 @@ async function handleToolStatusSubmit(e) {
     else if (damaged >= lost && damaged > 0) newPrimaryStatus = 'Damaged';
     else if (lost > 0) newPrimaryStatus = 'Lost';
   }
-  
+
   // Format history text
   const parts = [];
   if (available > 0) parts.push(`${available} Available`);
@@ -4456,47 +4572,47 @@ function closeToolQtyRequestModal() {
 function handleRequestTotalQuantityChange(toolId) {
   const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) return;
-  
+
   const currentQty = tool.quantity || 0;
-  
+
   const toolIdInput = $('#qtyReqToolId');
   const toolInfo = $('#qtyReqToolInfo');
   const newQtyInput = $('#qtyReqNewQuantity');
-  
+
   if (toolIdInput) toolIdInput.value = toolId;
   if (toolInfo) toolInfo.innerHTML = `<strong>Tool:</strong> ${escapeHtml(tool.toolName)}<br><strong>Current Total:</strong> ${currentQty}`;
   if (newQtyInput) newQtyInput.value = currentQty;
-  
+
   $('#toolQtyRequestDialog')?.classList.remove('hidden');
   document.body.classList.add('modal-open');
 }
 
 async function handleQtyRequestSubmit(e) {
   e.preventDefault();
-  
+
   const toolId = $('#qtyReqToolId')?.value;
   const tool = globalState.toolsCache.find(t => t.id === toolId);
   if (!tool) {
     await appAlert('Tool record not found.', { type: 'danger' });
     return;
   }
-  
+
   const currentQty = tool.quantity || 0;
   const newQty = parseInt($('#qtyReqNewQuantity')?.value, 10);
-  
+
   if (isNaN(newQty) || newQty < 0) {
     await appAlert('Invalid quantity entered.', { type: 'warn' });
     return;
   }
-  
+
   if (newQty === currentQty) {
     await appAlert('The requested quantity is the same as the current quantity.', { type: 'info' });
     return;
   }
-  
+
   const btn = $('#qtyReqSubmitBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
-  
+
   try {
     setSyncingState(true, 'Submitting quantity update request...');
     await push(ref(db, 'toolQuantityRequests'), {
@@ -4536,7 +4652,7 @@ async function handleApproveToolAddition(reqId) {
       setSyncingState(true, 'Adding tool...');
       let maxSequence = 0;
       const upperName = String(req.toolName || '').replace(/\//g, '-').trim().toUpperCase();
-      
+
       globalState.toolsCache.forEach(t => {
         const tName = String(t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
         const prefix = `CMM/SMS/${upperName}/`;
@@ -4548,10 +4664,10 @@ async function handleApproveToolAddition(reqId) {
           }
         }
       });
-      
+
       const nextSequence = String(maxSequence + 1).padStart(4, '0');
       const uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
-      
+
       const newToolData = { ...req };
       delete newToolData.id;
       delete newToolData.requestedByName;
@@ -4565,7 +4681,7 @@ async function handleApproveToolAddition(reqId) {
         dateStr: new Date().toLocaleString(),
         notes: req.notes || 'Approved tool addition'
       }];
-      
+
       const newRef = await push(ref(db, 'tools'), newToolData);
       await remove(ref(db, 'toolAdditionRequests/' + (req.id || reqId)));
       await writeAudit('tool-addition-approved', newRef.key, {
@@ -4742,7 +4858,10 @@ $('#clearDataVerifyBtn')?.addEventListener('click', async () => {
   const pwd = $('#clearDataPassword')?.value || '';
   const errEl = $('#clearDataPasswordError');
 
-  if (pwd !== ADMIN_PASSWORD) {
+  const hashedInput = await hashPassword(pwd);
+  const adminSnap = await get(ref(db, 'users/admin/password')).catch(() => null);
+  const storedHash = adminSnap?.val() || '';
+  if (!storedHash || hashedInput !== storedHash) {
     if (errEl) {
       errEl.textContent = 'Incorrect cleanup password. Verification failed.';
       errEl.classList.remove('hidden');
@@ -4865,12 +4984,12 @@ async function handleCleanupOldRecords() {
       if (issue.returnPhotoPaths) allPaths.push(...issue.returnPhotoPaths);
       else if (issue.returnPhotoPath) allPaths.push(issue.returnPhotoPath);
     }
-    
+
     // Batch getMetadata requests
     const metadataPromises = allPaths.filter(Boolean).map(path => {
       return getMetadata(storageRef(storage, path)).catch(() => ({ size: 0 }));
     });
-    
+
     const metadatas = await Promise.all(metadataPromises);
     for (const meta of metadatas) {
       totalBytes += Number(meta.size || 0);
@@ -4890,11 +5009,11 @@ async function executeCleanupOldRecords() {
   const toDelete = pendingCleanupRecords;
   $('#cleanupPreviewDialog').classList.add('hidden');
   pendingCleanupRecords = [];
-  
+
   if (toDelete.length === 0) return;
 
   setSyncingState(true, `Deleting ${toDelete.length} records...`);
-  
+
   let successCount = 0;
   let failCount = 0;
 
@@ -5045,6 +5164,7 @@ async function loadUsersTable() {
                       <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('viewer') ? 'checked' : ''}> Viewer</label>
                       <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="tools_admin" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('tools_admin') ? 'checked' : ''}> Tools Admin</label>
                       <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="tools_viewer" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('tools_viewer') ? 'checked' : ''}> Tools Viewer</label>
+                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: normal; cursor: pointer; margin: 0; white-space: nowrap;"><input type="checkbox" value="request_approver" style="width: 16px; height: 16px; margin: 0; padding: 0; min-width: 16px;" ${uRoles.includes('request_approver') ? 'checked' : ''}> Mat. Request Approver</label>
                     </div>
                   </div>
                 </td>
@@ -5061,7 +5181,7 @@ async function loadUsersTable() {
         const uid = group.dataset.userId;
         let checkedBoxes = Array.from(group.querySelectorAll('input:checked'));
         let newRoles = checkedBoxes.map(cb => cb.value);
-        
+
         if (e.target.checked) {
           if (e.target.value === 'viewer') {
             group.querySelectorAll('input:checked').forEach(cb => {
@@ -5077,7 +5197,7 @@ async function loadUsersTable() {
             newRoles = checkedBoxes.map(cb => cb.value);
           }
         }
-        
+
         if (checkedBoxes.length > 2) {
           showToast('A user can have a maximum of 2 roles.', { title: 'Role Limit', type: 'warning' });
           e.target.checked = false;
@@ -5133,7 +5253,7 @@ async function handleNewUserSubmit(e) {
   const username = $('#nu_username').value.trim();
   const fullName = $('#nu_fullname').value.trim();
   const password = $('#nu_password').value;
-  
+
   const checkedBoxes = Array.from(document.querySelectorAll('#nu_role_group input:checked'));
   const roles = checkedBoxes.map(cb => cb.value);
   if (roles.includes('viewer') && roles.length > 1) {
@@ -5153,7 +5273,7 @@ async function handleNewUserSubmit(e) {
   }
 
   if (!username || !fullName || !password) { userFormError = 'Please fill in username, full name, and password.'; showInlineError('userFormAlert', userFormError); return; }
-  if (username.toLowerCase() === ADMIN_USERNAME) { userFormError = `"${ADMIN_USERNAME}" is reserved for the Admin login and can't be used here.`; showInlineError('userFormAlert', userFormError); return; }
+  if (username.toLowerCase() === 'admin') { userFormError = `"admin" is reserved for the Admin login and can't be used here.`; showInlineError('userFormAlert', userFormError); return; }
   if (/[.#$\[\]\/\s'"]/.test(username)) { userFormError = 'Username can\'t contain spaces, quotes, or the characters . # $ [ ] /'; showInlineError('userFormAlert', userFormError); return; }
 
   const btn = $('#newUserSubmitBtn');
@@ -5304,7 +5424,7 @@ function renderToolsDashboard() {
       </div>
     `;
   }
-  
+
   const categories = Array.from(new Set(globalState.toolsCache.map(t => String(t.category || '').trim()).filter(Boolean))).sort();
   const activeSearch = (window.toolsSearchQuery || '').toLowerCase().trim();
   const activeStatus = window.toolsStatusFilter || 'all';
@@ -5335,7 +5455,7 @@ function renderToolsDashboard() {
     if (sq['In Maintenance'] > 0) badges.push(`<span class="badge warn">${sq['In Maintenance']} Maint</span>`);
     if (sq['Damaged'] > 0) badges.push(`<span class="badge bad">${sq['Damaged']} Dmg</span>`);
     if (sq['Lost'] > 0) badges.push(`<span class="badge bad">${sq['Lost']} Lost</span>`);
-    
+
     if (badges.length === 0) return `<span class="badge good">0 Avail</span>`;
     return `<div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">${badges.join('')}</div>`;
   };
@@ -5357,11 +5477,11 @@ function renderToolsDashboard() {
   // Admin View: Pending Tool Deletion Requests Banner/Table
   const isToolsAdmin = globalState.currentUser.roles.includes('tools_admin') && !isAdmin;
   const deletionRequestsToShow = isAdmin ? globalState.toolDeletionRequestsCache : globalState.toolDeletionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
-  
+
   if ((isAdmin || isToolsAdmin) && deletionRequestsToShow.length > 0) {
     let pendingDelTitle = isAdmin ? "Pending Tool Deletion Requests" : "Your Pending Deletion Requests";
     let pendingDelSub = isAdmin ? "Users cannot delete tools directly. Review requests below:" : "Waiting for Admin approval:";
-    
+
     html += `
       <div class="pending-deletion-requests-card" style="margin-bottom:24px; background:rgba(239, 68, 68, 0.05); border:1px solid rgba(239, 68, 68, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
@@ -5409,11 +5529,11 @@ function renderToolsDashboard() {
 
   // Admin View: Pending Tool Addition Requests Banner/Table
   const additionRequestsToShow = isAdmin ? globalState.toolAdditionRequestsCache : globalState.toolAdditionRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username || r.createdBy === globalState.currentUser.username);
-  
+
   if ((isAdmin || isToolsAdmin) && additionRequestsToShow.length > 0) {
     let pendingTitle = isAdmin ? "Pending Tool Additions" : "Your Pending Tool Additions";
     let pendingSub = isAdmin ? "Review and approve new tools added by Tools Admins:" : "Waiting for Admin approval:";
-    
+
     html += `
       <div class="pending-addition-requests-card" style="margin-bottom:24px; background:rgba(16, 185, 129, 0.05); border:1px solid rgba(16, 185, 129, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
@@ -5461,11 +5581,11 @@ function renderToolsDashboard() {
 
   // Admin View: Pending Tool Quantity Updates Banner/Table
   const qtyRequestsToShow = isAdmin ? globalState.toolQuantityRequestsCache : globalState.toolQuantityRequestsCache.filter(r => r.requestedBy === globalState.currentUser.username);
-  
+
   if ((isAdmin || isToolsAdmin) && qtyRequestsToShow.length > 0) {
     let pendingQtyTitle = isAdmin ? "Pending Total Quantity Updates" : "Your Pending Quantity Updates";
     let pendingQtySub = isAdmin ? "Review changes to tool total allocations:" : "Waiting for Admin approval:";
-    
+
     html += `
       <div class="pending-quantity-requests-card" style="margin-bottom:24px; background:rgba(245, 158, 11, 0.05); border:1px solid rgba(245, 158, 11, 0.25); border-radius:var(--radius-lg); padding:16px 20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
@@ -5695,10 +5815,10 @@ function renderToolForm(title, tool) {
     navigateTo('tools-dashboard');
     return;
   }
-  
+
   const main = $('#appMain');
   const isEdit = !!tool.id;
-  
+
   main.innerHTML = `
     <div class="panel form-panel">
       <div class="panel-head">
@@ -5750,7 +5870,7 @@ function renderToolForm(title, tool) {
       </div>
     </div>
   `;
-  
+
   // Bug fix: trackFormDirty was called but never defined anywhere in the codebase.
   // Replace with the existing setFormDirty pattern used throughout app.js.
   setFormDirty(false);
@@ -5758,12 +5878,12 @@ function renderToolForm(title, tool) {
     el.addEventListener('input', () => setFormDirty(true), { once: false });
     el.addEventListener('change', () => setFormDirty(true), { once: false });
   });
-  
+
   $('#toolForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = $('#saveToolBtn');
     btn.disabled = true; btn.textContent = 'Saving...';
-    
+
     const toolName = $('#t_name').value.trim();
     const toolQty = Math.max(0, parseInt($('#t_qty').value, 10) || 0);
     const toolData = {
@@ -5776,7 +5896,7 @@ function renderToolForm(title, tool) {
       updatedAt: serverTimestamp(),
       updatedBy: globalState.currentUser.username
     };
-    
+
     try {
       setSyncingState(true, 'Saving tool...');
       const now = Date.now();
@@ -5809,7 +5929,7 @@ function renderToolForm(title, tool) {
       } else {
         const cleanName = toolName.replace(/\//g, '-').trim();
         const upperName = cleanName.toUpperCase();
-        
+
         toolData.createdAt = serverTimestamp();
         toolData.createdBy = globalState.currentUser.username;
         toolData.requestedByName = globalState.currentUser.fullName || globalState.currentUser.username;
@@ -5820,7 +5940,7 @@ function renderToolForm(title, tool) {
           showToast('Tool addition request submitted for admin approval.');
         } else {
           let maxSequence = 0;
-          
+
           globalState.toolsCache.forEach(t => {
             const tName = String(t.toolName || '').replace(/\//g, '-').trim().toUpperCase();
             const prefix = `CMM/SMS/${upperName}/`;
@@ -5832,7 +5952,7 @@ function renderToolForm(title, tool) {
               }
             }
           });
-          
+
           const nextSequence = String(maxSequence + 1).padStart(4, '0');
           toolData.uniqueId = `CMM/SMS/${upperName}/${nextSequence}`;
           toolData.statusHistory = [{
@@ -5844,7 +5964,7 @@ function renderToolForm(title, tool) {
             dateStr: dateStr,
             notes: toolData.notes || 'Initial registration'
           }];
-          
+
           const newRef = await push(ref(db, 'tools'), toolData);
           await writeAudit('tool-created', newRef.key, { toolName, quantity: toolQty, uniqueId: toolData.uniqueId });
           showToast('Tool saved successfully.');
@@ -5884,8 +6004,8 @@ offlineBanner.id = 'offlineBanner';
 offlineBanner.className = 'hidden';
 offlineBanner.innerHTML = '&#9888; You are offline. Changes will sync when reconnected.';
 Object.assign(offlineBanner.style, {
-  position: 'fixed', top: '0', left: '0', width: '100%', backgroundColor: '#ef4444', 
-  color: 'white', textAlign: 'center', padding: '8px', fontSize: '13px', 
+  position: 'fixed', top: '0', left: '0', width: '100%', backgroundColor: '#ef4444',
+  color: 'white', textAlign: 'center', padding: '8px', fontSize: '13px',
   fontWeight: '600', zIndex: '1000000', transition: 'transform 0.3s'
 });
 document.body.appendChild(offlineBanner);
@@ -5893,3 +6013,68 @@ document.body.appendChild(offlineBanner);
 window.addEventListener('offline', () => offlineBanner.classList.remove('hidden'));
 window.addEventListener('online', () => offlineBanner.classList.add('hidden'));
 if (!navigator.onLine) offlineBanner.classList.remove('hidden');
+
+function renderMaterialRequests() {
+  const tbody = document.getElementById('materialRequestsTbody');
+  if (!tbody) return;
+
+  const isAdmin = globalState.currentUser.roles.includes('admin');
+  const isApprover = globalState.currentUser.roles.includes('request_approver');
+  const canApprove = isAdmin || isApprover;
+
+  // Render recent 100 requests
+  const requests = globalState.materialRequestsCache.slice(0, 100);
+
+  if (requests.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 32px 0;">No material requests found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = requests.map(req => {
+    const isPending = req.status === 'Pending';
+    const statusHtml = isPending 
+      ? '<span class="status-badge" style="background:var(--amber);color:#fff;">Pending</span>'
+      : '<span class="status-badge" style="background:var(--success);color:#fff;">Approved</span>';
+
+    const actionHtml = (isPending && canApprove)
+      ? `<button class="btn btn-primary btn-sm" onclick="approveMaterialRequest('${escapeHtml(req.id)}')">Approve</button>`
+      : (req.approvedAt ? escapeHtml(new Date(req.approvedAt).toLocaleString()) : '-');
+
+    return `
+      <tr>
+        <td>${escapeHtml(new Date(req.requestTimestamp).toLocaleString())}</td>
+        <td><strong>${escapeHtml(req.requesterName)}</strong></td>
+        <td>${escapeHtml(req.vendor)}</td>
+        <td>${escapeHtml(req.mobileNumber)}</td>
+        <td style="white-space:pre-wrap;">${escapeHtml(req.materials)}</td>
+        <td>${statusHtml}</td>
+        <td>${escapeHtml(req.approvedBy || '-')}</td>
+        <td>${actionHtml}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.approveMaterialRequest = async function(reqId) {
+  if (!confirm('Are you sure you want to approve this material request?')) return;
+  
+  const btn = event.currentTarget;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Approving...';
+  
+  try {
+    const reqRef = ref(db, 'materialRequests/' + reqId);
+    await update(reqRef, {
+      status: 'Approved',
+      approvedBy: globalState.currentUser.username,
+      approvedAt: new Date().toISOString()
+    });
+    alert('Material Request approved successfully.');
+  } catch(err) {
+    console.error(err);
+    alert('Failed to approve material request.');
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
