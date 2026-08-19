@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
@@ -551,15 +551,18 @@
         <form id="materialRequestForm">
           <div class="field">
             <label for="matReqName">Requester Name <span style="color:red;">*</span></label>
-            <input type="text" id="matReqName" required autocomplete="name" />
+            <input type="text" id="matReqName" required autocomplete="off" list="matReqNameList" />
+            <datalist id="matReqNameList"></datalist>
           </div>
           <div class="field">
             <label for="matReqVendor">Vendor/Contractor <span style="color:red;">*</span></label>
-            <input type="text" id="matReqVendor" required autocomplete="organization" />
+            <input type="text" id="matReqVendor" required autocomplete="off" list="matReqVendorList" />
+            <datalist id="matReqVendorList"></datalist>
           </div>
           <div class="field">
             <label for="matReqMobile">Mobile Number <span style="color:red;">*</span></label>
-            <input type="tel" id="matReqMobile" required autocomplete="tel" pattern="\d{10}" minlength="10" maxlength="10" title="Mobile number must be exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '')" />
+            <input type="tel" id="matReqMobile" required autocomplete="off" list="matReqMobileList" pattern="\d{10}" minlength="10" maxlength="10" title="Mobile number must be exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '')" />
+            <datalist id="matReqMobileList"></datalist>
           </div>
           <div class="field">
             <label for="matReqMaterials">Required Materials <span style="color:red;">*</span></label>
@@ -701,10 +704,10 @@
     </button>
   </div>
 
-  <script src="/boot.js?v=5"></script>
+  <script src="./boot.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script type="module" src="/app.js?v=5"></script>
-  <script type="module" src="/anim.js?v=5"></script>
+  <script type="module" src="./app.js"></script>
+  <script type="module" src="./anim.js"></script>
 
 
   <script>
@@ -943,7 +946,8 @@
       };
 
       // 3. Register Service Worker reliably across HTTPS, localhost & local IPs
-      if ('serviceWorker' in navigator) {
+      // Disable service worker on localhost to prevent caching during development
+      if ('serviceWorker' in navigator && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js?v=28').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);

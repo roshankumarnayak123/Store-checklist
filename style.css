@@ -1267,6 +1267,9 @@ html[data-theme="dark"] table.reg td.register-actions .btn-danger:hover {
   animation: dialogFade .15s ease-out;
   transform: translateZ(0);
 }
+#appDialog {
+  z-index: 999999 !important;
+}
 .app-dialog {
   width: 100%; max-width: min(440px, 100%);
   display: grid;

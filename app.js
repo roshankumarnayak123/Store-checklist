@@ -42,7 +42,7 @@ window.dispatchEvent(new CustomEvent('cmm-module-ready'));
 import { globalState } from './src/state.js';
 import { db, storage, cloudConnected, setCloudConnected, attemptFirebaseInit } from './src/services/firebase.js';
 import { ref, get, set, push, update, remove, onValue, serverTimestamp, increment } from "firebase/database";
-import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata } from "firebase/storage";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getMetadata, listAll } from "firebase/storage";
 
 
 
@@ -827,7 +827,7 @@ function navLinksForRoles(roles) {
   if (roles.includes('user') || roles.includes('storekeeper') || roles.includes('viewer')) {
     links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
   }
-  if (roles.includes('admin') || roles.includes('request_approver')) {
+  if (roles.includes('admin') || roles.includes('request_approver') || roles.includes('storekeeper')) {
     links.push(['material-requests', 'Material Requests']);
   }
 
@@ -1118,12 +1118,18 @@ $('#showMaterialRequestForm').addEventListener('click', () => {
   }
 
   try {
-    const saved = localStorage.getItem('lastMaterialRequest');
+    const saved = localStorage.getItem('materialRequestHistory');
     if (saved) {
-      const data = JSON.parse(saved);
-      if (data.name && !$('#matReqName').value) $('#matReqName').value = data.name;
-      if (data.vendor && !$('#matReqVendor').value) $('#matReqVendor').value = data.vendor;
-      if (data.mobile && !$('#matReqMobile').value) $('#matReqMobile').value = data.mobile;
+      const history = JSON.parse(saved);
+      if (history.names && history.names.length) {
+        $('#matReqNameList').innerHTML = history.names.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+      }
+      if (history.vendors && history.vendors.length) {
+        $('#matReqVendorList').innerHTML = history.vendors.map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+      }
+      if (history.mobiles && history.mobiles.length) {
+        $('#matReqMobileList').innerHTML = history.mobiles.map(m => `<option value="${escapeHtml(m)}"></option>`).join('');
+      }
     }
   } catch (e) { console.error(e); }
 });
@@ -1199,14 +1205,28 @@ $('#materialRequestForm').addEventListener('submit', async (e) => {
     };
     await push(ref(db, 'materialRequests'), payload);
     try {
-      localStorage.setItem('lastMaterialRequest', JSON.stringify({
-        name: requesterName,
-        vendor: vendor,
-        mobile: mobileNumber
-      }));
+      let history = { names: [], vendors: [], mobiles: [] };
+      const saved = localStorage.getItem('materialRequestHistory');
+      if (saved) {
+        try { history = JSON.parse(saved); } catch (e) { }
+      }
+      if (!history.names) history.names = [];
+      if (!history.vendors) history.vendors = [];
+      if (!history.mobiles) history.mobiles = [];
+      
+      if (!history.names.includes(requesterName)) history.names.unshift(requesterName);
+      if (!history.vendors.includes(vendor)) history.vendors.unshift(vendor);
+      if (!history.mobiles.includes(mobileNumber)) history.mobiles.unshift(mobileNumber);
+      
+      // keep history clean (last 15 unique entries)
+      history.names = history.names.slice(0, 15);
+      history.vendors = history.vendors.slice(0, 15);
+      history.mobiles = history.mobiles.slice(0, 15);
+      
+      localStorage.setItem('materialRequestHistory', JSON.stringify(history));
     } catch (e) { /* ignore */ }
     $('#materialRequestForm').reset();
-    alert('Material Request submitted successfully!');
+    appAlert('Material Request submitted successfully!', { title: 'Successfully submitted', type: 'success' });
     $('#showLoginFormFromMat').click(); // go back to login screen
   } catch (err) {
     console.error(err);
@@ -1759,8 +1779,9 @@ function updateMaterialRequestsTopbarBadge() {
 
   const isAdmin = globalState.currentUser.roles.includes('admin');
   const isApprover = globalState.currentUser.roles.includes('request_approver');
+  const isStorekeeper = globalState.currentUser.roles.includes('storekeeper');
 
-  if (!isAdmin && !isApprover) {
+  if (!isAdmin && !isApprover && !isStorekeeper) {
     btn.classList.add('hidden');
     return;
   }
@@ -1986,6 +2007,7 @@ function closeOverdueFollowUpModal() {
 
 function openMaterialRequestsModal() {
   const isAdmin = globalState.currentUser.roles.includes('admin');
+  const isStorekeeper = globalState.currentUser.roles.includes('storekeeper');
   const pendingRequests = globalState.materialRequestsCache.filter(r => r.status === 'Pending');
 
   const listEl = $('#matReqList');
@@ -1997,7 +2019,7 @@ function openMaterialRequestsModal() {
   }
   if (subEl) {
     subEl.textContent = `${pendingRequests.length} ${pendingRequests.length === 1 ? 'request' : 'requests'} waiting for approval.`;
-    if (isAdmin && !globalState.currentUser.roles.includes('request_approver')) {
+    if ((isAdmin || isStorekeeper) && !globalState.currentUser.roles.includes('request_approver')) {
       get(ref(db, 'users')).then(snap => {
         if (snap.exists() && $('#materialRequestsDialog') && !$('#materialRequestsDialog').classList.contains('hidden')) {
           const users = snapshotToArray(snap);
@@ -2070,13 +2092,13 @@ function openMaterialRequestsModal() {
             </div>
             ${globalState.currentUser.roles.includes('request_approver') ? `
             <div style="display:flex; gap:8px;">
-              <button type="button" class="overdue-remind-btn" style="background:var(--success); color:#fff; border:none; padding: 8px 12px; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; border-radius:6px; cursor:pointer;" onclick="closeMaterialRequestsModal(); window.approveMaterialRequest('${item.id}');">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
-                <span style="font-weight:600; font-size:14px; margin:0;">Approve</span>
+              <button type="button" class="overdue-remind-btn" style="background:var(--success); color:#fff; border:none; padding: 8px 12px; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; border-radius:6px; cursor:pointer;" onclick="window.approveMaterialRequest('${item.id}', this);">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M20 6L9 17l-5-5"></path></svg>
+                <span style="font-weight:600; font-size:14px; margin:0; pointer-events: none;">Approve</span>
               </button>
-              <button type="button" class="overdue-remind-btn" style="background:var(--danger); color:#fff; border:none; padding: 8px 12px; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; border-radius:6px; cursor:pointer;" onclick="closeMaterialRequestsModal(); window.rejectMaterialRequest('${item.id}');">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                <span style="font-weight:600; font-size:14px; margin:0;">Reject</span>
+              <button type="button" class="overdue-remind-btn" style="background:var(--danger); color:#fff; border:none; padding: 8px 12px; display:flex; align-items:center; justify-content:center; gap:8px; flex:1; border-radius:6px; cursor:pointer;" onclick="window.rejectMaterialRequest('${item.id}', this);">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <span style="font-weight:600; font-size:14px; margin:0; pointer-events: none;">Reject</span>
               </button>
             </div>
             ` : ''}
@@ -2109,6 +2131,9 @@ function render() {
     validViews.push('dashboard', 'register');
     if (!globalState.currentUser.roles.includes('viewer') || globalState.currentUser.roles.includes('storekeeper')) {
       validViews.push('issue-new', 'return-record', 'edit-issue', 'edit-return');
+    }
+    if (globalState.currentUser.roles.includes('storekeeper')) {
+      validViews.push('material-requests');
     }
   }
   if (globalState.currentUser.roles.includes('request_approver')) {
@@ -2503,6 +2528,7 @@ function countRegisterMatches(filters) {
 }
 function renderRegister() {
   const isAdmin = globalState.currentUser.roles.includes('admin');
+  const isMobile = window.innerWidth <= 768;
   // Bug I fix: compute enrichedIssues() once and reuse — previously called 6
   // times per render (O(6n)), now called once (O(n)).
   const allEnriched = enrichedIssues();
@@ -2608,6 +2634,14 @@ function renderRegister() {
         <button type="button" class="btn btn-ghost btn-sm more-filters-toggle" id="moreFiltersToggle">More Filters${activeFilterChips().filter(([k]) => ['vendor', 'area', 'supervisor', 'issuedBy', 'year', 'month', 'status'].includes(k)).length ? ` · ${activeFilterChips().filter(([k]) => ['vendor', 'area', 'supervisor', 'issuedBy', 'year', 'month', 'status'].includes(k)).length}` : ''}</button>
         <button type="button" class="btn btn-ghost btn-sm clear-filter-btn" id="clearRegisterFilters" ${activeFilterCount ? '' : 'disabled'}>Clear Filters</button>
         <button type="button" class="btn btn-ghost btn-sm" id="resetRegisterView">Reset View</button>
+        ${!isMobile ? `
+        <div class="register-view-toggle-wrap">
+          <button type="button" class="register-view-toggle" id="registerViewToggle" aria-pressed="${registerViewExpanded}" title="Switch Register view" style="min-height: 32px; padding: 4px; box-shadow: none; border: 1px solid var(--surface-border); margin: 0; min-width: 180px;">
+            <span class="register-view-option ${!registerViewExpanded ? 'is-active' : ''}"><span class="register-view-option-icon">☰</span>Compact</span>
+            <span class="register-view-option ${registerViewExpanded ? 'is-active' : ''}"><span class="register-view-option-icon">▦</span>Expanded</span>
+          </button>
+        </div>
+        ` : ''}
       </div>
       <div class="register-advanced-filters ${registerMoreFiltersOpen ? '' : 'is-collapsed'}">
         <div class="register-filter-field"><label for="regStatus">Status</label><select id="regStatus" aria-label="Filter by status">
@@ -2647,12 +2681,6 @@ function renderRegister() {
     </div>
     ${activeFilterCount ? `<div class="filter-chips">${activeFilterChips().map(([key, label]) => `<span class="filter-chip">${escapeHtml(label)}<button type="button" data-clear-filter="${key}" aria-label="Remove ${escapeHtml(label)}">×</button></span>`).join('')}</div>` : ''}
 
-    <div class="register-view-toolbar" id="registerViewToolbar">
-      <button type="button" class="register-view-toggle" id="registerViewToggle" aria-pressed="${registerViewExpanded}" title="Switch Register view">
-        <span class="register-view-option ${!registerViewExpanded ? 'is-active' : ''}"><span class="register-view-option-icon">☰</span>Compact</span>
-        <span class="register-view-option ${registerViewExpanded ? 'is-active' : ''}"><span class="register-view-option-icon">▦</span>Expanded</span>
-      </button>
-    </div>
     <div class="panel">
       <div class="table-wrap">
         ${rows.length === 0 ? (
@@ -3344,6 +3372,7 @@ function renderSettingsAdmin() {
         </p>
         <div class="actions-row">
           <button class="btn btn-danger" id="cleanupOldRecordsBtn">Delete Returned Records Older Than 3 Months</button>
+          <button class="btn btn-danger" id="cleanupOldRequestsBtn">Delete Material Requests Older Than 3 Months</button>
         </div>
       </div>
     </div>
@@ -3372,29 +3401,56 @@ function renderStorageUsage() {
   const snapAccessReqPromise = get(ref(db, 'accessRequests')).catch(() => null);
   const snapToolDelReqPromise = get(ref(db, 'toolDeletionRequests')).catch(() => null);
   const snapAuditPromise = get(ref(db, 'auditLog')).catch(() => null);
+  const snapHealthCheckPromise = get(ref(db, 'healthCheck')).catch(() => null);
 
-  Promise.all([snapUsersPromise, snapAccessReqPromise, snapToolDelReqPromise, snapAuditPromise]).then(([snapUsers, snapAccess, snapToolDel, snapAudit]) => {
+  Promise.all([snapUsersPromise, snapAccessReqPromise, snapToolDelReqPromise, snapAuditPromise, snapHealthCheckPromise]).then(([snapUsers, snapAccess, snapToolDel, snapAudit, snapHealthCheck]) => {
     if (!document.contains(holder)) return;
 
     const issuesKB = new Blob([JSON.stringify(globalState.issuesCache)]).size / 1024;
     const toolsKB = new Blob([JSON.stringify(globalState.toolsCache)]).size / 1024;
     const usersKB = snapUsers?.val() ? new Blob([JSON.stringify(snapUsers.val())]).size / 1024 : 0;
+    
+    // Compute total requests payload (null-guard admin-only caches)
     const accessReqKB = snapAccess?.val() ? new Blob([JSON.stringify(snapAccess.val())]).size / 1024 : 0;
     const toolDelReqKB = snapToolDel?.val() ? new Blob([JSON.stringify(snapToolDel.val())]).size / 1024 : 0;
-    const reqKB = accessReqKB + toolDelReqKB;
+    const toolAddReqKB = new Blob([JSON.stringify(globalState.toolAdditionRequestsCache || [])]).size / 1024;
+    const toolQtyReqKB = new Blob([JSON.stringify(globalState.toolQuantityRequestsCache || [])]).size / 1024;
+    const matReqKB = new Blob([JSON.stringify(globalState.materialRequestsCache || [])]).size / 1024;
+    const reqKB = accessReqKB + toolDelReqKB + toolAddReqKB + toolQtyReqKB + matReqKB;
+    const healthCheckKB = snapHealthCheck?.val() ? new Blob([JSON.stringify(snapHealthCheck.val())]).size / 1024 : 0;
+    
     const auditKB = snapAudit?.val() ? new Blob([JSON.stringify(snapAudit.val())]).size / 1024 : 0;
 
     const userCount = snapUsers?.val() ? Object.keys(snapUsers.val()).length : 0;
     const accessCount = snapAccess?.val() ? Object.keys(snapAccess.val()).length : 0;
     const toolDelCount = snapToolDel?.val() ? Object.keys(snapToolDel.val()).length : 0;
+    
+    const pendingMatReqs = globalState.materialRequestsCache.filter(r => r.status === 'Pending').length;
+    const pendingRequestsCount = accessCount + toolDelCount + globalState.toolAdditionRequestsCache.length + globalState.toolQuantityRequestsCache.length + pendingMatReqs;
+    
     const auditCount = snapAudit?.val() ? Object.keys(snapAudit.val()).length : 0;
+
+    // Photos Storage Estimate
+    // NOTE: returnPhotoUrls at root is the *cumulative* array of ALL return photos.
+    // returnHistory also stores them per-entry, so we only count root-level arrays to avoid double-counting.
+    let totalPhotos = 0;
+    for (const issue of globalState.issuesCache) {
+      totalPhotos += normalizePhotoUrls(issue.photoUrls || issue.photoUrl).length;
+      totalPhotos += normalizePhotoUrls(issue.returnPhotoUrls || issue.returnPhotoUrl).length;
+    }
+    // Assume average compressed photo size of 150 KB (based on our canvas compression setting)
+    const photosKB = totalPhotos * 150; 
+    const CLOUD_LIMIT_KB = 5 * 1024 * 1024; // 5 GB
+    const freeCloudKB = Math.max(0, CLOUD_LIMIT_KB - photosKB);
+    const cloudPct = Math.min(100, (photosKB / CLOUD_LIMIT_KB) * 100);
 
     const breakdown = [
       { label: 'Material Issue Register', count: `${globalState.issuesCache.length} records`, kb: issuesKB, color: '#3b82f6' },
       { label: 'Tool Master Catalog', count: `${globalState.toolsCache.length} tools`, kb: toolsKB, color: '#f59e0b' },
       { label: 'Staff User Accounts', count: `${userCount} accounts`, kb: usersKB, color: '#8b5cf6' },
-      { label: 'Pending Access & Tool Requests', count: `${accessCount + toolDelCount} pending`, kb: reqKB, color: '#ec4899' },
-      { label: 'Audit Trail Logs', count: `${auditCount} events`, kb: auditKB, color: '#10b981' }
+      { label: 'Pending Store & Tool Requests', count: `${pendingRequestsCount} pending`, kb: reqKB, color: '#ec4899' },
+      { label: 'Audit Trail Logs', count: `${auditCount} events`, kb: auditKB, color: '#10b981' },
+      { label: 'System Health Check', count: 'sync metadata', kb: healthCheckKB, color: '#64748b' }
     ];
 
     const usedKB = breakdown.reduce((sum, s) => sum + s.kb, 0);
@@ -3407,7 +3463,8 @@ function renderStorageUsage() {
     };
 
     holder.innerHTML = `
-      <div class="storage-bar-wrap">
+      <h3 style="font-size:13.5px; font-weight:600; color:var(--steel-200); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Database Payload</h3>
+      <div class="storage-bar-wrap" style="margin-bottom: 16px;">
         <div class="storage-bar-track">
           <div class="storage-bar-fill" style="width:${Math.max(pct, 0.08).toFixed(3)}%; background:${pct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#10b981,#f59e0b)'};"></div>
         </div>
@@ -3416,7 +3473,7 @@ function renderStorageUsage() {
           <span>${((usedKB / LIMIT_KB) * 100).toFixed(4)}% of 1 GB Realtime DB limit</span>
         </div>
       </div>
-      <div class="storage-legend">
+      <div class="storage-legend" style="margin-bottom: 24px;">
         ${breakdown.map((s) => `
           <div class="storage-legend-row">
             <span class="storage-dot" style="background:${s.color};"></span>
@@ -3425,19 +3482,148 @@ function renderStorageUsage() {
           </div>`).join('')}
         <div class="storage-legend-row storage-legend-free">
           <span class="storage-dot" style="background:var(--steel-100); border:1px solid var(--steel-300);"></span>
-          <span class="storage-legend-label">Available Cloud Quota</span>
+          <span class="storage-legend-label">Available DB Quota</span>
           <span class="storage-legend-val mono">${formatSize(freeKB)}</span>
         </div>
       </div>
+
+      <!-- Cloud Storage Estimate -->
+      <h3 style="font-size:13.5px; font-weight:600; color:var(--steel-200); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px;">Media Storage Estimate</h3>
+      <div class="storage-bar-wrap" style="margin-bottom: 16px;">
+        <div class="storage-bar-track">
+          <div class="storage-bar-fill" style="width:${Math.max(cloudPct, 0.08).toFixed(3)}%; background:${cloudPct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#6366f1,#8b5cf6)'};"></div>
+        </div>
+        <div class="storage-bar-caption">
+          <span><strong>${formatSize(photosKB)}</strong> total media payload</span>
+          <span>${((photosKB / CLOUD_LIMIT_KB) * 100).toFixed(4)}% of 5 GB Cloud Storage limit</span>
+        </div>
+      </div>
+      <div class="storage-legend">
+        <div class="storage-legend-row">
+            <span class="storage-dot" style="background:#6366f1;"></span>
+            <span class="storage-legend-label"><strong>Uploaded Photos</strong> <span class="muted" style="font-size:11.5px; margin-left:4px;">(${totalPhotos} images)</span></span>
+            <span class="storage-legend-val mono">${formatSize(photosKB)}</span>
+        </div>
+        <div class="storage-legend-row storage-legend-free">
+          <span class="storage-dot" style="background:var(--steel-100); border:1px solid var(--steel-300);"></span>
+          <span class="storage-legend-label">Available Cloud Quota</span>
+          <span class="storage-legend-val mono">${formatSize(freeCloudKB)}</span>
+        </div>
+      </div>
+
       <div class="muted" style="font-size:12.5px; margin-top:16px;">
-        Estimated Realtime Database JSON payloads calculated live from active memory caches and Firebase collections. Uploaded photos are stored and tracked in Firebase Cloud Storage.
-      </div>`;
+        Database payloads are calculated live from caches. Media payload is estimated based on average photo compression sizes (~150KB/photo). Uploaded photos are securely tracked in Firebase Cloud Storage.
+      </div>
+
+      <div style="margin-top: 18px; display:flex; align-items:center; gap:12px;">
+        <button type="button" id="scanActualStorageBtn" class="btn" style="font-size:13px; padding:8px 18px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Scan Actual Storage Size
+        </button>
+        <span id="scanActualStorageStatus" class="muted" style="font-size:12.5px;"></span>
+      </div>
+      <div id="scanActualStorageResult" style="margin-top:14px;"></div>
+    `;
+    // Wire the button AFTER innerHTML is set (button exists in DOM now)
+    document.getElementById('scanActualStorageBtn')?.addEventListener('click', scanActualStorageSize);
   }).catch((err) => {
     if (document.contains(holder)) {
       holder.innerHTML = `<div class="empty-state"><p style="color:var(--bad);">Storage estimate calculation error: ${escapeHtml(err.message)}</p></div>`;
     }
   });
 }
+
+async function scanActualStorageSize() {
+  const btn = document.getElementById('scanActualStorageBtn');
+  const statusEl = document.getElementById('scanActualStorageStatus');
+  const resultEl = document.getElementById('scanActualStorageResult');
+  if (!btn || !statusEl || !resultEl) return;
+  if (!storage) {
+    statusEl.textContent = 'Cloud Storage is not available.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></span> Scanning…`;
+  statusEl.textContent = '';
+  resultEl.innerHTML = '';
+
+  try {
+    const rootRef = storageRef(storage, 'issue-photos');
+    const listResult = await listAll(rootRef);
+
+    // Collect all files from root and all subfolders
+    let allFiles = [...listResult.items];
+    const folderCount = listResult.prefixes.length;
+    statusEl.textContent = `Found ${folderCount} folder${folderCount !== 1 ? 's' : ''}. Listing files…`;
+
+    for (const folderRef of listResult.prefixes) {
+      const subList = await listAll(folderRef);
+      allFiles.push(...subList.items);
+    }
+
+    const totalFiles = allFiles.length;
+    let totalBytes = 0;
+    let scanned = 0;
+    let errorCount = 0;
+
+    // Batch getMetadata in groups of 20
+    const BATCH = 20;
+    for (let i = 0; i < allFiles.length; i += BATCH) {
+      const batch = allFiles.slice(i, i + BATCH);
+      const results = await Promise.allSettled(batch.map(f => getMetadata(f)));
+      for (const res of results) {
+        if (res.status === 'fulfilled') { totalBytes += res.value.size || 0; scanned++; }
+        else errorCount++;
+      }
+      statusEl.textContent = `Scanned ${scanned + errorCount} / ${totalFiles} files…`;
+    }
+
+    const totalKB = totalBytes / 1024;
+    const totalMB = totalKB / 1024;
+    const CLOUD_LIMIT_MB = 5 * 1024;
+    const usedPct = Math.min(100, (totalMB / CLOUD_LIMIT_MB) * 100);
+    const freeMB = Math.max(0, CLOUD_LIMIT_MB - totalMB);
+
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Re-scan`;
+    statusEl.innerHTML = `<span style="color:var(--success);">✅ Scan complete — ${new Date().toLocaleTimeString('en-IN')}</span>`;
+
+    resultEl.innerHTML = `
+      <div style="border:1px solid rgba(99,102,241,0.35); border-radius:12px; padding:16px; background:rgba(99,102,241,0.08); margin-top:4px;">
+        <div style="font-size:13px; font-weight:600; color:var(--steel-100); margin-bottom:12px;">📡 Live Firebase Storage Scan Results</div>
+        <div class="storage-bar-track" style="margin-bottom:8px;">
+          <div class="storage-bar-fill" style="width:${Math.max(usedPct, 0.08).toFixed(3)}%; background:${usedPct > 80 ? 'linear-gradient(90deg,#ef4444,#f59e0b)' : 'linear-gradient(90deg,#6366f1,#8b5cf6)'};"></div>
+        </div>
+        <div class="storage-bar-caption" style="margin-bottom:12px;">
+          <span><strong>${totalMB >= 1 ? totalMB.toFixed(2) + ' MB' : totalKB.toFixed(2) + ' KB'}</strong> actual media payload</span>
+          <span>${usedPct.toFixed(4)}% of 5 GB limit</span>
+        </div>
+        <div class="storage-legend">
+          <div class="storage-legend-row">
+            <span class="storage-dot" style="background:#6366f1;"></span>
+            <span class="storage-legend-label"><strong>Actual Uploaded Files</strong> <span class="muted" style="font-size:11.5px;">(${scanned} files${errorCount > 0 ? `, ${errorCount} skipped` : ''})</span></span>
+            <span class="storage-legend-val mono">${totalMB >= 1 ? totalMB.toFixed(2) + ' MB' : totalKB.toFixed(2) + ' KB'}</span>
+          </div>
+          <div class="storage-legend-row storage-legend-free">
+            <span class="storage-dot" style="background:var(--steel-100); border:1px solid var(--steel-300);"></span>
+            <span class="storage-legend-label">Available Cloud Quota</span>
+            <span class="storage-legend-val mono">${freeMB.toFixed(2)} MB</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Scan Actual Storage Size`;
+    statusEl.innerHTML = `<span style="color:var(--bad);">❌ Scan failed: ${escapeHtml(err.message)}</span>`;
+    console.error('Storage scan error:', err);
+  }
+}
+
 
 
 /* =========================================================================
@@ -3726,6 +3912,7 @@ function wireViewEvents(viewId) {
       }
     });
     $('#cleanupOldRecordsBtn')?.addEventListener('click', handleCleanupOldRecords);
+    $('#cleanupOldRequestsBtn')?.addEventListener('click', handleCleanupOldRequests);
     $('#cleanupPreviewConfirmBtn')?.addEventListener('click', executeCleanupOldRecords);
     const closeCleanupPreview = () => { $('#cleanupPreviewDialog')?.classList.add('hidden'); pendingCleanupRecords = []; };
     $('#cleanupPreviewCancelBtn')?.addEventListener('click', closeCleanupPreview);
@@ -5216,6 +5403,42 @@ async function executeCleanupOldRecords() {
   render();
 }
 
+async function handleCleanupOldRequests() {
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+
+  const toDelete = globalState.materialRequestsCache.filter(req => {
+    const created = new Date(req.createdAt || req.timestamp);
+    return created && !Number.isNaN(created.getTime()) && created < cutoffDate;
+  });
+
+  if (toDelete.length === 0) {
+    void appAlert('Your database is already clean! No material requests older than 3 months were found.', { title: 'Database Clean', type: 'info' });
+    return;
+  }
+
+  const confirmed = await appConfirm(`Found ${toDelete.length} old material requests. Are you sure you want to permanently delete them?`, { title: 'Delete Old Requests', type: 'danger', confirmText: 'Delete' });
+  if (!confirmed) return;
+
+  setSyncingState(true, `Deleting ${toDelete.length} requests...`);
+  let successCount = 0;
+  let failCount = 0;
+
+  for (let req of toDelete) {
+    try {
+      await remove(ref(db, 'materialRequests/' + req.id));
+      successCount++;
+    } catch(err) {
+      console.error('Failed to delete request', req.id, err);
+      failCount++;
+    }
+  }
+
+  setSyncingState(false);
+  void appAlert(`Cleanup complete.\n\nSuccessfully deleted: ${successCount} request(s).${failCount > 0 ? `\nFailed to delete: ${failCount} request(s).` : ''}`, { title: 'Cleanup Complete', type: failCount > 0 ? 'warning' : 'success' });
+  render();
+}
+
 function readAdminData(path, timeoutMs = 10000) {
   return Promise.race([
     get(ref(db, path)),
@@ -5375,8 +5598,8 @@ async function loadUsersTable() {
           }
         }
 
-        if (checkedBoxes.length > 2) {
-          showToast('A user can have a maximum of 2 roles.', { title: 'Role Limit', type: 'warning' });
+        if (newRoles.filter(r => r !== 'request_approver').length > 2) {
+          showToast('A user can have a maximum of 2 primary roles.', { title: 'Role Limit', type: 'warning' });
           e.target.checked = false;
           return;
         }
@@ -5439,8 +5662,8 @@ async function handleNewUserSubmit(e) {
     showInlineError('userFormAlert', userFormError);
     return;
   }
-  if (checkedBoxes.length > 2) {
-    userFormError = 'A user can have a maximum of 2 roles.';
+  if (roles.filter(r => r !== 'request_approver').length > 2) {
+    userFormError = 'A user can have a maximum of 2 primary roles.';
     showInlineError('userFormAlert', userFormError);
     return;
   }
@@ -6218,11 +6441,11 @@ function renderMaterialRequests() {
 
     const actionHtml = (isPending && canApprove)
       ? `<div style="display:flex; gap:6px; align-items:center;">
-           <button class="btn btn-sm" style="background:var(--success); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Approve" onclick="window.approveMaterialRequest('${escapeHtml(req.id)}')">
-             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+           <button class="btn btn-sm" style="background:var(--success); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Approve" onclick="window.approveMaterialRequest('${escapeHtml(req.id)}', this)">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M20 6L9 17l-5-5"></path></svg>
            </button>
-           <button class="btn btn-sm" style="background:var(--danger); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Reject" onclick="window.rejectMaterialRequest('${escapeHtml(req.id)}')">
-             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+           <button class="btn btn-sm" style="background:var(--danger); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Reject" onclick="window.rejectMaterialRequest('${escapeHtml(req.id)}', this)">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
            </button>
          </div>`
       : ((req.approvedAt || req.rejectedAt) ? escapeHtml(new Date(req.approvedAt || req.rejectedAt).toLocaleString()) : '-');
@@ -6242,13 +6465,15 @@ function renderMaterialRequests() {
   }).join('');
 }
 
-window.approveMaterialRequest = async function(reqId) {
-  const btn = window.event ? window.event.currentTarget : null;
-  const originalText = btn ? btn.textContent : '';
+window.approveMaterialRequest = async function(reqId, buttonEl = null) {
+  const btn = buttonEl || (window.event ? window.event.currentTarget : null);
+  const originalText = btn ? btn.innerHTML : '';
 
   const confirmed = await appConfirm('Are you sure you want to approve this material request?', { title: 'Approve Request', confirmText: 'Approve', type: 'primary' });
   if (!confirmed) return;
   
+  if (typeof closeMaterialRequestsModal === 'function') closeMaterialRequestsModal();
+
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Approving...';
@@ -6268,18 +6493,20 @@ window.approveMaterialRequest = async function(reqId) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = originalText;
+      btn.innerHTML = originalText;
     }
   }
 };
 
-window.rejectMaterialRequest = async function(reqId) {
-  const btn = window.event ? window.event.currentTarget : null;
-  const originalText = btn ? btn.textContent : '';
+window.rejectMaterialRequest = async function(reqId, buttonEl = null) {
+  const btn = buttonEl || (window.event ? window.event.currentTarget : null);
+  const originalText = btn ? btn.innerHTML : '';
 
   const confirmed = await appConfirm('Are you sure you want to reject this material request?', { title: 'Reject Request', confirmText: 'Reject', type: 'danger' });
   if (!confirmed) return;
   
+  if (typeof closeMaterialRequestsModal === 'function') closeMaterialRequestsModal();
+
   if (btn) {
     btn.disabled = true;
     btn.textContent = '...';
@@ -6299,7 +6526,7 @@ window.rejectMaterialRequest = async function(reqId) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = originalText;
+      btn.innerHTML = originalText;
     }
   }
 };
