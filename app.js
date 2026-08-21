@@ -6472,27 +6472,29 @@ window.approveMaterialRequest = async function(reqId, buttonEl = null) {
   const confirmed = await appConfirm('Are you sure you want to approve this material request?', { title: 'Approve Request', confirmText: 'Approve', type: 'primary' });
   if (!confirmed) return;
   
-  if (typeof closeMaterialRequestsModal === 'function') closeMaterialRequestsModal();
-
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Approving...';
+    btn.style.opacity = '0.5';
   }
   
   try {
     const reqRef = ref(db, 'materialRequests/' + reqId);
     await update(reqRef, {
       status: 'Approved',
-      approvedBy: globalState.currentUser.username,
+      approvedBy: globalState.currentUser.fullName || globalState.currentUser.username,
       approvedAt: new Date().toISOString()
     });
     showToast('Material Request approved successfully.', { title: 'Approved', type: 'success' });
+    
+    $('#materialRequestsDialog')?.classList.add('hidden');
+    document.body.classList.remove('modal-open');
   } catch(err) {
     console.error(err);
     appAlert('Failed to approve material request: ' + err.message, { type: 'danger' });
   } finally {
     if (btn) {
       btn.disabled = false;
+      btn.style.opacity = '1';
       btn.innerHTML = originalText;
     }
   }
@@ -6505,27 +6507,29 @@ window.rejectMaterialRequest = async function(reqId, buttonEl = null) {
   const confirmed = await appConfirm('Are you sure you want to reject this material request?', { title: 'Reject Request', confirmText: 'Reject', type: 'danger' });
   if (!confirmed) return;
   
-  if (typeof closeMaterialRequestsModal === 'function') closeMaterialRequestsModal();
-
   if (btn) {
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.style.opacity = '0.5';
   }
   
   try {
     const reqRef = ref(db, 'materialRequests/' + reqId);
     await update(reqRef, {
       status: 'Rejected',
-      rejectedBy: globalState.currentUser.username,
+      rejectedBy: globalState.currentUser.fullName || globalState.currentUser.username,
       rejectedAt: new Date().toISOString()
     });
     showToast('Material Request rejected successfully.', { title: 'Rejected', type: 'info' });
+    
+    $('#materialRequestsDialog')?.classList.add('hidden');
+    document.body.classList.remove('modal-open');
   } catch(err) {
     console.error(err);
     appAlert('Failed to reject material request: ' + err.message, { type: 'danger' });
   } finally {
     if (btn) {
       btn.disabled = false;
+      btn.style.opacity = '1';
       btn.innerHTML = originalText;
     }
   }
