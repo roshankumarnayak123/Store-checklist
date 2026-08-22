@@ -4612,10 +4612,9 @@ html[data-theme="dark"] .mobile-fab:hover {
     margin-bottom: 2px;
   }
   .status-right-group {
-    position: absolute;
+    position: fixed;
     top: 32px;
-    left: calc(100% - 80px);
-    transform: translateX(-100%);
+    right: 32px;
     display: flex;
     flex-direction: row;
     align-items: center;
