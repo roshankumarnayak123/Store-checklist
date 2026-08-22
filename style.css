@@ -2009,7 +2009,7 @@ html[data-theme="dark"] .kpi-button:hover .kpi-open-hint { color: #fbbf24; }
   .auth-card { width: 100%; max-width: none; min-height: 100dvh; padding: 68px 22px 34px !important; border-radius: 0; border: 0 !important; box-shadow: none !important; }
 }
 
-@media (max-width: 390px) {
+@media (max-width: 430px) {
   .topbar-inner { grid-template-columns: minmax(0, 1fr) auto auto; padding-inline: 9px !important; gap: 0 5px !important; }
   .brand { font-size: 14px !important; }
   .brand-mark { width: 27px !important; height: 27px !important; flex-basis: 27px; }
@@ -2296,7 +2296,7 @@ html[data-theme="light"] .status-sync:focus-visible {
 .photo-gallery-item img { display:block; width:100%; aspect-ratio:4/3; object-fit:cover; }
 .photo-limit-note { margin-top:7px; color:var(--text-muted); font-size:11px; }
 @media(max-width:700px){.photo-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;gap:9px}.photo-gallery-dialog{max-height:94vh}}
-@media(max-width:390px){.photo-gallery-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width: 430px){.photo-gallery-grid{grid-template-columns:minmax(0,1fr)}}
 
 
 /* Compact mobile register rows with expandable details */
@@ -2379,7 +2379,7 @@ html[data-theme="light"] .status-sync:focus-visible {
     padding: 12px 13px !important;
   }
 }
-@media (max-width: 390px) {
+@media (max-width: 430px) {
   table.reg td.mobile-register-summary { grid-template-columns: minmax(0, 1fr) minmax(0, .78fr) 36px; padding-left: 10px; }
   .mobile-register-item strong, .mobile-register-person strong { font-size: 12px; }
 }
@@ -2749,7 +2749,7 @@ html[data-theme="light"] .status-sync:focus-visible {
  table.reg tr.mobile-expanded td.register-actions::before{grid-column:1!important;grid-row:auto!important;margin:0 0 2px!important}
  table.reg tr.mobile-expanded td.register-actions .btn,table.reg tr.mobile-expanded td.register-actions .btn+.btn{grid-column:1!important;width:100%!important;min-width:0!important;margin:0!important}
 }
-@media(max-width:390px){
+@media (max-width: 430px){
  .register-view-toolbar{top:130px}
 }
 @media(prefers-reduced-motion:reduce){.register-view-toggle,.register-view-toggle-track,.register-view-toggle-track::after,.register-view-toggle-knob{transition-duration:.01ms!important;animation:none!important}}
@@ -2780,7 +2780,7 @@ tr.mobile-expanded>.register-section-title{max-height:45px!important;padding:11p
 @media(min-width:769px){table.reg tr.mobile-expanded{grid-template-columns:repeat(3,minmax(0,1fr))}table.reg tr.mobile-expanded>td:not(.mobile-register-summary):not(.register-actions):not(.register-section-title){display:flex!important;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;min-height:72px;max-height:180px;padding:12px 16px!important;text-align:left;white-space:normal;overflow-wrap:anywhere}table.reg tr.mobile-expanded>td:not(.mobile-register-summary):not(.register-actions):not(.register-section-title)::before{width:100%;font-size:9px;letter-spacing:.07em;text-align:left}table.reg tr.mobile-expanded>td[data-label="Material"],table.reg tr.mobile-expanded>td[data-label="Qty Issued"],table.reg tr.mobile-expanded>td[data-label="Issue Date"],table.reg tr.mobile-expanded>td[data-label="Status"]{display:none!important}table.reg tr.mobile-expanded td.register-actions{display:flex!important;flex-wrap:wrap;gap:9px;max-height:none!important;min-height:66px}table.reg tr.mobile-expanded td.register-actions::before{flex:1 0 100%;margin:0 0 2px}table.reg tr.mobile-expanded td.register-actions .btn{flex:1 1 145px;max-width:220px;min-width:130px}}
 @media(max-width:1050px){.register-toolbar{grid-template-columns:minmax(200px,1fr) repeat(2,minmax(120px,1fr))}.register-toolbar select:last-of-type{grid-column:auto}.clear-filter-btn{grid-column:1/-1;width:100%}}
 @media(max-width:768px){.register-toolbar{grid-template-columns:1fr;padding:10px}.register-view-toolbar{top:var(--register-sticky-top)!important}.register-view-toggle{width:100%;min-width:0}.filter-chips{margin-bottom:10px}.clear-filter-btn{margin-left:0;width:100%}table.reg td.mobile-register-summary{grid-template-columns:minmax(0,1.15fr) auto minmax(0,.8fr) 36px!important;gap:6px!important}.mobile-register-item strong,.mobile-register-person strong{font-size:11.5px!important;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.register-section-title{font-size:10px!important}table.reg tr.mobile-expanded>td:not(.mobile-register-summary):not(.register-actions):not(.register-section-title){grid-template-columns:minmax(94px,37%) minmax(0,1fr)!important;align-items:start;white-space:normal;overflow-wrap:anywhere}table.reg tr.mobile-expanded td.register-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;max-height:360px!important}table.reg tr.mobile-expanded td.register-actions .btn{width:100%!important;max-width:none!important}}
-@media(max-width:390px){.register-summary-meta{font-size:11px}}
+@media (max-width: 430px){.register-summary-meta{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.skeleton-row,.register-view-option{animation:none!important;transition:none!important}}
 
 
@@ -3192,7 +3192,7 @@ table.reg td.mobile-register-summary .mobile-register-person strong {
   text-overflow: ellipsis !important;
   -webkit-line-clamp: unset !important;
 }
-@media (max-width: 390px) {
+@media (max-width: 430px) {
   table.reg td.mobile-register-summary {
     grid-template-columns: minmax(0, 1fr) 34px !important;
   }
@@ -3856,7 +3856,7 @@ a, button, input, select, textarea, .kpi, .navlink, .status-filter-chip, .photo-
 @media (max-width: 480px) {
   .who-name { max-width: 64px; font-size: 11px; }
 }
-@media (max-width: 390px) {
+@media (max-width: 430px) {
   .who-name { max-width: 52px; font-size: 10px; }
 }
 
@@ -5631,3 +5631,106 @@ html[data-theme="dark"] .status-pill[data-status="Lost"] {
 
 
 
+
+/* Custom Grid for Modals */
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .status-grid { grid-template-columns: 1fr; gap: 16px; } }
+
+@media (max-width: 480px) {
+  .topbar-inner { padding: 10px 12px; gap: 8px; }
+  .app-main { padding: 16px 12px 64px; }
+  .auth-card { padding: 24px 16px !important; }
+}
+
+@media (max-width: 480px) {
+  .actions-row { flex-direction: column; }
+  .actions-row .btn { width: 100%; }
+}
+
+/* PWA Update Notification Banner */
+.pwa-update-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-150%);
+  width: 90%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 10000;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.pwa-update-banner.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.pwa-update-banner.updating {
+  pointer-events: none;
+}
+.pwa-update-content {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  gap: 16px;
+}
+.pwa-update-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+html[data-theme="dark"] .pwa-update-icon {
+  background: rgba(59, 130, 246, 0.2);
+}
+.pwa-update-icon.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--good, #10b981);
+}
+.pwa-update-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.pwa-update-text strong {
+  font-size: 14px;
+  color: var(--text-base);
+  margin-bottom: 2px;
+}
+.pwa-update-text span {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+.pwa-btn-update {
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  transition: transform 0.2s, opacity 0.2s;
+}
+.pwa-btn-update:active {
+  transform: scale(0.95);
+}
+.pwa-update-progress-track {
+  height: 4px;
+  background: var(--bg-hover);
+  width: 100%;
+}
+.pwa-update-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  transition: width 0.3s ease-out;
+}
