@@ -1078,6 +1078,8 @@ $('#logoutBtn').addEventListener('click', () => {
   globalState.toolDeletionRequestsCache = [];
   globalState.toolAdditionRequestsCache = [];
   globalState.toolQuantityRequestsCache = [];
+  issuesLoaded = false;
+  toolsLoaded = false;
   window.currentUser = null;
   window.currentView = null;
   clearSession();
