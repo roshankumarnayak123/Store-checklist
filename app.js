@@ -1072,6 +1072,12 @@ $('#logoutBtn').addEventListener('click', () => {
 
   globalState.currentUser = null;
   globalState.currentView = null;
+  globalState.issuesCache = [];
+  globalState.toolsCache = [];
+  globalState.materialRequestsCache = [];
+  globalState.toolDeletionRequestsCache = [];
+  globalState.toolAdditionRequestsCache = [];
+  globalState.toolQuantityRequestsCache = [];
   window.currentUser = null;
   window.currentView = null;
   clearSession();

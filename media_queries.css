@@ -2215,7 +2215,7 @@ html[data-theme="light"] .status-sync:focus-visible {
 
 /* FINAL MOBILE ALIGNMENT LAYER — all application pages */
 @media (max-width: 768px) {
-  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; position: relative; }
   body { min-width: 0; }
   #appScreen, #authScreen, .topbar, .status-bar, .app-main { width: 100%; max-width: 100%; }
 
@@ -2543,7 +2543,7 @@ tr.mobile-expanded>.register-section-title{max-height:45px!important;padding:11p
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
-  width: min(410px, calc(100vw - 32px));
+  width: min(410px, calc(100% - 32px));
   pointer-events: none;
 }
 
@@ -3874,7 +3874,7 @@ html[data-theme="light"] .mobile-fab:hover,
   #bgCanvas {
     top: 16px !important;
     left: 16px !important;
-    width: calc(100vw - 32px) !important;
+    width: calc(100% - 32px) !important;
     height: calc(100vh - 32px) !important;
     border-radius: 20px;
   }
@@ -4003,7 +4003,7 @@ html[data-theme="light"] .mobile-fab:hover,
   .status-right-group {
     position: absolute;
     top: 32px;
-    left: calc(100vw - 80px);
+    left: calc(100% - 80px);
     transform: translateX(-100%);
     display: flex;
     flex-direction: row;
