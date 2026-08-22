@@ -2345,6 +2345,21 @@ function renderProfile() {
     </div>
 
     <div class="panel panel-pad" style="max-width:600px; margin-top:24px;">
+      <h2 style="margin-top:0;">App Updates</h2>
+      <p style="margin:0 0 14px; font-size:13.5px; color:var(--text-muted);">
+        Check for the latest features and bug fixes manually.
+      </p>
+      <div>
+        <button type="button" class="btn btn-secondary" id="profileCheckUpdatesBtn" style="display:inline-flex; align-items:center; gap:8px;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21L21.5 8"/>
+          </svg>
+          Check for Updates
+        </button>
+      </div>
+    </div>
+
+    <div class="panel panel-pad" style="max-width:600px; margin-top:24px;">
       <h2 style="margin-top:0;">Change Password</h2>
       <div class="alert alert-error${profilePasswordError ? '' : ' hidden'}" id="profilePasswordAlert" role="alert">${escapeHtml(profilePasswordError)}</div>
       <form id="profilePasswordForm">
@@ -3752,6 +3767,39 @@ function wireViewEvents(viewId) {
     $('#profileChoosePhotoBtn')?.addEventListener('click', () => $('#p_photo')?.click());
     $('#profileForm').addEventListener('submit', handleProfileSubmit);
     $('#profilePasswordForm').addEventListener('submit', handleProfilePasswordSubmit);
+
+    $('#profileCheckUpdatesBtn')?.addEventListener('click', async () => {
+      const btn = $('#profileCheckUpdatesBtn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner" style="width:14px; height:14px; border-width:2px; margin-right:6px; display:inline-block;"></span> Checking...';
+      btn.disabled = true;
+      
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            await reg.update();
+            // Wait a moment to see if updatefound fires
+            await new Promise(r => setTimeout(r, 1500));
+            
+            // If the banner is still hidden, no update was found.
+            if (document.getElementById('pwaUpdateBanner')?.classList.contains('hidden')) {
+              if (typeof showToast === 'function') showToast('Your app is already up to date!', { type: 'success' });
+            }
+          } else {
+             if (typeof showToast === 'function') showToast('App is running in development mode (no updates).', { type: 'info' });
+          }
+        } else {
+          if (typeof showToast === 'function') showToast('Service workers are not supported in this browser.', { type: 'warn' });
+        }
+      } catch (err) {
+        console.error('Update check failed:', err);
+        if (typeof showToast === 'function') showToast('Failed to check for updates.', { type: 'error' });
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    });
 
     $('#enableNotificationsBtn')?.addEventListener('click', async () => {
       await requestNotificationPermission();

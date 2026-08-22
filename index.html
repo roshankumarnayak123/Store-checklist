@@ -64,7 +64,10 @@
         <strong id="pwaUpdateTitle">Update Available</strong>
         <span id="pwaUpdateStatusMsg">A new version of the app is ready.</span>
       </div>
-      <button type="button" id="pwaUpdateBtn" class="btn btn-primary btn-sm pwa-btn-update">Update</button>
+      <div class="pwa-update-actions" style="display:flex; gap:6px;">
+        <button type="button" id="pwaUpdateLaterBtn" class="btn btn-ghost btn-sm pwa-btn-later">Later</button>
+        <button type="button" id="pwaUpdateBtn" class="btn btn-primary btn-sm pwa-btn-update">Update</button>
+      </div>
     </div>
     <div class="pwa-update-progress-track hidden" id="pwaUpdateProgressTrack">
       <div class="pwa-update-progress-fill" id="pwaUpdateProgressFill"></div>
@@ -986,6 +989,7 @@
                     console.log('[PWA] New version installed. Waiting for user action.');
                     const banner = document.getElementById('pwaUpdateBanner');
                     const btn = document.getElementById('pwaUpdateBtn');
+                    const laterBtn = document.getElementById('pwaUpdateLaterBtn');
                     const track = document.getElementById('pwaUpdateProgressTrack');
                     const fill = document.getElementById('pwaUpdateProgressFill');
                     const statusMsg = document.getElementById('pwaUpdateStatusMsg');
@@ -997,6 +1001,13 @@
                       // small delay to allow transition
                       setTimeout(() => banner.classList.add('show'), 100);
                       
+                      if (laterBtn) {
+                        laterBtn.onclick = () => {
+                          banner.classList.remove('show');
+                          setTimeout(() => banner.classList.add('hidden'), 400);
+                        };
+                      }
+                      
                       btn.onclick = () => {
                         // Prevent multiple clicks
                         if (banner.classList.contains('updating')) return;
@@ -1004,6 +1015,7 @@
                         
                         // Show progress bar
                         btn.classList.add('hidden');
+                        if(laterBtn) laterBtn.classList.add('hidden');
                         track.classList.remove('hidden');
                         statusMsg.textContent = 'Downloading and applying update...';
                         title.textContent = 'Updating...';
