@@ -316,8 +316,8 @@
     <section class="tool-deletion-dialog" role="dialog" aria-modal="true" aria-labelledby="toolQtyRequestTitle">
       <div class="tool-modal-head">
         <div>
-          <h2 id="toolQtyRequestTitle" style="margin:0; font-size:18px; font-weight:700;">Request Quantity Update</h2>
-          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Submit a request to change the total quantity of this tool.</div>
+          <h2 id="toolQtyRequestTitle" style="margin:0; font-size:18px; font-weight:700;">Update Total Quantity</h2>
+          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Update the total quantity of this tool.</div>
         </div>
         <button type="button" class="btn btn-ghost btn-sm" id="toolQtyRequestCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
       </div>
@@ -326,12 +326,23 @@
           <input type="hidden" id="qtyReqToolId" />
           <div class="tool-deletion-target-info" id="qtyReqToolInfo" style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;"></div>
           <div class="field" style="margin-top:10px;">
-            <label for="qtyReqNewQuantity">New Total Quantity *</label>
-            <input type="number" inputmode="numeric" pattern="[0-9]*" id="qtyReqNewQuantity" min="0" required />
+            <label style="margin-bottom: 8px; display: block;">Update Type *</label>
+            <div style="display: flex; gap: 16px; margin-top: 4px;">
+              <label style="display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;">
+                <input type="radio" name="qtyUpdateType" value="addition" checked> Addition of new tool
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;">
+                <input type="radio" name="qtyUpdateType" value="removal"> No more in use condition
+              </label>
+            </div>
+          </div>
+          <div class="field" style="margin-top:16px;">
+            <label for="qtyReqUpdateQuantity">Quantity to Update *</label>
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="qtyReqUpdateQuantity" min="1" required placeholder="Enter quantity..." />
           </div>
           <div class="actions-row" style="margin-top:18px; justify-content:flex-end;">
             <button type="button" class="btn btn-ghost" id="qtyReqCancelBtn">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="qtyReqSubmitBtn">Submit Request</button>
+            <button type="submit" class="btn btn-primary" id="qtyReqSubmitBtn">Update Quantity</button>
           </div>
         </form>
       </div>

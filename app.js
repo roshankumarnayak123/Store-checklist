@@ -4995,11 +4995,14 @@ function handleRequestTotalQuantityChange(toolId) {
 
   const toolIdInput = $('#qtyReqToolId');
   const toolInfo = $('#qtyReqToolInfo');
-  const newQtyInput = $('#qtyReqNewQuantity');
+  const updateQtyInput = $('#qtyReqUpdateQuantity');
 
   if (toolIdInput) toolIdInput.value = toolId;
   if (toolInfo) toolInfo.innerHTML = `<strong>Tool:</strong> ${escapeHtml(tool.toolName)}<br><strong>Current Total:</strong> ${currentQty}`;
-  if (newQtyInput) newQtyInput.value = currentQty;
+  if (updateQtyInput) updateQtyInput.value = '';
+
+  const addRadio = document.querySelector('input[name="qtyUpdateType"][value="addition"]');
+  if (addRadio) addRadio.checked = true;
 
   $('#toolQtyRequestDialog')?.classList.remove('hidden');
   document.body.classList.add('modal-open');
@@ -5016,39 +5019,107 @@ async function handleQtyRequestSubmit(e) {
   }
 
   const currentQty = tool.quantity || 0;
-  const newQty = parseInt($('#qtyReqNewQuantity')?.value, 10);
+  const updateQty = parseInt($('#qtyReqUpdateQuantity')?.value, 10);
+  const updateType = document.querySelector('input[name="qtyUpdateType"]:checked')?.value;
 
-  if (isNaN(newQty) || newQty < 0) {
-    await appAlert('Invalid quantity entered.', { type: 'warn' });
+  if (isNaN(updateQty) || updateQty <= 0) {
+    await appAlert('Invalid quantity entered. Please enter a positive number.', { type: 'warn' });
     return;
   }
 
-  if (newQty === currentQty) {
-    await appAlert('The requested quantity is the same as the current quantity.', { type: 'info' });
-    return;
+  let newTotalQty = currentQty;
+  let newAvailableQty = tool.statusQuantities?.Available || 0;
+  let newStatusQuantities = { ...(tool.statusQuantities || {}) };
+
+  if (updateType === 'addition') {
+    newTotalQty += updateQty;
+    newAvailableQty += updateQty;
+  } else if (updateType === 'removal') {
+    newTotalQty -= updateQty;
+    newAvailableQty -= updateQty;
+    if (newTotalQty < 0 || newAvailableQty < 0) {
+       await appAlert(`Cannot remove ${updateQty} items. Only ${newAvailableQty + updateQty} are available.`, { type: 'warn' });
+       return;
+    }
   }
+
+  newStatusQuantities.Available = newAvailableQty;
+
+  // Recalculate status summary
+  const available = newStatusQuantities.Available || 0;
+  const maintenance = newStatusQuantities['In Maintenance'] || 0;
+  const damaged = newStatusQuantities.Damaged || 0;
+  const lost = newStatusQuantities.Lost || 0;
+  let newPrimaryStatus = 'Available';
+  
+  if (available < newTotalQty) {
+    if (maintenance >= damaged && maintenance >= lost && maintenance > 0) newPrimaryStatus = 'In Maintenance';
+    else if (damaged >= lost && damaged > 0) newPrimaryStatus = 'Damaged';
+    else if (lost > 0) newPrimaryStatus = 'Lost';
+  }
+
+  const parts = [];
+  if (available > 0) parts.push(`${available} Available`);
+  if (maintenance > 0) parts.push(`${maintenance} Maintenance`);
+  if (damaged > 0) parts.push(`${damaged} Damaged`);
+  if (lost > 0) parts.push(`${lost} Lost`);
+  const statusSnapshot = parts.join(', ') || '0 items';
 
   const btn = $('#qtyReqSubmitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
 
   try {
-    setSyncingState(true, 'Submitting quantity update request...');
-    await push(ref(db, 'toolQuantityRequests'), {
-      toolId: toolId,
-      toolName: tool.toolName,
-      uniqueId: tool.uniqueId || '',
-      oldQuantity: currentQty,
-      newQuantity: newQty,
-      requestedBy: globalState.currentUser.username,
-      requestedByName: globalState.currentUser.fullName || globalState.currentUser.username,
-      createdAt: serverTimestamp()
+    setSyncingState(true, 'Updating tool quantity...');
+
+    const now = Date.now();
+    const dateStr = new Date().toLocaleString();
+    const actionText = updateType === 'addition' ? `Added ${updateQty} new tool(s) to inventory.` : `Removed ${updateQty} tool(s) (no more in use).`;
+    
+    const historyEntry = {
+      status: statusSnapshot,
+      previousStatus: null,
+      changedBy: globalState.currentUser.fullName || globalState.currentUser.username,
+      changedByUsername: globalState.currentUser.username,
+      timestamp: now,
+      dateStr: dateStr,
+      notes: actionText
+    };
+
+    const currentHistory = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : (tool.status ? [{
+      status: tool.status,
+      previousStatus: null,
+      changedBy: tool.createdBy || 'Initial System Record',
+      changedByUsername: tool.createdBy || 'system',
+      timestamp: tool.createdAt || now,
+      dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : dateStr,
+      notes: tool.notes || 'Initial registration'
+    }] : []);
+    const updatedHistory = [...currentHistory, historyEntry];
+
+    await update(ref(db, 'tools/' + toolId), {
+      quantity: newTotalQty,
+      status: newPrimaryStatus,
+      statusQuantities: newStatusQuantities,
+      statusHistory: updatedHistory,
+      updatedAt: serverTimestamp(),
+      updatedBy: globalState.currentUser.username,
+      lastStatusNote: actionText
     });
-    showToast('Quantity update request submitted to admin.', { title: 'Request Sent' });
+
+    await writeAudit('tool-qty-updated', toolId, {
+      toolName: tool.toolName,
+      oldQuantity: currentQty,
+      newQuantity: newTotalQty,
+      updateType: updateType,
+      updateAmount: updateQty
+    });
+
+    showToast(`Total quantity updated successfully.`, { title: 'Quantity Updated' });
     closeToolQtyRequestModal();
   } catch (err) {
-    await appAlert('Could not submit request: ' + err.message, { type: 'danger' });
+    await appAlert('Could not update quantity: ' + err.message, { type: 'danger' });
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Submit Request'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Update Quantity'; }
     setSyncingState(false);
   }
 }
