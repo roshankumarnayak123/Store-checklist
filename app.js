@@ -794,7 +794,7 @@ function loadSession() {
     if (!user || typeof user.username !== 'string') return null;
     user.roles = Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : ['storekeeper']);
     if (user.roles.includes('storekeeper')) user.roles[user.roles.indexOf('storekeeper')] = 'user'; // legacy fix
-    
+
     // Ensure the admin user always has the admin role
     if (user.username.toLowerCase() === 'admin' && !user.roles.includes('admin')) {
       user.roles.push('admin');
@@ -1122,7 +1122,7 @@ $('#showMaterialRequestForm').addEventListener('click', () => {
         const users = snapshotToArray(snap);
         const approvers = users.filter(u => u.roles && u.roles.includes('request_approver'));
         if (approvers.length > 0) {
-          approverSelect.innerHTML = '<option value="" disabled selected>Select an Approver</option>' + 
+          approverSelect.innerHTML = '<option value="" disabled selected>Select an Approver</option>' +
             approvers.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.fullName || a.id)}</option>`).join('');
         } else {
           approverSelect.innerHTML = '<option value="" disabled selected>No Approvers available</option>';
@@ -1153,9 +1153,9 @@ $('#showMaterialRequestForm').addEventListener('click', () => {
   } catch (e) { console.error(e); }
 });
 $('#matReqTopBackBtn').addEventListener('click', () => {
-    $('#showLoginFormFromMat').click();
-  });
-  $('#showLoginFormFromMat').addEventListener('click', () => {
+  $('#showLoginFormFromMat').click();
+});
+$('#showLoginFormFromMat').addEventListener('click', () => {
   clearAuthMessages();
   $('#materialRequestCard').classList.add('hidden');
   $('#authCard').classList.remove('hidden');
@@ -1232,16 +1232,16 @@ $('#materialRequestForm').addEventListener('submit', async (e) => {
       if (!history.names) history.names = [];
       if (!history.vendors) history.vendors = [];
       if (!history.mobiles) history.mobiles = [];
-      
+
       if (!history.names.includes(requesterName)) history.names.unshift(requesterName);
       if (!history.vendors.includes(vendor)) history.vendors.unshift(vendor);
       if (!history.mobiles.includes(mobileNumber)) history.mobiles.unshift(mobileNumber);
-      
+
       // keep history clean (last 15 unique entries)
       history.names = history.names.slice(0, 15);
       history.vendors = history.vendors.slice(0, 15);
       history.mobiles = history.mobiles.slice(0, 15);
-      
+
       localStorage.setItem('materialRequestHistory', JSON.stringify(history));
     } catch (e) { /* ignore */ }
     $('#materialRequestForm').reset();
@@ -3443,7 +3443,7 @@ function renderStorageUsage() {
     const issuesKB = new Blob([JSON.stringify(globalState.issuesCache)]).size / 1024;
     const toolsKB = new Blob([JSON.stringify(globalState.toolsCache)]).size / 1024;
     const usersKB = snapUsers?.val() ? new Blob([JSON.stringify(snapUsers.val())]).size / 1024 : 0;
-    
+
     // Compute total requests payload (null-guard admin-only caches)
     const accessReqKB = snapAccess?.val() ? new Blob([JSON.stringify(snapAccess.val())]).size / 1024 : 0;
     const toolDelReqKB = snapToolDel?.val() ? new Blob([JSON.stringify(snapToolDel.val())]).size / 1024 : 0;
@@ -3452,16 +3452,16 @@ function renderStorageUsage() {
     const matReqKB = new Blob([JSON.stringify(globalState.materialRequestsCache || [])]).size / 1024;
     const reqKB = accessReqKB + toolDelReqKB + toolAddReqKB + toolQtyReqKB + matReqKB;
     const healthCheckKB = snapHealthCheck?.val() ? new Blob([JSON.stringify(snapHealthCheck.val())]).size / 1024 : 0;
-    
+
     const auditKB = snapAudit?.val() ? new Blob([JSON.stringify(snapAudit.val())]).size / 1024 : 0;
 
     const userCount = snapUsers?.val() ? Object.keys(snapUsers.val()).length : 0;
     const accessCount = snapAccess?.val() ? Object.keys(snapAccess.val()).length : 0;
     const toolDelCount = snapToolDel?.val() ? Object.keys(snapToolDel.val()).length : 0;
-    
+
     const pendingMatReqs = globalState.materialRequestsCache.filter(r => r.status === 'Pending').length;
     const pendingRequestsCount = accessCount + toolDelCount + globalState.toolAdditionRequestsCache.length + globalState.toolQuantityRequestsCache.length + pendingMatReqs;
-    
+
     const auditCount = snapAudit?.val() ? Object.keys(snapAudit.val()).length : 0;
 
     // Photos Storage Estimate
@@ -3473,7 +3473,7 @@ function renderStorageUsage() {
       totalPhotos += normalizePhotoUrls(issue.returnPhotoUrls || issue.returnPhotoUrl).length;
     }
     // Assume average compressed photo size of 150 KB (based on our canvas compression setting)
-    const photosKB = totalPhotos * 150; 
+    const photosKB = totalPhotos * 150;
     const CLOUD_LIMIT_KB = 5 * 1024 * 1024; // 5 GB
     const freeCloudKB = Math.max(0, CLOUD_LIMIT_KB - photosKB);
     const cloudPct = Math.min(100, (photosKB / CLOUD_LIMIT_KB) * 100);
@@ -3792,7 +3792,7 @@ function wireViewEvents(viewId) {
       const originalText = btn.innerHTML;
       btn.innerHTML = '<span class="spinner" style="width:14px; height:14px; border-width:2px; margin-right:6px; display:inline-block;"></span> Checking...';
       btn.disabled = true;
-      
+
       try {
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.getRegistration();
@@ -3800,13 +3800,13 @@ function wireViewEvents(viewId) {
             await reg.update();
             // Wait a moment to see if updatefound fires
             await new Promise(r => setTimeout(r, 1500));
-            
+
             // If the banner is still hidden, no update was found.
             if (document.getElementById('pwaUpdateBanner')?.classList.contains('hidden')) {
               if (typeof showToast === 'function') showToast('Your app is already up to date!', { type: 'success' });
             }
           } else {
-             if (typeof showToast === 'function') showToast('App is running in development mode (no updates).', { type: 'info' });
+            if (typeof showToast === 'function') showToast('App is running in development mode (no updates).', { type: 'info' });
           }
         } else {
           if (typeof showToast === 'function') showToast('Service workers are not supported in this browser.', { type: 'warn' });
@@ -5038,8 +5038,8 @@ async function handleQtyRequestSubmit(e) {
     newTotalQty -= updateQty;
     newAvailableQty -= updateQty;
     if (newTotalQty < 0 || newAvailableQty < 0) {
-       await appAlert(`Cannot remove ${updateQty} items. Only ${newAvailableQty + updateQty} are available.`, { type: 'warn' });
-       return;
+      await appAlert(`Cannot remove ${updateQty} items. Only ${newAvailableQty + updateQty} are available.`, { type: 'warn' });
+      return;
     }
   }
 
@@ -5051,7 +5051,7 @@ async function handleQtyRequestSubmit(e) {
   const damaged = newStatusQuantities.Damaged || 0;
   const lost = newStatusQuantities.Lost || 0;
   let newPrimaryStatus = 'Available';
-  
+
   if (available < newTotalQty) {
     if (maintenance >= damaged && maintenance >= lost && maintenance > 0) newPrimaryStatus = 'In Maintenance';
     else if (damaged >= lost && damaged > 0) newPrimaryStatus = 'Damaged';
@@ -5072,7 +5072,7 @@ async function handleQtyRequestSubmit(e) {
     setSyncingState(true, 'Submitting quantity update request to admin...');
 
     const actionText = updateType === 'addition' ? `Added ${updateQty} new tool(s) to inventory.` : `Removed ${updateQty} tool(s) (no more in use).`;
-    
+
     await push(ref(db, 'toolQuantityRequests'), {
       toolId: toolId,
       toolName: tool.toolName,
@@ -5216,15 +5216,15 @@ async function handleApproveToolQty(reqId) {
       const tool = globalState.toolsCache.find(t => t.id === req.toolId);
       if (tool) {
         let updateData = { quantity: req.newQuantity };
-        
+
         // If it has newStatusQuantities, update them as well
         if (req.newStatusQuantities) {
           updateData.statusQuantities = req.newStatusQuantities;
           updateData.status = req.newPrimaryStatus || 'Available';
-          
+
           const now = Date.now();
           const dateStr = new Date().toLocaleString();
-          
+
           const historyEntry = {
             status: req.statusSnapshot || 'Available',
             previousStatus: null,
@@ -5234,7 +5234,7 @@ async function handleApproveToolQty(reqId) {
             dateStr: dateStr,
             notes: req.actionText || 'Quantity updated by request'
           };
-          
+
           const currentHistory = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : (tool.status ? [{
             status: tool.status,
             previousStatus: null,
@@ -5244,7 +5244,7 @@ async function handleApproveToolQty(reqId) {
             dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : dateStr,
             notes: tool.notes || 'Initial registration'
           }] : []);
-          
+
           updateData.statusHistory = [...currentHistory, historyEntry];
           updateData.lastStatusNote = req.actionText;
           updateData.updatedAt = serverTimestamp();
@@ -5582,7 +5582,7 @@ async function handleCleanupOldRequests() {
     try {
       await remove(ref(db, 'materialRequests/' + req.id));
       successCount++;
-    } catch(err) {
+    } catch (err) {
       console.error('Failed to delete request', req.id, err);
       failCount++;
     }
@@ -6619,18 +6619,18 @@ function renderMaterialRequests() {
   }).join('');
 }
 
-window.approveMaterialRequest = async function(reqId, buttonEl = null) {
+window.approveMaterialRequest = async function (reqId, buttonEl = null) {
   const btn = buttonEl || (window.event ? window.event.currentTarget : null);
   const originalText = btn ? btn.innerHTML : '';
 
   const confirmed = await appConfirm('Are you sure you want to approve this material request?', { title: 'Approve Request', confirmText: 'Approve', type: 'primary' });
   if (!confirmed) return;
-  
+
   if (btn) {
     btn.disabled = true;
     btn.style.opacity = '0.5';
   }
-  
+
   try {
     const reqRef = ref(db, 'materialRequests/' + reqId);
     await update(reqRef, {
@@ -6639,10 +6639,10 @@ window.approveMaterialRequest = async function(reqId, buttonEl = null) {
       approvedAt: new Date().toISOString()
     });
     showToast('Material Request approved successfully.', { title: 'Approved', type: 'success' });
-    
+
     $('#materialRequestsDialog')?.classList.add('hidden');
     document.body.classList.remove('modal-open');
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     appAlert('Failed to approve material request: ' + err.message, { type: 'danger' });
   } finally {
@@ -6654,18 +6654,18 @@ window.approveMaterialRequest = async function(reqId, buttonEl = null) {
   }
 };
 
-window.rejectMaterialRequest = async function(reqId, buttonEl = null) {
+window.rejectMaterialRequest = async function (reqId, buttonEl = null) {
   const btn = buttonEl || (window.event ? window.event.currentTarget : null);
   const originalText = btn ? btn.innerHTML : '';
 
   const confirmed = await appConfirm('Are you sure you want to reject this material request?', { title: 'Reject Request', confirmText: 'Reject', type: 'danger' });
   if (!confirmed) return;
-  
+
   if (btn) {
     btn.disabled = true;
     btn.style.opacity = '0.5';
   }
-  
+
   try {
     const reqRef = ref(db, 'materialRequests/' + reqId);
     await update(reqRef, {
@@ -6674,10 +6674,10 @@ window.rejectMaterialRequest = async function(reqId, buttonEl = null) {
       rejectedAt: new Date().toISOString()
     });
     showToast('Material Request rejected successfully.', { title: 'Rejected', type: 'info' });
-    
+
     $('#materialRequestsDialog')?.classList.add('hidden');
     document.body.classList.remove('modal-open');
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     appAlert('Failed to reject material request: ' + err.message, { type: 'danger' });
   } finally {

@@ -1,8 +1,10 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>CMM SMS Store</title>
   <meta name="description" content="CMM SMS Store material issue & return tracking system" />
   <meta name="theme-color" content="#09090b" id="themeColorMeta" />
@@ -58,7 +60,13 @@
   <div id="pwaUpdateBanner" class="pwa-update-banner hidden" role="alert" aria-live="assertive">
     <div class="pwa-update-content">
       <div class="pwa-update-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 2v6h-6"></path>
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+          <path d="M3 22v-6h6"></path>
+          <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+        </svg>
       </div>
       <div class="pwa-update-text">
         <strong id="pwaUpdateTitle">Update Available</strong>
@@ -131,13 +139,15 @@
     <section class="ios-install-modal" role="dialog" aria-modal="true" aria-labelledby="iosInstallTitle">
       <div class="ios-install-head">
         <div style="display:flex; align-items:center; gap:12px;">
-          <img src="apple-touch-icon.png" class="ios-app-icon" alt="App Icon" style="width:42px; height:42px; border-radius:10px; border:1px solid var(--border);" />
+          <img src="apple-touch-icon.png" class="ios-app-icon" alt="App Icon"
+            style="width:42px; height:42px; border-radius:10px; border:1px solid var(--border);" />
           <div>
             <h3 id="iosInstallTitle" style="margin:0; font-size:16px; font-weight:700;">Install on iPhone / iPad</h3>
             <span style="font-size:12px; color:var(--text-muted);">Safari Home Screen Web App</span>
           </div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="iosInstallCloseBtn" style="padding:4px 10px; min-height:32px; font-size:16px; border-radius:8px;">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="iosInstallCloseBtn"
+          style="padding:4px 10px; min-height:32px; font-size:16px; border-radius:8px;">✕</button>
       </div>
       <div class="ios-install-body">
         <p style="margin:0 0 16px; font-size:13px; color:var(--text-muted); line-height:1.45;">
@@ -148,10 +158,11 @@
             <div class="ios-step-badge">1</div>
             <div class="ios-step-content">
               <span>Tap the <strong>Share button</strong> in Safari's bottom toolbar</span>
-              <svg class="ios-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                <polyline points="16 6 12 2 8 6"/>
-                <line x1="12" y1="2" x2="12" y2="15"/>
+              <svg class="ios-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
               </svg>
             </div>
           </div>
@@ -159,10 +170,11 @@
             <div class="ios-step-badge">2</div>
             <div class="ios-step-content">
               <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
-              <svg class="ios-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="3" ry="3"/>
-                <line x1="12" y1="8" x2="12" y2="16"/>
-                <line x1="8" y1="12" x2="16" y2="12"/>
+              <svg class="ios-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
             </div>
           </div>
@@ -176,27 +188,34 @@
         </div>
       </div>
       <div class="ios-install-foot">
-        <button type="button" class="btn btn-primary" id="iosInstallGotItBtn" style="width:100%; justify-content:center;">Got it</button>
+        <button type="button" class="btn btn-primary" id="iosInstallGotItBtn"
+          style="width:100%; justify-content:center;">Got it</button>
       </div>
     </section>
   </div>
 
   <!-- Cleanup Preview Dialog -->
   <div id="cleanupPreviewDialog" class="app-dialog-backdrop hidden" role="presentation">
-    <section class="tool-status-dialog" style="max-width:600px;" role="dialog" aria-modal="true" aria-labelledby="cleanupPreviewTitle">
+    <section class="tool-status-dialog" style="max-width:600px;" role="dialog" aria-modal="true"
+      aria-labelledby="cleanupPreviewTitle">
       <div class="tool-modal-head">
         <div>
           <h2 id="cleanupPreviewTitle" style="margin:0; font-size:18px; font-weight:700;">Confirm Cleanup</h2>
-          <div id="cleanupPreviewSubtitle" class="modal-sub" style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">Review records before deletion</div>
+          <div id="cleanupPreviewSubtitle" class="modal-sub"
+            style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">Review records before deletion</div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="cleanupPreviewCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="cleanupPreviewCloseBtn" aria-label="Close dialog"
+          style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
       </div>
       <div class="tool-modal-body" style="padding:16px 20px 20px;">
-        <div id="cleanupPreviewStorageBanner" style="padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 13.5px; font-weight: 500; display:flex; align-items:center; gap:8px;">
-           <span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Calculating storage space...
+        <div id="cleanupPreviewStorageBanner"
+          style="padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 13.5px; font-weight: 500; display:flex; align-items:center; gap:8px;">
+          <span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> Calculating storage
+          space...
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-          The following records were returned more than 3 months ago. Deleting them will also permanently remove their attached photos from cloud storage.
+          The following records were returned more than 3 months ago. Deleting them will also permanently remove their
+          attached photos from cloud storage.
         </p>
         <div class="table-wrap" style="max-height:300px; overflow-y:auto; margin-bottom:20px;">
           <table class="tools-master-table" style="font-size:12.5px; width:100%;">
@@ -226,9 +245,11 @@
       <div class="tool-modal-head">
         <div>
           <h2 id="toolStatusTitle" style="margin:0; font-size:18px; font-weight:700;">Update Tool Status</h2>
-          <div id="toolStatusSubtitle" class="modal-sub" style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">Tool ID</div>
+          <div id="toolStatusSubtitle" class="modal-sub"
+            style="font-size:12.5px; color:var(--text-muted); margin-top:2px;">Tool ID</div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="toolStatusCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="toolStatusCloseBtn" aria-label="Close dialog"
+          style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
       </div>
       <div class="tool-modal-body" style="padding:16px 20px 20px;">
         <form id="toolStatusForm">
@@ -237,43 +258,62 @@
             <label style="margin-bottom:8px; display:block;">Distribute Quantities Across Statuses</label>
             <div class="status-grid">
               <div>
-                <label for="statusModalQtyAvailable" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Available (Auto-calculated)</label>
-                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyAvailable" min="0" value="0" readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
+                <label for="statusModalQtyAvailable"
+                  style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Available
+                  (Auto-calculated)</label>
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyAvailable" min="0" value="0"
+                  readonly tabindex="-1" style="background-color:rgba(0,0,0,0.1); color:var(--text-muted);" />
               </div>
               <div>
-                <label for="statusModalQtyMaintenance" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">In Maintenance</label>
-                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyMaintenance" min="0" value="0" required />
+                <label for="statusModalQtyMaintenance"
+                  style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">In
+                  Maintenance</label>
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyMaintenance" min="0"
+                  value="0" required />
               </div>
               <div>
-                <label for="statusModalQtyDamaged" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Damaged</label>
-                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyDamaged" min="0" value="0" required />
+                <label for="statusModalQtyDamaged"
+                  style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Damaged</label>
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyDamaged" min="0" value="0"
+                  required />
               </div>
               <div>
-                <label for="statusModalQtyLost" style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Lost</label>
-                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyLost" min="0" value="0" required />
+                <label for="statusModalQtyLost"
+                  style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Lost</label>
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="statusModalQtyLost" min="0" value="0"
+                  required />
               </div>
             </div>
-            <div style="margin-top:10px; font-size:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+            <div
+              style="margin-top:10px; font-size:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="color:var(--text-muted);">Allocated: <span id="statusModalAllocatedSum">0</span> / <span id="statusModalTotalSum">0</span></span>
-                <button type="button" class="btn btn-ghost btn-sm" id="statusModalRequestQtyBtn" style="padding:2px 8px; font-size:11px; display:none;">Update Total</button>
+                <span style="color:var(--text-muted);">Allocated: <span id="statusModalAllocatedSum">0</span> / <span
+                    id="statusModalTotalSum">0</span></span>
+                <button type="button" class="btn btn-ghost btn-sm" id="statusModalRequestQtyBtn"
+                  style="padding:2px 8px; font-size:11px; display:none;">Update Total</button>
               </div>
-              <span id="statusModalAllocatedWarn" style="color:var(--danger); display:none;">Must match total quantity</span>
+              <span id="statusModalAllocatedWarn" style="color:var(--danger); display:none;">Must match total
+                quantity</span>
             </div>
           </div>
           <div class="field" style="margin-bottom:14px;">
             <label for="statusModalNotes">Update Notes / Reason (Optional)</label>
-            <textarea id="statusModalNotes" rows="2" placeholder="e.g. Sent for maintenance, motor replaced, returned to shelf..."></textarea>
+            <textarea id="statusModalNotes" rows="2"
+              placeholder="e.g. Sent for maintenance, motor replaced, returned to shelf..."></textarea>
           </div>
           <div class="actions-row" style="margin-bottom:20px; justify-content:flex-end;">
             <button type="button" class="btn btn-ghost btn-sm" id="statusModalCancelBtn">Cancel</button>
             <button type="submit" class="btn btn-primary btn-sm" id="statusModalSaveBtn">Save Status Update</button>
           </div>
         </form>
-        
+
         <div class="tool-history-section">
-          <h3 class="tool-history-title" style="font-size:14px; font-weight:700; margin:0 0 10px; display:flex; align-items:center; gap:6px;">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <h3 class="tool-history-title"
+            style="font-size:14px; font-weight:700; margin:0 0 10px; display:flex; align-items:center; gap:6px;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
             Status History Log
           </h3>
           <div id="toolStatusHistoryTimeline" class="tool-timeline">
@@ -289,18 +329,24 @@
     <section class="tool-deletion-dialog" role="dialog" aria-modal="true" aria-labelledby="toolDeletionRequestTitle">
       <div class="tool-modal-head">
         <div>
-          <h2 id="toolDeletionRequestTitle" style="margin:0; font-size:18px; font-weight:700; color:var(--bad);">Request Tool Deletion</h2>
-          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Only admin can delete tools. Submitting this sends a deletion request.</div>
+          <h2 id="toolDeletionRequestTitle" style="margin:0; font-size:18px; font-weight:700; color:var(--bad);">Request
+            Tool Deletion</h2>
+          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Only admin can delete
+            tools. Submitting this sends a deletion request.</div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="toolDeletionRequestCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="toolDeletionRequestCloseBtn" aria-label="Close dialog"
+          style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
       </div>
       <div class="tool-modal-body" style="padding:16px 20px 20px;">
         <form id="toolDeletionRequestForm">
           <input type="hidden" id="deletionReqToolId" />
-          <div class="tool-deletion-target-info" id="deletionReqToolInfo" style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;"></div>
+          <div class="tool-deletion-target-info" id="deletionReqToolInfo"
+            style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;">
+          </div>
           <div class="field" style="margin-top:10px;">
             <label for="deletionReqReason">Reason for Deletion Request *</label>
-            <textarea id="deletionReqReason" rows="3" required placeholder="Please describe why this tool should be removed from the master list (e.g. Scrapped, beyond repair, duplicate record)..."></textarea>
+            <textarea id="deletionReqReason" rows="3" required
+              placeholder="Please describe why this tool should be removed from the master list (e.g. Scrapped, beyond repair, duplicate record)..."></textarea>
           </div>
           <div class="actions-row" style="margin-top:18px; justify-content:flex-end;">
             <button type="button" class="btn btn-ghost" id="deletionReqCancelBtn">Cancel</button>
@@ -317,14 +363,18 @@
       <div class="tool-modal-head">
         <div>
           <h2 id="toolQtyRequestTitle" style="margin:0; font-size:18px; font-weight:700;">Update Total Quantity</h2>
-          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Update the total quantity of this tool.</div>
+          <div class="modal-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px;">Update the total
+            quantity of this tool.</div>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="toolQtyRequestCloseBtn" aria-label="Close dialog" style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="toolQtyRequestCloseBtn" aria-label="Close dialog"
+          style="padding:4px 8px; min-height:30px; font-size:16px;">✕</button>
       </div>
       <div class="tool-modal-body" style="padding:16px 20px 20px;">
         <form id="toolQtyRequestForm">
           <input type="hidden" id="qtyReqToolId" />
-          <div class="tool-deletion-target-info" id="qtyReqToolInfo" style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;"></div>
+          <div class="tool-deletion-target-info" id="qtyReqToolInfo"
+            style="padding:10px 12px; border-radius:8px; background:var(--surface-soft); font-size:13px; margin-bottom:12px;">
+          </div>
           <div class="field" style="margin-top:10px;">
             <label style="margin-bottom: 8px; display: block;">Update Type *</label>
             <div style="display: flex; gap: 16px; margin-top: 4px;">
@@ -338,7 +388,8 @@
           </div>
           <div class="field" style="margin-top:16px;">
             <label for="qtyReqUpdateQuantity">Quantity to Update *</label>
-            <input type="number" inputmode="numeric" pattern="[0-9]*" id="qtyReqUpdateQuantity" min="1" required placeholder="Enter quantity..." />
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="qtyReqUpdateQuantity" min="1" required
+              placeholder="Enter quantity..." />
           </div>
           <div class="actions-row" style="margin-top:18px; justify-content:flex-end;">
             <button type="button" class="btn btn-ghost" id="qtyReqCancelBtn">Cancel</button>
@@ -355,10 +406,11 @@
       <div class="overdue-modal-head">
         <div class="overdue-modal-head-title">
           <div class="overdue-icon-badge" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </div>
           <div>
@@ -371,7 +423,8 @@
             </div>
           </div>
         </div>
-        <button type="button" class="overdue-modal-close-btn" id="overdueFollowUpCloseBtn" aria-label="Close dialog">✕</button>
+        <button type="button" class="overdue-modal-close-btn" id="overdueFollowUpCloseBtn"
+          aria-label="Close dialog">✕</button>
       </div>
       <div class="overdue-modal-body">
         <div id="overdueFollowUpList" class="overdue-cards-list">
@@ -380,11 +433,12 @@
       </div>
       <div class="overdue-modal-foot">
         <button type="button" class="btn btn-ghost btn-sm overdue-footer-view-all" id="overdueViewAllRegisterBtn">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           <span>View Full Register</span>
         </button>
@@ -398,8 +452,10 @@
     <section class="overdue-modal-container" role="dialog" aria-modal="true" aria-labelledby="matReqModalTitle">
       <div class="overdue-modal-head">
         <div class="overdue-modal-head-title">
-          <div class="overdue-icon-badge" aria-hidden="true" style="background: rgba(255,193,7,0.1); color: var(--amber);">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="overdue-icon-badge" aria-hidden="true"
+            style="background: rgba(255,193,7,0.1); color: var(--amber);">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
               <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
               <path d="M12 11h4"></path>
@@ -411,7 +467,8 @@
           <div>
             <div class="overdue-head-row">
               <h2 id="matReqModalTitle" class="overdue-modal-title">Pending Material Requests</h2>
-              <span id="matReqCountBadge" class="overdue-count-pill" style="background: var(--amber); color: #fff;">0 Pending</span>
+              <span id="matReqCountBadge" class="overdue-count-pill" style="background: var(--amber); color: #fff;">0
+                Pending</span>
             </div>
             <div id="matReqModalSubtitle" class="overdue-modal-subtitle">
               Material requests waiting for approval.
@@ -427,11 +484,12 @@
       </div>
       <div class="overdue-modal-foot">
         <button type="button" class="btn btn-ghost btn-sm overdue-footer-view-all" id="matReqViewAllBtn">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           <span>View All Requests</span>
         </button>
@@ -445,14 +503,16 @@
       aria-label="Switch to dark theme" title="Switch theme">
       <span class="theme-toggle-track" aria-hidden="true">
         <span class="theme-toggle-icon theme-toggle-sun" title="Light Mode">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"/>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
           </svg>
         </span>
         <span class="theme-toggle-icon theme-toggle-moon" title="Dark Mode">
           <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
           </svg>
         </span>
       </span>
@@ -460,163 +520,171 @@
     </button>
 
     <div class="auth-window">
-    <div class="auth-left">
-      <div class="brand" style="margin-bottom: 32px;">
-        <span class="brand-mark">⚙</span>
-        <span class="brand-text">CMM SMS <strong>STORE</strong></span>
-      </div>
-      <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
-      <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
+      <div class="auth-left">
+        <div class="brand" style="margin-bottom: 32px;">
+          <span class="brand-mark">⚙</span>
+          <span class="brand-text">CMM SMS <strong>STORE</strong></span>
+        </div>
+        <h1 class="auth-welcome-title">Manage Store Logistics<br>Seamlessly.</h1>
+        <p class="auth-welcome-sub">The complete material issue and return register designed for modern workflows.</p>
 
-      <div class="auth-features-layout">
-        <div class="auth-features">
-          <div class="auth-feature-card">
-            <span class="feature-icon" aria-hidden="true">⚡</span>
-            <div class="feature-text">Real-time Tracking</div>
+        <div class="auth-features-layout">
+          <div class="auth-features">
+            <div class="auth-feature-card">
+              <span class="feature-icon" aria-hidden="true">⚡</span>
+              <div class="feature-text">Real-time Tracking</div>
+            </div>
+            <div class="auth-feature-card float-delay-1">
+              <span class="feature-icon" aria-hidden="true">☁</span>
+              <div class="feature-text">Cloud Sync Enabled</div>
+            </div>
+            <div class="auth-feature-card float-delay-2">
+              <span class="feature-icon" aria-hidden="true">🔒</span>
+              <div class="feature-text">Role-based Access</div>
+            </div>
           </div>
-          <div class="auth-feature-card float-delay-1">
-            <span class="feature-icon" aria-hidden="true">☁</span>
-            <div class="feature-text">Cloud Sync Enabled</div>
+
+          <div class="login-kpi-grid auth-features" id="loginKpiGrid"
+            style="display: none; opacity: 0; transition: opacity 0.5s ease;">
+            <div class="auth-feature-card float-delay-1" style="pointer-events: none; cursor: default;">
+              <span class="feature-icon" aria-hidden="true">📊</span>
+              <div class="feature-text">Total Entries: <strong id="loginKpiTotal"
+                  style="margin-left: 4px; font-weight: 700;">-</strong></div>
+            </div>
+            <div class="auth-feature-card float-delay-2" style="pointer-events: none; cursor: default;">
+              <span class="feature-icon" aria-hidden="true">⏳</span>
+              <div class="feature-text">Pending Return: <strong id="loginKpiPending"
+                  style="margin-left: 4px; font-weight: 700; color: var(--warn);">-</strong></div>
+            </div>
+            <div class="auth-feature-card float-delay-0" style="pointer-events: none; cursor: default;">
+              <span class="feature-icon" aria-hidden="true">✅</span>
+              <div class="feature-text">Returned: <strong id="loginKpiReturned"
+                  style="margin-left: 4px; font-weight: 700; color: var(--good);">-</strong></div>
+            </div>
           </div>
-          <div class="auth-feature-card float-delay-2">
-            <span class="feature-icon" aria-hidden="true">🔒</span>
-            <div class="feature-text">Role-based Access</div>
+        </div>
+      </div>
+
+      <div class="auth-right">
+        <div class="auth-card" id="authCard">
+          <div class="brand desktop-hidden-brand">
+            <span class="brand-mark">⚙</span>
+            <span class="brand-text">CMM SMS <strong>STORE</strong></span>
+          </div>
+          <div class="auth-sub desktop-hidden-brand">Issue &amp; Return Register — Store Access</div>
+
+          <div id="loginSyncStatus" class="login-sync-row">
+            <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
+            <span id="loginSyncLabel">Checking cloud connection...</span>
+          </div>
+
+          <div id="authError" class="alert alert-error hidden" role="alert"></div>
+          <div id="authInfo" class="alert alert-info hidden"></div>
+
+          <form id="loginForm">
+            <div class="field">
+              <label for="loginUsername">Username</label>
+              <input type="text" id="loginUsername" required autocomplete="username" autocapitalize="none" />
+            </div>
+            <div class="field">
+              <label for="loginPassword">Password</label>
+              <div class="password-field-wrap">
+                <input type="password" id="loginPassword" required autocomplete="current-password" />
+                <button type="button" class="password-toggle-btn" data-password-target="loginPassword"
+                  aria-label="Show password" aria-pressed="false">Show</button>
+              </div>
+            </div>
+            <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
+          </form>
+
+          <form id="requestForm" class="hidden">
+            <div class="field">
+              <label for="reqFullName">Full Name</label>
+              <input type="text" id="reqFullName" required autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="reqUsername">Desired Username</label>
+              <input type="text" id="reqUsername" required autocomplete="username" autocapitalize="none" />
+            </div>
+            <div class="field">
+              <label for="reqPassword">Desired Password</label>
+              <div class="password-field-wrap">
+                <input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" />
+                <button type="button" class="password-toggle-btn" data-password-target="reqPassword"
+                  aria-label="Show password" aria-pressed="false">Show</button>
+              </div>
+              <div class="password-strength" id="reqPasswordStrength"
+                style="margin-top:6px; font-size:12px; font-weight:600;"></div>
+            </div>
+            <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
+          </form>
+
+          <div class="request-link-row" style="flex-direction: column; gap: 8px;">
+            <button type="button" id="showRequestForm">Need access? Request a storekeeper account →</button>
+            <button type="button" id="showMaterialRequestForm" style="color: var(--amber);">Need materials? Submit a
+              Material Request →</button>
+            <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
+          </div>
+
+          <div class="auth-hint" id="authHintText">
+            Staff accounts are created by an Admin from inside the app, or requested here — an Admin must approve your
+            request before you can log in.
+            <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
           </div>
         </div>
 
-        <div class="login-kpi-grid auth-features" id="loginKpiGrid"
-          style="display: none; opacity: 0; transition: opacity 0.5s ease;">
-          <div class="auth-feature-card float-delay-1" style="pointer-events: none; cursor: default;">
-            <span class="feature-icon" aria-hidden="true">📊</span>
-            <div class="feature-text">Total Entries: <strong id="loginKpiTotal"
-                style="margin-left: 4px; font-weight: 700;">-</strong></div>
+        <div class="auth-card hidden" id="materialRequestCard" style="position: relative;">
+          <button type="button" id="matReqTopBackBtn" class="btn btn-ghost btn-sm"
+            style="align-self: flex-start; margin-bottom: 16px; margin-left: -8px; color: var(--steel-400);">←
+            Back</button>
+          <div class="brand desktop-hidden-brand">
+            <span class="brand-mark">⚙</span>
+            <span class="brand-text">CMM SMS <strong>STORE</strong></span>
           </div>
-          <div class="auth-feature-card float-delay-2" style="pointer-events: none; cursor: default;">
-            <span class="feature-icon" aria-hidden="true">⏳</span>
-            <div class="feature-text">Pending Return: <strong id="loginKpiPending"
-                style="margin-left: 4px; font-weight: 700; color: var(--warn);">-</strong></div>
-          </div>
-          <div class="auth-feature-card float-delay-0" style="pointer-events: none; cursor: default;">
-            <span class="feature-icon" aria-hidden="true">✅</span>
-            <div class="feature-text">Returned: <strong id="loginKpiReturned"
-                style="margin-left: 4px; font-weight: 700; color: var(--good);">-</strong></div>
+          <div class="auth-sub desktop-hidden-brand" style="margin-bottom: 24px;">Material Request Form</div>
+
+          <form id="materialRequestForm">
+            <div class="field">
+              <label for="matReqName">Requester Name <span style="color:red;">*</span></label>
+              <input type="text" id="matReqName" required autocomplete="off" list="matReqNameList" />
+              <datalist id="matReqNameList"></datalist>
+            </div>
+            <div class="field">
+              <label for="matReqVendor">Vendor/Contractor <span style="color:red;">*</span></label>
+              <input type="text" id="matReqVendor" required autocomplete="off" list="matReqVendorList" />
+              <datalist id="matReqVendorList"></datalist>
+            </div>
+            <div class="field">
+              <label for="matReqMobile">Mobile Number <span style="color:red;">*</span></label>
+              <input type="tel" id="matReqMobile" required autocomplete="off" list="matReqMobileList" pattern="\d{10}"
+                minlength="10" maxlength="10" title="Mobile number must be exactly 10 digits"
+                oninput="this.value = this.value.replace(/\D/g, '')" />
+              <datalist id="matReqMobileList"></datalist>
+            </div>
+            <div class="field">
+              <label for="matReqMaterials">Required Materials <span style="color:red;">*</span></label>
+              <textarea id="matReqMaterials" rows="4" required autocomplete="off"
+                placeholder="E.g., 50x Safety Helmets, 20x Gloves..."></textarea>
+            </div>
+            <div class="field">
+              <label for="matReqApprover">Approver <span style="color:red;">*</span></label>
+              <select id="matReqApprover" required>
+                <option value="" disabled selected>Loading approvers...</option>
+              </select>
+            </div>
+            <button type="submit" id="matReqSubmitBtn" class="btn btn-primary" style="margin-top: 8px;">Submit
+              Request</button>
+          </form>
+
+          <div class="request-link-row" style="margin-top: 16px;">
+            <button type="button" id="showLoginFormFromMat" style="color: var(--steel-400);">← Back to log in</button>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="auth-right">
-      <div class="auth-card" id="authCard">
-        <div class="brand desktop-hidden-brand">
-          <span class="brand-mark">⚙</span>
-          <span class="brand-text">CMM SMS <strong>STORE</strong></span>
-        </div>
-        <div class="auth-sub desktop-hidden-brand">Issue &amp; Return Register — Store Access</div>
-
-        <div id="loginSyncStatus" class="login-sync-row">
-          <span class="sync-dot sync-dot-bad" id="loginSyncDot"></span>
-          <span id="loginSyncLabel">Checking cloud connection...</span>
-        </div>
-
-        <div id="authError" class="alert alert-error hidden" role="alert"></div>
-        <div id="authInfo" class="alert alert-info hidden"></div>
-
-        <form id="loginForm">
-          <div class="field">
-            <label for="loginUsername">Username</label>
-            <input type="text" id="loginUsername" required autocomplete="username" autocapitalize="none" />
-          </div>
-          <div class="field">
-            <label for="loginPassword">Password</label>
-            <div class="password-field-wrap">
-              <input type="password" id="loginPassword" required autocomplete="current-password" />
-              <button type="button" class="password-toggle-btn" data-password-target="loginPassword"
-                aria-label="Show password" aria-pressed="false">Show</button>
-            </div>
-          </div>
-          <button type="submit" id="loginBtn" class="btn btn-primary" disabled>Log In</button>
-        </form>
-
-        <form id="requestForm" class="hidden">
-          <div class="field">
-            <label for="reqFullName">Full Name</label>
-            <input type="text" id="reqFullName" required autocomplete="name" />
-          </div>
-          <div class="field">
-            <label for="reqUsername">Desired Username</label>
-            <input type="text" id="reqUsername" required autocomplete="username" autocapitalize="none" />
-          </div>
-          <div class="field">
-            <label for="reqPassword">Desired Password</label>
-            <div class="password-field-wrap">
-              <input type="password" id="reqPassword" required minlength="4" autocomplete="new-password" />
-              <button type="button" class="password-toggle-btn" data-password-target="reqPassword"
-                aria-label="Show password" aria-pressed="false">Show</button>
-            </div>
-            <div class="password-strength" id="reqPasswordStrength" style="margin-top:6px; font-size:12px; font-weight:600;"></div>
-          </div>
-          <button type="submit" id="reqSubmitBtn" class="btn btn-primary" disabled>Submit Request</button>
-        </form>
-
-        <div class="request-link-row" style="flex-direction: column; gap: 8px;">
-          <button type="button" id="showRequestForm">Need access? Request a storekeeper account →</button>
-          <button type="button" id="showMaterialRequestForm" style="color: var(--amber);">Need materials? Submit a Material Request →</button>
-          <button type="button" id="showLoginForm" class="hidden">← Back to log in</button>
-        </div>
-
-        <div class="auth-hint" id="authHintText">
-          Staff accounts are created by an Admin from inside the app, or requested here — an Admin must approve your
-          request before you can log in.
-          <div style="margin-top:14px;"><span class="tag">CMM SMS · Cloud Register</span></div>
-        </div>
-      </div>
-
-      <div class="auth-card hidden" id="materialRequestCard" style="position: relative;">
-          <button type="button" id="matReqTopBackBtn" class="btn btn-ghost btn-sm" style="align-self: flex-start; margin-bottom: 16px; margin-left: -8px; color: var(--steel-400);">← Back</button>
-        <div class="brand desktop-hidden-brand">
-          <span class="brand-mark">⚙</span>
-          <span class="brand-text">CMM SMS <strong>STORE</strong></span>
-        </div>
-        <div class="auth-sub desktop-hidden-brand" style="margin-bottom: 24px;">Material Request Form</div>
-        
-        <form id="materialRequestForm">
-          <div class="field">
-            <label for="matReqName">Requester Name <span style="color:red;">*</span></label>
-            <input type="text" id="matReqName" required autocomplete="off" list="matReqNameList" />
-            <datalist id="matReqNameList"></datalist>
-          </div>
-          <div class="field">
-            <label for="matReqVendor">Vendor/Contractor <span style="color:red;">*</span></label>
-            <input type="text" id="matReqVendor" required autocomplete="off" list="matReqVendorList" />
-            <datalist id="matReqVendorList"></datalist>
-          </div>
-          <div class="field">
-            <label for="matReqMobile">Mobile Number <span style="color:red;">*</span></label>
-            <input type="tel" id="matReqMobile" required autocomplete="off" list="matReqMobileList" pattern="\d{10}" minlength="10" maxlength="10" title="Mobile number must be exactly 10 digits" oninput="this.value = this.value.replace(/\D/g, '')" />
-            <datalist id="matReqMobileList"></datalist>
-          </div>
-          <div class="field">
-            <label for="matReqMaterials">Required Materials <span style="color:red;">*</span></label>
-            <textarea id="matReqMaterials" rows="4" required autocomplete="off" placeholder="E.g., 50x Safety Helmets, 20x Gloves..."></textarea>
-          </div>
-          <div class="field">
-            <label for="matReqApprover">Approver <span style="color:red;">*</span></label>
-            <select id="matReqApprover" required>
-              <option value="" disabled selected>Loading approvers...</option>
-            </select>
-          </div>
-          <button type="submit" id="matReqSubmitBtn" class="btn btn-primary" style="margin-top: 8px;">Submit Request</button>
-        </form>
-
-        <div class="request-link-row" style="margin-top: 16px;">
-          <button type="button" id="showLoginFormFromMat" style="color: var(--steel-400);">← Back to log in</button>
-        </div>
-      </div>
-    </div>
   </div>
-
-    </div>
-<div id="appScreen" class="hidden">
+  <div id="appScreen" class="hidden">
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">
       <span class="pull-refresh-icon">↻</span>
       <span id="pullRefreshText">Pull to refresh</span>
@@ -641,9 +709,11 @@
             <button type="button" class="status-sync cloud-sync-button" id="cloudSyncRefreshBtn" aria-live="polite"
               aria-label="Refresh data from cloud database" title="Refresh from cloud database">
               <span class="cloud-sync-visual is-offline" id="appSyncDot" aria-hidden="true">
-                <svg class="cloud-sync-gear-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                  <circle cx="12" cy="12" r="3"/>
+                <svg class="cloud-sync-gear-svg" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                  <circle cx="12" cy="12" r="3" />
                 </svg>
                 <span class="cloud-sync-status-dot"></span>
               </span>
@@ -657,26 +727,33 @@
               <span id="cloudSyncRetryBtn" class="cloud-sync-retry hidden" aria-hidden="true">Retry</span>
             </button>
             <div class="status-right-group">
-              <button type="button" class="topbar-overdue-btn hidden" id="topbarMaterialRequestsBtn" title="Pending Material Requests" aria-label="Pending Material Requests" style="color: var(--amber);">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <button type="button" class="topbar-overdue-btn hidden" id="topbarMaterialRequestsBtn"
+                title="Pending Material Requests" aria-label="Pending Material Requests" style="color: var(--amber);">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
                   <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                   <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                   <line x1="9" y1="14" x2="15" y2="14"></line>
                   <line x1="9" y1="10" x2="15" y2="10"></line>
                 </svg>
-                <span class="overdue-badge-count" id="topbarMaterialRequestsCount" style="background: var(--amber);">0</span>
+                <span class="overdue-badge-count" id="topbarMaterialRequestsCount"
+                  style="background: var(--amber);">0</span>
               </button>
-              <button type="button" class="topbar-overdue-btn hidden" id="topbarRequestsBtn" title="Pending Admin Requests" aria-label="Pending Admin Requests" style="color: var(--primary);">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              <button type="button" class="topbar-overdue-btn hidden" id="topbarRequestsBtn"
+                title="Pending Admin Requests" aria-label="Pending Admin Requests" style="color: var(--primary);">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 11l3 3L22 4" />
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                 </svg>
                 <span class="overdue-badge-count" id="topbarRequestsCount" style="background: var(--primary);">0</span>
               </button>
-              <button type="button" class="topbar-overdue-btn hidden" id="topbarOverdueBtn" title="Overdue Tools/Materials Follow-up" aria-label="Overdue items follow-up">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              <button type="button" class="topbar-overdue-btn hidden" id="topbarOverdueBtn"
+                title="Overdue Tools/Materials Follow-up" aria-label="Overdue items follow-up">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 <span class="overdue-badge-count" id="topbarOverdueCount">0</span>
               </button>
@@ -688,8 +765,9 @@
                     <line x1="12" y1="12" x2="12" y2="7" />
                     <line x1="12" y1="12" x2="15.3" y2="14" />
                   </svg>
-                  <span class="status-badge-text"><span id="clockDate"></span><span class="status-badge-sep">·</span><span
-                      id="clockTime"></span><span id="clockMeridiem" class="status-badge-meridiem"></span></span>
+                  <span class="status-badge-text"><span id="clockDate"></span><span
+                      class="status-badge-sep">·</span><span id="clockTime"></span><span id="clockMeridiem"
+                      class="status-badge-meridiem"></span></span>
                 </span>
                 <span class="status-badge status-badge-timer" id="sessionTimer"
                   title="Time remaining before automatic sign-out from inactivity">
@@ -706,14 +784,16 @@
                 aria-label="Switch to dark theme" title="Switch theme">
                 <span class="theme-toggle-track" aria-hidden="true">
                   <span class="theme-toggle-icon theme-toggle-sun" title="Light Mode">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="4"/>
-                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="4" />
+                      <path
+                        d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
                     </svg>
                   </span>
                   <span class="theme-toggle-icon theme-toggle-moon" title="Dark Mode">
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
                     </svg>
                   </span>
                 </span>
@@ -726,7 +806,8 @@
       <main class="app-main" id="appMain"></main>
       <nav class="mobile-bottom-bar" id="mobileBottomNav" aria-label="Mobile Navigation"></nav>
     </div>
-    <button type="button" class="mobile-fab" id="mobileFab" data-nav="issue-new" aria-label="Log New Issue" title="Issue Material">
+    <button type="button" class="mobile-fab" id="mobileFab" data-nav="issue-new" aria-label="Log New Issue"
+      title="Issue Material">
       <svg viewBox="0 0 24 24" width="26" height="26" stroke="currentColor" stroke-width="2.6" fill="none"
         stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -982,12 +1063,12 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js?v=28').then((reg) => {
             console.log('[PWA] Service Worker registered with scope:', reg.scope);
-            try { reg.update(); } catch (_) {}
-            
+            try { reg.update(); } catch (_) { }
+
             // Check for updates on visibility change
             document.addEventListener('visibilitychange', () => {
               if (document.visibilityState === 'visible') {
-                try { reg.update(); } catch (_) {}
+                try { reg.update(); } catch (_) { }
               }
             });
 
@@ -1006,41 +1087,41 @@
                     const statusMsg = document.getElementById('pwaUpdateStatusMsg');
                     const icon = document.querySelector('.pwa-update-icon');
                     const title = document.getElementById('pwaUpdateTitle');
-                    
+
                     if (banner && btn) {
                       banner.classList.remove('hidden');
                       // small delay to allow transition
                       setTimeout(() => banner.classList.add('show'), 100);
-                      
+
                       if (laterBtn) {
                         laterBtn.onclick = () => {
                           banner.classList.remove('show');
                           setTimeout(() => banner.classList.add('hidden'), 400);
                         };
                       }
-                      
+
                       btn.onclick = () => {
                         // Prevent multiple clicks
                         if (banner.classList.contains('updating')) return;
                         banner.classList.add('updating');
-                        
+
                         // Show progress bar
                         btn.classList.add('hidden');
-                        if(laterBtn) laterBtn.classList.add('hidden');
+                        if (laterBtn) laterBtn.classList.add('hidden');
                         track.classList.remove('hidden');
                         statusMsg.textContent = 'Downloading and applying update...';
                         title.textContent = 'Updating...';
-                        
+
                         // Simulate progress 0 -> 100%
                         setTimeout(() => { fill.style.width = '30%'; }, 100);
                         setTimeout(() => { fill.style.width = '70%'; }, 500);
-                        setTimeout(() => { 
-                          fill.style.width = '100%'; 
+                        setTimeout(() => {
+                          fill.style.width = '100%';
                           statusMsg.textContent = 'Update successful! Restarting...';
                           title.textContent = 'Success!';
                           icon.classList.add('success');
                           icon.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-                          
+
                           // After success message, apply update and reload
                           setTimeout(() => {
                             newWorker.postMessage({ type: 'SKIP_WAITING' });
