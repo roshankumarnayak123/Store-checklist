@@ -1056,6 +1056,31 @@ $('#loginForm').addEventListener('submit', async (e) => {
   }
 });
 
+const checkUpdatesBtn = $('#checkUpdatesBtn');
+if (checkUpdatesBtn) {
+  checkUpdatesBtn.addEventListener('click', async () => {
+    checkUpdatesBtn.disabled = true;
+    checkUpdatesBtn.textContent = 'Checking...';
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          await reg.update();
+        }
+      }
+      setTimeout(() => {
+        checkUpdatesBtn.disabled = false;
+        checkUpdatesBtn.textContent = 'Check for updates';
+        showToast('You are up to date!');
+      }, 1500);
+    } catch (err) {
+      checkUpdatesBtn.disabled = false;
+      checkUpdatesBtn.textContent = 'Check for updates';
+      console.warn('Update check failed', err);
+    }
+  });
+}
+
 $('#logoutBtn').addEventListener('click', () => {
   if (globalState.unsubIssues) { globalState.unsubIssues(); globalState.unsubIssues = null; }
   if (globalState.unsubTools) { globalState.unsubTools(); globalState.unsubTools = null; }
