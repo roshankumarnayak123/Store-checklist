@@ -5066,58 +5066,34 @@ async function handleQtyRequestSubmit(e) {
   const statusSnapshot = parts.join(', ') || '0 items';
 
   const btn = $('#qtyReqSubmitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
 
   try {
-    setSyncingState(true, 'Updating tool quantity...');
+    setSyncingState(true, 'Submitting quantity update request to admin...');
 
-    const now = Date.now();
-    const dateStr = new Date().toLocaleString();
     const actionText = updateType === 'addition' ? `Added ${updateQty} new tool(s) to inventory.` : `Removed ${updateQty} tool(s) (no more in use).`;
     
-    const historyEntry = {
-      status: statusSnapshot,
-      previousStatus: null,
-      changedBy: globalState.currentUser.fullName || globalState.currentUser.username,
-      changedByUsername: globalState.currentUser.username,
-      timestamp: now,
-      dateStr: dateStr,
-      notes: actionText
-    };
-
-    const currentHistory = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : (tool.status ? [{
-      status: tool.status,
-      previousStatus: null,
-      changedBy: tool.createdBy || 'Initial System Record',
-      changedByUsername: tool.createdBy || 'system',
-      timestamp: tool.createdAt || now,
-      dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : dateStr,
-      notes: tool.notes || 'Initial registration'
-    }] : []);
-    const updatedHistory = [...currentHistory, historyEntry];
-
-    await update(ref(db, 'tools/' + toolId), {
-      quantity: newTotalQty,
-      status: newPrimaryStatus,
-      statusQuantities: newStatusQuantities,
-      statusHistory: updatedHistory,
-      updatedAt: serverTimestamp(),
-      updatedBy: globalState.currentUser.username,
-      lastStatusNote: actionText
-    });
-
-    await writeAudit('tool-qty-updated', toolId, {
+    await push(ref(db, 'toolQuantityRequests'), {
+      toolId: toolId,
       toolName: tool.toolName,
+      uniqueId: tool.uniqueId || '',
       oldQuantity: currentQty,
       newQuantity: newTotalQty,
       updateType: updateType,
-      updateAmount: updateQty
+      updateAmount: updateQty,
+      newStatusQuantities: newStatusQuantities,
+      newPrimaryStatus: newPrimaryStatus,
+      statusSnapshot: statusSnapshot,
+      actionText: actionText,
+      requestedBy: globalState.currentUser.username,
+      requestedByName: globalState.currentUser.fullName || globalState.currentUser.username,
+      createdAt: serverTimestamp()
     });
 
-    showToast(`Total quantity updated successfully.`, { title: 'Quantity Updated' });
+    showToast(`Quantity update request submitted to admin for approval.`, { title: 'Request Sent' });
     closeToolQtyRequestModal();
   } catch (err) {
-    await appAlert('Could not update quantity: ' + err.message, { type: 'danger' });
+    await appAlert('Could not submit request: ' + err.message, { type: 'danger' });
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Update Quantity'; }
     setSyncingState(false);
@@ -5227,7 +5203,11 @@ async function handleApproveToolQty(reqId) {
   if (!req) return;
   const toolName = req.toolName || 'tool';
 
-  if (await appConfirm(`Approve changing the total quantity of "${toolName}" from ${req.oldQuantity} to ${req.newQuantity}?`, {
+  let confirmMsg = `Approve changing the total quantity of "${toolName}" from ${req.oldQuantity} to ${req.newQuantity}?`;
+  if (req.updateType === 'addition') confirmMsg = `Approve adding ${req.updateAmount} "${toolName}" to the total quantity?`;
+  else if (req.updateType === 'removal') confirmMsg = `Approve removing ${req.updateAmount} "${toolName}" from the total quantity?`;
+
+  if (await appConfirm(confirmMsg, {
     title: 'Approve Quantity Change',
     confirmText: 'Approve'
   })) {
@@ -5235,7 +5215,43 @@ async function handleApproveToolQty(reqId) {
       setSyncingState(true, 'Updating quantity...');
       const tool = globalState.toolsCache.find(t => t.id === req.toolId);
       if (tool) {
-        await update(ref(db, 'tools/' + tool.id), { quantity: req.newQuantity });
+        let updateData = { quantity: req.newQuantity };
+        
+        // If it has newStatusQuantities, update them as well
+        if (req.newStatusQuantities) {
+          updateData.statusQuantities = req.newStatusQuantities;
+          updateData.status = req.newPrimaryStatus || 'Available';
+          
+          const now = Date.now();
+          const dateStr = new Date().toLocaleString();
+          
+          const historyEntry = {
+            status: req.statusSnapshot || 'Available',
+            previousStatus: null,
+            changedBy: req.requestedByName || req.requestedBy,
+            changedByUsername: req.requestedBy,
+            timestamp: now,
+            dateStr: dateStr,
+            notes: req.actionText || 'Quantity updated by request'
+          };
+          
+          const currentHistory = Array.isArray(tool.statusHistory) ? [...tool.statusHistory] : (tool.status ? [{
+            status: tool.status,
+            previousStatus: null,
+            changedBy: tool.createdBy || 'Initial System Record',
+            changedByUsername: tool.createdBy || 'system',
+            timestamp: tool.createdAt || now,
+            dateStr: tool.createdAt ? new Date(tool.createdAt).toLocaleString() : dateStr,
+            notes: tool.notes || 'Initial registration'
+          }] : []);
+          
+          updateData.statusHistory = [...currentHistory, historyEntry];
+          updateData.lastStatusNote = req.actionText;
+          updateData.updatedAt = serverTimestamp();
+          updateData.updatedBy = req.requestedBy;
+        }
+
+        await update(ref(db, 'tools/' + tool.id), updateData);
       }
       await remove(ref(db, 'toolQuantityRequests/' + (req.id || reqId)));
       await writeAudit('tool-qty-change-approved', req.toolId, {
