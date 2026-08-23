@@ -794,6 +794,12 @@ function loadSession() {
     if (!user || typeof user.username !== 'string') return null;
     user.roles = Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : ['storekeeper']);
     if (user.roles.includes('storekeeper')) user.roles[user.roles.indexOf('storekeeper')] = 'user'; // legacy fix
+    
+    // Ensure the admin user always has the admin role
+    if (user.username.toLowerCase() === 'admin' && !user.roles.includes('admin')) {
+      user.roles.push('admin');
+    }
+
     if (!user.roles.some(r => ['admin', 'user', 'viewer', 'tools_admin', 'tools_viewer'].includes(r))) {
       localStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(SESSION_KEY);
@@ -818,7 +824,7 @@ function clearSession() {
 // in sync automatically if a view is ever added/removed/relabelled.
 function navLinksForRoles(roles) {
   if (!roles) return [];
-  if (roles.includes('admin')) return [['admin-dashboard', 'Dashboard'], ['material-requests', 'Material Requests'], ['register', 'Issue/Return'], ['tools-dashboard', 'Tools List'], ['users-admin', 'Users'], ['settings-admin', 'Settings']];
+  if (roles.includes('admin')) return [['admin-dashboard', 'Dashboard'], ['material-requests', 'Material Requests'], ['register', 'Issue/Return'], ['tools-dashboard', 'Tools List'], ['users-admin', 'Users'], ['settings-admin', 'Settings'], ['profile', 'My Profile']];
 
   let links = [];
   if (roles.includes('tools_admin') || roles.includes('tools_viewer')) {
@@ -1024,10 +1030,15 @@ $('#loginForm').addEventListener('submit', async (e) => {
       }
     }
 
+    let userRoles = Array.isArray(record.roles) ? record.roles : (record.role ? [record.role] : ['storekeeper']);
+    if (resolvedUsername.toLowerCase() === 'admin' && !userRoles.includes('admin')) {
+      userRoles.push('admin');
+    }
+
     globalState.currentUser = {
       username: resolvedUsername,
       fullName: record.fullName || resolvedUsername,
-      roles: Array.isArray(record.roles) ? record.roles : (record.role ? [record.role] : ['storekeeper']),
+      roles: userRoles,
       profilePhotoUrl: record.profilePhotoUrl || null
     };
     window.currentUser = globalState.currentUser;
