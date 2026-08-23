@@ -1065,14 +1065,27 @@ if (checkUpdatesBtn) {
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();
         if (reg) {
+          let wasInstalling = !!reg.installing;
           await reg.update();
+          if (reg.installing && !wasInstalling) {
+            // Found update and is downloading. The index.html listener takes over.
+            return;
+          }
+          if (reg.waiting) {
+            // Already downloaded, just waiting. The index.html listener takes over.
+            return;
+          }
         }
       }
+      
+      // Give a tiny delay for visual feedback if up to date
       setTimeout(() => {
-        checkUpdatesBtn.disabled = false;
-        checkUpdatesBtn.textContent = 'Check for updates';
-        showToast('You are up to date!');
-      }, 1500);
+        if (checkUpdatesBtn.textContent === 'Checking...') {
+          checkUpdatesBtn.disabled = false;
+          checkUpdatesBtn.textContent = 'Check for updates';
+          showToast('You are up to date!');
+        }
+      }, 800);
     } catch (err) {
       checkUpdatesBtn.disabled = false;
       checkUpdatesBtn.textContent = 'Check for updates';

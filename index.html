@@ -1076,23 +1076,69 @@
             // Handle updates manually via the UI Banner
             reg.addEventListener('updatefound', () => {
               const newWorker = reg.installing;
-              if (newWorker) {
+              if (newWorker && navigator.serviceWorker.controller) {
+                // An update has started downloading!
+                const checkBtn = document.getElementById('checkUpdatesBtn');
+                if (checkBtn) {
+                  checkBtn.textContent = 'Downloading update...';
+                  checkBtn.disabled = true;
+                }
+
+                const banner = document.getElementById('pwaUpdateBanner');
+                const btn = document.getElementById('pwaUpdateBtn');
+                const laterBtn = document.getElementById('pwaUpdateLaterBtn');
+                const track = document.getElementById('pwaUpdateProgressTrack');
+                const fill = document.getElementById('pwaUpdateProgressFill');
+                const statusMsg = document.getElementById('pwaUpdateStatusMsg');
+                const icon = document.querySelector('.pwa-update-icon');
+                const title = document.getElementById('pwaUpdateTitle');
+
+                if (banner && btn) {
+                  // Show the banner in a downloading state
+                  banner.classList.remove('hidden');
+                  setTimeout(() => banner.classList.add('show'), 100);
+
+                  btn.classList.add('hidden'); // Hide "Update Now"
+                  if (laterBtn) laterBtn.classList.add('hidden'); // Hide "Later"
+                  track.classList.remove('hidden'); // Show progress track
+
+                  title.textContent = 'Downloading Update...';
+                  statusMsg.textContent = 'Fetching the latest files in the background...';
+
+                  // Simulate a slow fill to 90% while downloading
+                  fill.style.transition = 'width 10s ease-out';
+                  fill.style.width = '90%';
+                }
+
                 newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  if (newWorker.state === 'installed') {
                     console.log('[PWA] New version installed. Waiting for user action.');
-                    const banner = document.getElementById('pwaUpdateBanner');
-                    const btn = document.getElementById('pwaUpdateBtn');
-                    const laterBtn = document.getElementById('pwaUpdateLaterBtn');
-                    const track = document.getElementById('pwaUpdateProgressTrack');
-                    const fill = document.getElementById('pwaUpdateProgressFill');
-                    const statusMsg = document.getElementById('pwaUpdateStatusMsg');
-                    const icon = document.querySelector('.pwa-update-icon');
-                    const title = document.getElementById('pwaUpdateTitle');
+                    
+                    if (checkBtn) {
+                      checkBtn.textContent = 'Update Ready';
+                      checkBtn.style.color = 'var(--primary)';
+                      checkBtn.disabled = false;
+                      checkBtn.onclick = () => {
+                        checkBtn.textContent = 'Restarting...';
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      };
+                    }
 
                     if (banner && btn) {
-                      banner.classList.remove('hidden');
-                      // small delay to allow transition
-                      setTimeout(() => banner.classList.add('show'), 100);
+                      // Download complete! Snap progress to 100%
+                      fill.style.transition = 'width 0.3s ease-out';
+                      fill.style.width = '100%';
+
+                      setTimeout(() => {
+                        track.classList.add('hidden'); // Hide progress bar
+                        btn.classList.remove('hidden'); // Show Update Now
+                        if (laterBtn) laterBtn.classList.remove('hidden');
+
+                        title.textContent = 'Update Ready';
+                        statusMsg.textContent = 'A new version of the app has been downloaded and is ready to install.';
+                        icon.classList.add('success');
+                        icon.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                      }, 400);
 
                       if (laterBtn) {
                         laterBtn.onclick = () => {
@@ -1102,32 +1148,11 @@
                       }
 
                       btn.onclick = () => {
-                        // Prevent multiple clicks
                         if (banner.classList.contains('updating')) return;
                         banner.classList.add('updating');
-
-                        // Show progress bar
-                        btn.classList.add('hidden');
-                        if (laterBtn) laterBtn.classList.add('hidden');
-                        track.classList.remove('hidden');
-                        statusMsg.textContent = 'Downloading and applying update...';
-                        title.textContent = 'Updating...';
-
-                        // Simulate progress 0 -> 100%
-                        setTimeout(() => { fill.style.width = '30%'; }, 100);
-                        setTimeout(() => { fill.style.width = '70%'; }, 500);
-                        setTimeout(() => {
-                          fill.style.width = '100%';
-                          statusMsg.textContent = 'Update successful! Restarting...';
-                          title.textContent = 'Success!';
-                          icon.classList.add('success');
-                          icon.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-
-                          // After success message, apply update and reload
-                          setTimeout(() => {
-                            newWorker.postMessage({ type: 'SKIP_WAITING' });
-                          }, 1000);
-                        }, 1200);
+                        btn.disabled = true;
+                        btn.textContent = 'Restarting...';
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
                       };
                     } else {
                       // Fallback if UI is missing
