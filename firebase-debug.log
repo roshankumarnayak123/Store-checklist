@@ -1,0 +1,38 @@
+[debug] [2026-08-23T17:56:58.813Z] ----------------------------------------------------------------------
+[debug] [2026-08-23T17:56:58.817Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\rosha\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js deploy --only database
+[debug] [2026-08-23T17:56:58.817Z] CLI Version:   15.28.1
+[debug] [2026-08-23T17:56:58.817Z] Platform:      win32
+[debug] [2026-08-23T17:56:58.818Z] Node Version:  v24.18.0
+[debug] [2026-08-23T17:56:58.818Z] Detected Agent: antigravity
+[debug] [2026-08-23T17:56:58.818Z] Time:          Sun Aug 23 2026 23:26:58 GMT+0530 (India Standard Time)
+[debug] [2026-08-23T17:56:58.818Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-23T17:57:00.677Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-23T17:57:01.326Z] Running auto auth
+[debug] [2026-08-23T17:57:01.327Z] [iam] checking project store-issue-register for permissions ["firebase.projects.get","firebasedatabase.instances.update"]
+[debug] [2026-08-23T17:57:01.329Z] No OAuth tokens found
+[debug] [2026-08-23T17:57:01.331Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/store-issue-register:testIamPermissions [none]
+[debug] [2026-08-23T17:57:01.331Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/store-issue-register:testIamPermissions  x-goog-user-project=store-issue-register
+[debug] [2026-08-23T17:57:01.331Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/store-issue-register:testIamPermissions {"permissions":["firebase.projects.get","firebasedatabase.instances.update"]}
+[debug] [2026-08-23T17:57:03.244Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/store-issue-register:testIamPermissions 200
+[debug] [2026-08-23T17:57:03.244Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/store-issue-register:testIamPermissions {"permissions":["firebase.projects.get","firebasedatabase.instances.update"]}
+[debug] [2026-08-23T17:57:03.245Z] No OAuth tokens found
+[debug] [2026-08-23T17:57:03.246Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/store-issue-register [none]
+[debug] [2026-08-23T17:57:03.975Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/store-issue-register 200
+[debug] [2026-08-23T17:57:03.975Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/store-issue-register {"projectId":"store-issue-register","projectNumber":"184487310656","displayName":"Store issue register","name":"projects/store-issue-register","resources":{"hostingSite":"store-issue-register","realtimeDatabaseInstance":"store-issue-register-default-rtdb"},"state":"ACTIVE","etag":"1_7a688446-d748-4a0b-8fc5-1f8638726d3d"}
+[info] 
+[info] === Deploying to 'store-issue-register'...
+[info] 
+[info] i  deploying database 
+[info] i  database: checking rules syntax... 
+[debug] [2026-08-23T17:57:03.980Z] No OAuth tokens found
+[debug] [2026-08-23T17:57:03.980Z] >>> [apiv2][query] GET https://firebasedatabase.googleapis.com/v1beta/projects/store-issue-register/locations/-/instances/store-issue-register-default-rtdb [none]
+[debug] [2026-08-23T17:57:05.734Z] <<< [apiv2][status] GET https://firebasedatabase.googleapis.com/v1beta/projects/store-issue-register/locations/-/instances/store-issue-register-default-rtdb 403
+[debug] [2026-08-23T17:57:05.734Z] <<< [apiv2][body] GET https://firebasedatabase.googleapis.com/v1beta/projects/store-issue-register/locations/-/instances/store-issue-register-default-rtdb {"error":{"code":403,"message":"Your application is authenticating by using local Application Default Credentials. The firebasedatabase.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds .","status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"service":"firebasedatabase.googleapis.com","consumer":"projects/764086051850"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Your application is authenticating by using local Application Default Credentials. The firebasedatabase.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds ."}]}}
+[debug] [2026-08-23T17:57:05.735Z] Request to https://firebasedatabase.googleapis.com/v1beta/projects/store-issue-register/locations/-/instances/store-issue-register-default-rtdb had HTTP Error: 403, Your application is authenticating by using local Application Default Credentials. The firebasedatabase.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds .
+[debug] [2026-08-23T17:57:05.736Z] FirebaseError: Request to https://firebasedatabase.googleapis.com/v1beta/projects/store-issue-register/locations/-/instances/store-issue-register-default-rtdb had HTTP Error: 403, Your application is authenticating by using local Application Default Credentials. The firebasedatabase.googleapis.com API requires a quota project, which is not set by default. To learn how to set your quota project, see https://cloud.google.com/docs/authentication/adc-troubleshooting/user-creds .
+    at responseToError (C:\Users\rosha\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\responseToError.js:53:12)
+    at RetryOperation._fn (C:\Users\rosha\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\apiv2.js:415:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[error] 
+[error] Error: Failed to get instance details for instance: store-issue-register-default-rtdb. See firebase-debug.log for more details.

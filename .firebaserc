@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "store-issue-register"
+  },
+  "targets": {
+    "store-issue-register": {
+      "database": {
+        "default": [
+          "store-issue-register-default-rtdb"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
