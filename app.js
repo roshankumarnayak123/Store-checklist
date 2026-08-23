@@ -1374,14 +1374,15 @@ function renderMobileBottomNav(roles = []) {
       ['admin-dashboard', 'Dashboard'],
       ['register', 'Register'],
       ['tools-dashboard', 'Tools'],
-      ['users-admin', 'Users'],
+      ['material-requests', 'Requests'],
       ['settings-admin', 'Settings']
     );
-  } else if (hasStorekeeper) {
+  } else if (hasStorekeeper || roles.includes('request_approver')) {
     links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
     if (hasToolsAccess) {
       links.push(['tools-dashboard', 'Tools']);
     }
+    links.push(['material-requests', 'Requests']);
     links.push(['profile', 'Profile']);
   } else if (hasViewer) {
     links.push(['dashboard', 'Dashboard'], ['register', 'Register']);
@@ -2233,7 +2234,7 @@ function render() {
         </div>
         <div class="panel">
           <div class="panel-pad" style="padding:0; overflow-x:auto;">
-            <table class="tools-master-table" style="font-size:12.5px; width:100%; background:var(--surface); table-layout: fixed;">
+            <table class="tools-master-table" style="font-size:12.5px; width:100%; min-width: 800px; background:var(--surface); table-layout: fixed;">
               <thead>
                 <tr>
                   <th style="width: 14%;">Date & Time</th>

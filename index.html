@@ -1079,9 +1079,14 @@
               if (newWorker && navigator.serviceWorker.controller) {
                 // An update has started downloading!
                 const checkBtn = document.getElementById('checkUpdatesBtn');
+                const profileCheckBtn = document.getElementById('profileCheckUpdatesBtn');
                 if (checkBtn) {
                   checkBtn.textContent = 'Downloading update...';
                   checkBtn.disabled = true;
+                }
+                if (profileCheckBtn) {
+                  profileCheckBtn.innerHTML = '<span class="spinner" style="width:14px; height:14px; border-width:2px; margin-right:6px; display:inline-block;"></span> Downloading update...';
+                  profileCheckBtn.disabled = true;
                 }
 
                 const banner = document.getElementById('pwaUpdateBanner');
@@ -1120,6 +1125,17 @@
                       checkBtn.disabled = false;
                       checkBtn.onclick = () => {
                         checkBtn.textContent = 'Restarting...';
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      };
+                    }
+                    if (profileCheckBtn) {
+                      profileCheckBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Update Ready';
+                      profileCheckBtn.style.backgroundColor = 'var(--success)';
+                      profileCheckBtn.style.color = '#fff';
+                      profileCheckBtn.style.borderColor = 'var(--success)';
+                      profileCheckBtn.disabled = false;
+                      profileCheckBtn.onclick = () => {
+                        profileCheckBtn.innerHTML = '<span class="spinner" style="width:14px; height:14px; border-width:2px; margin-right:6px; display:inline-block;"></span> Restarting...';
                         newWorker.postMessage({ type: 'SKIP_WAITING' });
                       };
                     }
