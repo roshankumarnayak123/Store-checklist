@@ -2158,6 +2158,12 @@ html[data-theme="dark"] {
   border-color: var(--a11y-focus-color) !important;
 }
 
+@media (max-width: 768px) {
+  .mat-req-hide-mobile {
+    display: none !important;
+  }
+}
+
 /* Photo links receive a visible frame around the thumbnail. */
 .photo-thumb-strip a:focus-visible {
   border-radius: 9px;
@@ -5765,4 +5771,13 @@ html[data-theme="dark"] .pwa-update-progress-track {
   width: 0%;
   background: var(--primary);
   transition: width 0.3s ease-out;
+}
+@ m e d i a   ( m a x - w i d t h :   7 6 8 p x )   {   . m a t - r e q - h i d e - m o b i l e   {   d i s p l a y :   n o n e   ! i m p o r t a n t ;   }   } 
+ 
+ 
+
+@media(max-width: 768px) {
+  .mat-req-hide-mobile {
+    display: none !important;
+  }
 }

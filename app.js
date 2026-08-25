@@ -2234,16 +2234,16 @@ function render() {
         </div>
         <div class="panel">
           <div class="panel-pad" style="padding:0; overflow-x:auto;">
-            <table class="tools-master-table" style="font-size:12.5px; width:100%; min-width: 800px; background:var(--surface); table-layout: fixed;">
+            <table class="tools-master-table" style="font-size:12.5px; width:100%; min-width: 100%; background:var(--surface); table-layout: fixed;">
               <thead>
                 <tr>
-                  <th style="width: 14%;">Date & Time</th>
+                  <th class="mat-req-hide-mobile" style="width: 14%;">Date & Time</th>
                   <th style="width: 12%;">Requester</th>
-                  <th style="width: 12%;">Vendor/Contractor</th>
-                  <th style="width: 11%;">Mobile</th>
+                  <th class="mat-req-hide-mobile" style="width: 12%;">Vendor/Contractor</th>
+                  <th class="mat-req-hide-mobile" style="width: 11%;">Mobile</th>
                   <th style="width: 18%;">Materials Requested</th>
                   <th style="width: 10%;">Status</th>
-                  <th style="width: 11%;">Approved By</th>
+                  <th class="mat-req-hide-mobile" style="width: 11%;">Approved By</th>
                   <th style="width: 12%;">Action</th>
                 </tr>
               </thead>
@@ -6634,24 +6634,34 @@ function renderMaterialRequests() {
 
     const actionHtml = (isPending && canApprove)
       ? `<div style="display:flex; gap:6px; align-items:center;">
-           <button class="btn btn-sm" style="background:var(--success); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Approve" onclick="window.approveMaterialRequest('${escapeHtml(req.id)}', this)">
-             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M20 6L9 17l-5-5"></path></svg>
+           <button class="btn btn-sm" style="background:var(--surface-sunken); color:var(--text); padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:1px solid var(--border); cursor:pointer; min-width:32px; min-height:32px;" title="View Details" onclick="window.viewMaterialRequestDetails('${escapeHtml(req.id)}')">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
            </button>
-           <button class="btn btn-sm" style="background:var(--danger); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Reject" onclick="window.rejectMaterialRequest('${escapeHtml(req.id)}', this)">
-             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-           </button>
+           <div class="mat-req-hide-mobile" style="display:flex; gap:6px;">
+             <button class="btn btn-sm" style="background:var(--success); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Approve" onclick="window.approveMaterialRequest('${escapeHtml(req.id)}', this)">
+               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M20 6L9 17l-5-5"></path></svg>
+             </button>
+             <button class="btn btn-sm" style="background:var(--danger); color:#fff; padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:none; cursor:pointer; min-width:32px; min-height:32px;" title="Reject" onclick="window.rejectMaterialRequest('${escapeHtml(req.id)}', this)">
+               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+             </button>
+           </div>
          </div>`
-      : ((req.approvedAt || req.rejectedAt) ? escapeHtml(new Date(req.approvedAt || req.rejectedAt).toLocaleString()) : '-');
+      : `<div style="display:flex; gap:6px; align-items:center;">
+           <button class="btn btn-sm" style="background:var(--surface-sunken); color:var(--text); padding: 6px; display:flex; align-items:center; justify-content:center; border-radius: 4px; border:1px solid var(--border); cursor:pointer; min-width:32px; min-height:32px;" title="View Details" onclick="window.viewMaterialRequestDetails('${escapeHtml(req.id)}')">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+           </button>
+           <span class="mat-req-hide-mobile">${(req.approvedAt || req.rejectedAt) ? escapeHtml(new Date(req.approvedAt || req.rejectedAt).toLocaleString()) : '-'}</span>
+         </div>`;
 
     return `
       <tr>
-        <td>${escapeHtml(new Date(req.requestTimestamp).toLocaleString())}</td>
+        <td class="mat-req-hide-mobile">${escapeHtml(new Date(req.requestTimestamp).toLocaleString())}</td>
         <td><strong>${escapeHtml(req.requesterName)}</strong></td>
-        <td>${escapeHtml(req.vendor)}</td>
-        <td>${escapeHtml(req.mobileNumber)}</td>
+        <td class="mat-req-hide-mobile">${escapeHtml(req.vendor)}</td>
+        <td class="mat-req-hide-mobile">${escapeHtml(req.mobileNumber)}</td>
         <td style="white-space:pre-wrap;">${escapeHtml(req.materials)}</td>
         <td>${statusHtml}</td>
-        <td>${escapeHtml(req.approvedBy || '-')}</td>
+        <td class="mat-req-hide-mobile">${escapeHtml(req.approvedBy || '-')}</td>
         <td>${actionHtml}</td>
       </tr>
     `;
@@ -6727,3 +6737,56 @@ window.rejectMaterialRequest = async function (reqId, buttonEl = null) {
     }
   }
 };
+
+window.viewMaterialRequestDetails = function(reqId) {
+  const req = globalState.materialRequestsCache.find(r => r.id === reqId);
+  if (!req) return;
+
+  const el = id => document.getElementById(id);
+
+  el('mrDetRequester').textContent = req.requesterName;
+  el('mrDetDate').textContent = new Date(req.requestTimestamp).toLocaleString();
+  el('mrDetVendor').textContent = req.vendor || '-';
+  el('mrDetMobile').textContent = req.mobileNumber || '-';
+  el('mrDetMaterials').textContent = req.materials || '-';
+  
+  const isPending = req.status === 'Pending';
+  let statusHtml = '';
+  if (isPending) statusHtml = '<span class="status-badge" style="background:var(--amber);color:#fff;">Pending</span>';
+  else if (req.status === 'Approved') statusHtml = '<span class="status-badge" style="background:var(--success);color:#fff;">Approved</span>';
+  else statusHtml = '<span class="status-badge" style="background:var(--danger);color:#fff;">Rejected</span>';
+  el('mrDetStatus').innerHTML = statusHtml;
+  
+  let processedBy = '-';
+  if (req.approvedAt || req.rejectedAt) {
+    processedBy = `${escapeHtml(req.approvedBy || req.rejectedBy || '-')} on ${new Date(req.approvedAt || req.rejectedAt).toLocaleString()}`;
+  }
+  el('mrDetApprovedBy').textContent = processedBy;
+
+  const canApprove = globalState.currentUser.roles.includes('request_approver');
+  const actionsDiv = el('matReqDetailsActions');
+  
+  let actionsHtml = `<button type="button" class="btn btn-ghost btn-sm" id="matReqDetailsCancelBtn" style="flex:1;">Close</button>`;
+  
+  if (isPending && canApprove) {
+    actionsHtml += `
+      <button class="btn btn-primary btn-sm" style="background:var(--success); border-color:var(--success); flex:1;" onclick="window.approveMaterialRequest('${escapeHtml(req.id)}'); document.getElementById('materialRequestDetailsDialog').classList.add('hidden'); document.body.classList.remove('modal-open');">Approve</button>
+      <button class="btn btn-primary btn-sm" style="background:var(--danger); border-color:var(--danger); flex:1;" onclick="window.rejectMaterialRequest('${escapeHtml(req.id)}'); document.getElementById('materialRequestDetailsDialog').classList.add('hidden'); document.body.classList.remove('modal-open');">Reject</button>
+    `;
+  }
+  
+  actionsDiv.innerHTML = actionsHtml;
+  
+  el('matReqDetailsCancelBtn').addEventListener('click', () => {
+    el('materialRequestDetailsDialog').classList.add('hidden');
+    document.body.classList.remove('modal-open');
+  });
+
+  document.body.classList.add('modal-open');
+  el('materialRequestDetailsDialog').classList.remove('hidden');
+};
+
+document.getElementById('matReqDetailsCloseBtn')?.addEventListener('click', () => {
+  document.getElementById('materialRequestDetailsDialog').classList.add('hidden');
+  document.body.classList.remove('modal-open');
+});
